@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  What goes into the Community package, and what MSFS is told about it.
+
+  One asset group: the module. No `html_ui`, and deliberately no
+  `PackageOrderHint` — fscopilot-bridge carries `PANEL_PATCH` to sequence its
+  patch of a core sim file, and 03-link forbids us from patching anything. We
+  ship a module and our own entry point, and replace no file the sim or another
+  package owns.
+-->
+<AssetPackage Version="0.7.0">
+	<ItemSettings>
+		<ContentType>MISC</ContentType>
+		<Title>FSC Editor Link</Title>
+		<Manufacturer/>
+		<Creator>fsc-editor</Creator>
+	</ItemSettings>
+	<Flags>
+		<VisibleInStore>false</VisibleInStore>
+		<CanBeReferenced>false</CanBeReferenced>
+	</Flags>
+	<AssetGroups>
+		<AssetGroup Name="modules">
+			<Type Version="0">Copy</Type>
+			<Flags>
+				<FSXCompatibility>false</FSXCompatibility>
+			</Flags>
+			<AssetDir>PackageSources\Modules\</AssetDir>
+			<OutputDir>modules\</OutputDir>
+		</AssetGroup>
+	</AssetGroups>
+</AssetPackage>

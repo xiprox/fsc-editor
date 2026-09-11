@@ -1,0 +1,80 @@
+# Everything that has to be true before a change reaches main.
+#
+# Non-PR pushes to main are disabled, so this is the only gate there is.
+#
+# It runs on Windows rather than the cheaper Ubuntu on purpose. This is a
+# Windows application — it reads the registry, drives an executable, and writes
+# into a game's Community folder — and the tests carry paths and fixtures that
+# assume it. A green run on a platform nobody ships to is a weaker claim than
+# it looks. See docs/pipeline/03-checks.md.
+name: PR
+
+on:
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: pr-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: windows-latest
+
+    steps:
+      # Full history: check:cascade compiles the stylesheet at the merge base
+      # as well as at HEAD, so a shallow clone gives it nothing to compare to.
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      # `npm run lint` and `npm run format:check` are deliberately NOT here.
+      # The tree does not pass either one today — 123 eslint errors, 484 files
+      # prettier disagrees with — so both would fail the first pull request and
+      # every one after it, and satisfying either means a sweep of the whole
+      # repository that nobody asked for. A check that is always red teaches
+      # people to ignore checks.
+      #
+      # Both are one line each the day the tree is clean, and that cleanup is
+      # its own piece of work. See docs/pipeline/03-checks.md and
+      # docs/pipeline/09-open-questions.md.
+
+      # Cheapest first, so an obvious failure does not wait behind a bundle.
+      #
+      # Three greps and a hash against the committed WASM package. See
+      # docs/pipeline/08-module.md — a failure here means somebody with MSFS
+      # and the SDK has to run `npm run link:build`, and there is no other fix.
+      - name: Module guards
+        run: npm run check:module
+
+      - name: Tests
+        run: npm test
+
+      # The relay compiles against the app's own src/shared/remote-connect.ts.
+      # This step is what makes editor/relay parity structural rather than
+      # something anybody maintains.
+      - name: Relay typecheck
+        run: npm run relay:check
+
+      # Bundles main, preload and renderer, and runs `tsc -b` on the way in.
+      # electron-builder is not run here — packaging is a release concern.
+      - name: Build
+        run: npm run build
+
+      # Not blocking, deliberately. It reports a real visual difference, but a
+      # *deliberate* one is indistinguishable from a regression to it, and
+      # there is no way to acknowledge one yet. Red and ignorable beats red and
+      # unmergeable until there is. See docs/pipeline/09-open-questions.md.
+      - name: Cascade
+        continue-on-error: true
+        run: npm run check:cascade -- origin/${{ github.base_ref }}

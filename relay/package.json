@@ -1,0 +1,7 @@
+{
+  "name": "fsce-relay",
+  "private": true,
+  "type": "module",
+  "version": "0.0.0",
+  "description": "Remote Connect relay — a Cloudflare Worker. Versioned only so that release-please has a file to bump and a merge-to-deploy gate exists; nothing reads this number. See docs/pipeline/07-relay.md."
+}

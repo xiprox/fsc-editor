@@ -1,0 +1,234 @@
+#master:
+#  - #	Returns the current autotpilot reference pitch.
+#    get: A:AUTOPILOT PITCH HOLD REF, Degrees
+
+shared:
+  # PFD
+  - get: A:NAV VOLUME:1, Percent # VOL
+    set: (>K:NAV1_VOLUME_SET_EX1)
+  - get: A:NAV VOLUME:2, Percent # VOL
+    set: (>K:NAV2_VOLUME_SET_EX1)
+  - get: H:AS1000_PFD_NAV_Push # NAV 1/2
+  - get: A:NAV ACTIVE FREQUENCY:1, Hz # NAV1 ACTIVE
+    set: (>K:NAV1_RADIO_SET_HZ)
+  - get: A:NAV ACTIVE FREQUENCY:2, Hz # NAV2 ACTIVE
+    set: (>K:NAV2_RADIO_SET_HZ)
+  - get: A:NAV STANDBY FREQUENCY:1, Hz # NAV1 STANDBY
+    set: (>K:NAV1_STBY_SET_HZ)
+  - get: A:NAV STANDBY FREQUENCY:2, Hz # NAV2 STANDBY
+    set: (>K:NAV2_STBY_SET_HZ)
+  - get: A:AUTOPILOT HEADING LOCK DIR:1, Degrees # HDG
+#  - get: A:AUTOPILOT ALTITUDE SLOT INDEX, Number
+#    set: (>K:AP_ALTITUDE_SLOT_INDEX_SET)
+  - get: A:AUTOPILOT ALTITUDE LOCK VAR:1, Feet # A hack for uninitialized ALT. First, you need to trigger the k event when the height isn't set, otherwise the value won't update. We can't use the k event all the time because the value is set incorrectly with it 
+    set: "current == 0 ? `1 ${value} (>K:2:AP_ALT_VAR_SET_ENGLISH)` : `${value} (>A:AUTOPILOT ALTITUDE LOCK VAR:1, Feet)`"
+    
+  - get: H:AS1000_PFD_SOFTKEYS_1
+#    set: (>B:G1000_PFD_SOFTKEY1)
+  - get: H:AS1000_PFD_SOFTKEYS_2
+#    set: (>B:G1000_PFD_SOFTKEY2)
+  - get: H:AS1000_PFD_SOFTKEYS_3
+#    set: (>B:G1000_PFD_SOFTKEY3)
+  - get: H:AS1000_PFD_SOFTKEYS_4
+#    set: (>B:G1000_PFD_SOFTKEY4)
+  - get: H:AS1000_PFD_SOFTKEYS_5
+#    set: (>B:G1000_PFD_SOFTKEY5)
+  - get: H:AS1000_PFD_SOFTKEYS_6
+#    set: (>B:G1000_PFD_SOFTKEY6)
+  - get: H:AS1000_PFD_SOFTKEYS_7
+#    set: (>B:G1000_PFD_SOFTKEY7)
+  - get: H:AS1000_PFD_SOFTKEYS_8
+#    set: (>B:G1000_PFD_SOFTKEY8)
+  - get: H:AS1000_PFD_SOFTKEYS_9
+#    set: (>B:G1000_PFD_SOFTKEY9)
+  - get: H:AS1000_PFD_SOFTKEYS_10
+#    set: (>B:G1000_PFD_SOFTKEY10)
+  - get: H:AS1000_PFD_SOFTKEYS_11
+#    set: (>B:G1000_PFD_SOFTKEY11)
+  - get: H:AS1000_PFD_SOFTKEYS_12
+#    set: (>B:G1000_PFD_SOFTKEY12)
+  - get: L:PFD_CDI_Source # CDI
+    set: (>K:AP_NAV_SELECT_SET)
+    skp: H:AS1000_PFD_SOFTKEYS_6
+  - get: A:GPS DRIVES NAV1, Bool # CDI
+    set: (>K:TOGGLE_GPS_DRIVES_NAV1)
+  - get: A:ADF ACTIVE FREQUENCY:1, Frequency ADF BCD32 # ADF ACTIVE
+    set: (>K:ADF_ACTIVE_SET)
+    skp: H:AS1000_PFD_ENT_Push
+  - get: A:ADF STANDBY FREQUENCY:1, Frequency ADF BCD32 # ADF STANDBY
+    set: (>K:ADF_STBY_SET)
+  - get: A:ADF SOUND:1, Bool # ADF SOUND
+    set: (>K:RADIO_ADF_IDENT_SET)
+  - get: A:TRANSPONDER STATE:1, Enum # XPDR StandBy/On/Alt
+  - get: A:TRANSPONDER CODE:1, BCO16 # XPDR Code
+    set: (>K:XPNDR_SET)
+  - get: A:TRANSPONDER IDENT:1, Bool # Ident
+    set: "value ? '1 (>K:XPNDR_IDENT_ON)' : '1 (>K:XPNDR_IDENT_OFF)'"
+    skp: H:AS1000_PFD_SOFTKEYS_9
+
+  - get: A:COM VOLUME:1, Percent # VOL
+    set: (>K:COM1_VOLUME_SET)
+  - get: A:COM VOLUME:2, Percent # VOL
+    set: (>K:COM2_VOLUME_SET)
+  - get: H:AS1000_PFD_COM_Push # COM 1/2
+  - get: A:COM ACTIVE FREQUENCY:1, Hz # COM1 ACTIVE
+    set: (>K:COM_RADIO_SET_HZ)
+  - get: A:COM ACTIVE FREQUENCY:2, Hz # COM2 ACTIVE
+    set: (>K:COM2_RADIO_SET_HZ)
+  - get: A:COM STANDBY FREQUENCY:1, Hz # COM1 STANDBY
+    set: (>K:COM_STBY_RADIO_SET_HZ)
+  - get: A:COM STANDBY FREQUENCY:2, Hz # COM2 STANDBY
+    set: (>K:COM2_STBY_RADIO_SET_HZ)
+  - get: A:KOHLSMAN SETTING MB:0, Millibars # BARO
+    set: "`0 ${value * 16} (>K:2:KOHLSMAN_SET)`"
+  - get: A:GPS OBS ACTIVE, Bool # CRS CTR
+    set: (>K:GPS_OBS)
+    skp: H:AS1000_PFD_SOFTKEYS_5
+  - get: A:GPS OBS VALUE, Degrees # CRS CTR
+    set: (>K:GPS_OBS_SET)
+  - get: A:NAV OBS:1, Degrees # CRS CTR 
+    set: (>K:VOR1_SET)
+  - get: A:NAV OBS:2, Degrees # CRS CTR
+    set: (>K:VOR2_SET)
+    #  - get: L:CRS_FIX_1 # CRS CTR
+  - get: H:AS1000_PFD_CLR
+#    set: (>B:G1000_PFD_CLEAR_BUTTON)
+  - get: H:AS1000_PFD_ENT_Push
+#    set: (>B:G1000_PFD_ENTER_BUTTON)
+  - get: H:AS1000_PFD_FPL_Push
+#    set: (>B:G1000_PFD_FLIGHTPLAN_BUTTON)
+  - get: H:AS1000_PFD_PROC_Push
+#    set: (>B:G1000_PFD_PROCEDURE_BUTTON)
+  - get: H:AS1000_PFD_DIRECTTO
+#    set: (>B:G1000_PFD_DIRECTTO_BUTTON)
+  - get: H:AS1000_PFD_MENU_Push
+#    set: (>B:G1000_PFD_MENU_BUTTON)
+  - get: H:AS1000_PFD_JOYSTICK_PUSH
+#    set: (>B:G1000_PFD_CURSOR_BUTTON)
+  - get: H:AS1000_PFD_RANGE_INC
+#    set: (>B:G1000_PFD_ZOOMOUT_BUTTON)
+  - get: H:AS1000_PFD_RANGE_DEC
+#    set: (>B:G1000_PFD_ZOOMIN_BUTTON)
+  - get: H:AS1000_PFD_JOYSTICK_LEFT
+  - get: H:AS1000_PFD_JOYSTICK_RIGHT
+  - get: H:AS1000_PFD_JOYSTICK_UP
+  - get: H:AS1000_PFD_JOYSTICK_DOWN
+  - get: H:AS1000_PFD_FMS_Lower_INC
+#    set: (>B:G1000_PFD_PAGE_KNOB_INC)
+  - get: H:AS1000_PFD_FMS_Lower_DEC
+#    set: (>B:G1000_PFD_PAGE_KNOB_DEC)
+  - get: H:AS1000_PFD_FMS_Upper_INC
+#    set: (>B:G1000_PFD_GROUP_KNOB_INC)
+  - get: H:AS1000_PFD_FMS_Upper_DEC
+#    set: (>B:G1000_PFD_GROUP_KNOB_DEC)
+  - get: H:AS1000_PFD_FMS_Upper_PUSH
+  #  - get: L:AS1000_PFD_STATE
+#  - get: L:AS1000_PFD_Brightness
+#  - get: L:AS1000_PFD_Brightness_IsAuto
+  - get: A:AUTOPILOT TAKEOFF POWER ACTIVE, Bool
+    set: (>K:AUTO_THROTTLE_TO_GA)
+
+  # MID 
+  - get: A:COM TRANSMIT:1, Bool # COM1 MIC
+    set: "value ? '0 (>K:PILOT_TRANSMITTER_SET)' : '1 (>K:PILOT_TRANSMITTER_SET)'"
+  - get: A:COM TRANSMIT:1, Bool # COM1 MIC
+    set: "value ? '0 (>K:COPILOT_TRANSMITTER_SET)' : '1 (>K:COPILOT_TRANSMITTER_SET)'"
+  - get: A:COM RECEIVE:1, Bool # COM1
+    set: (>K:COM1_RECEIVE_SELECT)
+  - get: A:COM RECEIVE:2, Bool # COM2
+    set: (>K:COM2_RECEIVE_SELECT)
+  - get: A:MARKER BEACON TEST MUTE, Bool # MKR MUTE
+    set: (>K:MARKER_BEACON_TEST_MUTE)
+  - get: A:MARKER BEACON SENSITIVITY HIGH, Bool # HI SENS
+    set: (>K:MARKER_BEACON_SENSITIVITY_HIGH)
+  - get: A:DME SOUND, Bool # DME
+    set: (>K:RADIO_DME1_IDENT_TOGGLE)
+  - get: A:NAV SOUND:1, Bool # NAV1
+    set: (>K:RADIO_VOR1_IDENT_TOGGLE)
+  - get: A:ADF SOUND, Bool # ADF
+    set: (>K:RADIO_ADF_IDENT_TOGGLE)
+  - get: A:NAV SOUND:2, Bool # NAV2
+    set: (>K:RADIO_VOR2_IDENT_TOGGLE)
+  
+  # MFD
+  - get: A:AUTOPILOT MASTER, Bool # On/off flag
+    set: "value ? '(>K:AUTOPILOT_ON)' : '(>K:AUTOPILOT_OFF)'"
+  - get: A:AUTOPILOT YAW DAMPER, Bool
+    set: (>K:YAW_DAMPER_SET)
+  - get: A:AUTOPILOT FLIGHT DIRECTOR ACTIVE:1, Bool # FD
+    set: "0 (>K:TOGGLE_FLIGHT_DIRECTOR)"
+  - get: A:AUTOPILOT HEADING LOCK, Bool # HDG
+    set: "value ? '(>K:AP_HDG_HOLD_ON)' : '(>K:AP_HDG_HOLD_OFF)'"
+  - get: A:AUTOPILOT NAV1 LOCK, Bool # NAV
+    set: (>K:AP_NAV1_HOLD)
+  - get: A:AUTOPILOT APPROACH HOLD, Bool # APR
+    set: (>K:AP_APR_HOLD)
+  - get: A:AUTOPILOT GLIDESLOPE HOLD, Bool # APR
+    set: (>K:AP_LOC_HOLD)
+  - get: A:AUTOPILOT ALTITUDE LOCK, Bool # ALT
+    set: "value ? '(>K:AP_ALT_HOLD_ON)' : '(>K:AP_ALT_HOLD_OFF)'"
+  - get: L:XMLVAR_VNAVButtonValue # VNV
+  - get: A:AUTOPILOT VERTICAL HOLD, Bool # VS
+    set: "value ? '(>K:AP_VS_ON)' : '(>K:AP_VS_OFF)'"
+  - get: A:AUTOPILOT FLIGHT LEVEL CHANGE, Bool # FLC
+    set:  "value ? '(>K:FLIGHT_LEVEL_CHANGE_ON)' : '(>K:FLIGHT_LEVEL_CHANGE_OFF)'"
+  - get: A:AUTOPILOT VERTICAL HOLD VAR:1, Feet per minute # UP/DN
+  - get: A:AUTOPILOT AIRSPEED HOLD VAR:1, Knots # UP/DN
+    set: (>K:AP_SPD_VAR_SET)
+
+  - get: H:AS1000_MFD_SOFTKEYS_1
+#    set: (>B:G1000_MFD_SOFTKEY1)
+  - get: H:AS1000_MFD_SOFTKEYS_2
+#    set: (>B:G1000_MFD_SOFTKEY2)
+  - get: H:AS1000_MFD_SOFTKEYS_3
+#    set: (>B:G1000_MFD_SOFTKEY3)
+  - get: H:AS1000_MFD_SOFTKEYS_4
+#    set: (>B:G1000_MFD_SOFTKEY4)
+  - get: H:AS1000_MFD_SOFTKEYS_5
+#    set: (>B:G1000_MFD_SOFTKEY5)
+  - get: H:AS1000_MFD_SOFTKEYS_6
+#    set: (>B:G1000_MFD_SOFTKEY6)
+  - get: H:AS1000_MFD_SOFTKEYS_7
+#    set: (>B:G1000_MFD_SOFTKEY7)
+  - get: H:AS1000_MFD_SOFTKEYS_8
+#    set: (>B:G1000_MFD_SOFTKEY8)
+  - get: H:AS1000_MFD_SOFTKEYS_9
+#    set: (>B:G1000_MFD_SOFTKEY9)
+  - get: H:AS1000_MFD_SOFTKEYS_10
+#    set: (>B:G1000_MFD_SOFTKEY10)
+  - get: H:AS1000_MFD_SOFTKEYS_11
+#    set: (>B:G1000_MFD_SOFTKEY11)
+  - get: H:AS1000_MFD_SOFTKEYS_12
+#    set: (>B:G1000_MFD_SOFTKEY12)
+
+  - get: H:AS1000_MFD_JOYSTICK_PUSH
+#    set: (>B:G1000_MFD_CURSOR_BUTTON)
+  - get: H:AS1000_MFD_RANGE_INC
+#    set: (>B:G1000_MFD_ZOOMOUT_BUTTON)
+  - get: H:AS1000_MFD_RANGE_DEC
+#    set: (>B:G1000_MFD_ZOOMIN_BUTTON)
+  - get: H:AS1000_MFD_JOYSTICK_LEFT
+  - get: H:AS1000_MFD_JOYSTICK_RIGHT
+  - get: H:AS1000_MFD_JOYSTICK_UP
+  - get: H:AS1000_MFD_JOYSTICK_DOWN
+  - get: H:AS1000_MFD_CLR
+#    set: (>B:G1000_MFD_CLEAR_BUTTON)
+  - get: H:AS1000_MFD_ENT_Push
+#    set: (>B:G1000_MFD_ENTER_BUTTON)
+  - get: H:AS1000_MFD_FPL_Push
+#    set: (>B:G1000_MFD_FLIGHTPLAN_BUTTON)
+  - get: H:AS1000_MFD_PROC_Push
+#    set: (>B:G1000_MFD_PROCEDURE_BUTTON)
+  - get: H:AS1000_MFD_DIRECTTO
+#    set: (>B:G1000_MFD_DIRECTTO_BUTTON)
+  - get: H:AS1000_MFD_MENU_Push
+#    set: (>B:G1000_MFD_MENU_BUTTON)
+  - get: H:AS1000_MFD_FMS_Lower_INC
+#    set: (>B:G1000_MFD_PAGE_KNOB_INC)
+  - get: H:AS1000_MFD_FMS_Lower_DEC
+#    set: (>B:G1000_MFD_PAGE_KNOB_DEC)
+  - get: H:AS1000_MFD_FMS_Upper_INC
+#    set: (>B:G1000_MFD_GROUP_KNOB_INC)
+  - get: H:AS1000_MFD_FMS_Upper_DEC
+#    set: (>B:G1000_MFD_GROUP_KNOB_DEC)
+  - get: H:AS1000_MFD_FMS_Upper_PUSH

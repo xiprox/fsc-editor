@@ -1,0 +1,10 @@
+
+# The corpus is committed as a byte artifact, not as text.
+#
+# Every real profile is CRLF and the formatter branches on that — it detects the
+# file's line ending and writes back whichever it found. Left to git, these would
+# be stored as LF and checked out as LF on a Linux runner, so the check whose
+# whole contract is "a save never alters what FS Copilot loads" would be running
+# against files git had rewritten. See docs/pipeline/03-checks.md.
+corpus/profiles/** -text
+corpus/formatted/** -text

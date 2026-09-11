@@ -1,0 +1,1062 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+@import "@fontsource-variable/inter";
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+    --font-heading: var(--font-sans);
+    --font-sans: 'Inter Variable', sans-serif;
+    /*
+     * The editor's own face, for interface text that is quoting the file.
+     *
+     * Separate from Tailwind's `--font-mono` on purpose. The Trace panel's
+     * contract is that a fragment of a setter looks there exactly as it looks
+     * in the editor, and that only holds if the two are the same face — while
+     * `font-mono` is the app's general monospace and changing it would repaint
+     * every other mono element in the interface. Kept in step with
+     * `EDITOR_OPTIONS.fontFamily` in editor-pane.tsx, which is what Monaco is
+     * given.
+     */
+    --font-editor: 'Cascadia Code', 'JetBrains Mono', Consolas, 'Courier New', monospace;
+    --color-sidebar-ring: var(--sidebar-ring);
+    --color-sidebar-border: var(--sidebar-border);
+    --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+    --color-sidebar-accent: var(--sidebar-accent);
+    --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+    --color-sidebar-primary: var(--sidebar-primary);
+    --color-sidebar-foreground: var(--sidebar-foreground);
+    --color-sidebar: var(--sidebar);
+    --color-chart-5: var(--chart-5);
+    --color-chart-4: var(--chart-4);
+    --color-chart-3: var(--chart-3);
+    --color-chart-2: var(--chart-2);
+    --color-chart-1: var(--chart-1);
+    --color-remote: var(--remote);
+    --color-remote-foreground: var(--remote-foreground);
+    --color-remote-surface: var(--remote-surface);
+    --color-remote-border: var(--remote-border);
+    --color-remote-added: var(--remote-added);
+    --color-remote-changed: var(--remote-changed);
+    --color-radar: var(--radar);
+    --color-radar-foreground: var(--radar-foreground);
+    --color-radar-surface: var(--radar-surface);
+    --color-radar-border: var(--radar-border);
+    --color-issues: var(--issues);
+    --color-issues-foreground: var(--issues-foreground);
+    --color-issues-surface: var(--issues-surface);
+    --color-issues-border: var(--issues-border);
+    --color-sim: var(--sim);
+    --color-sim-foreground: var(--sim-foreground);
+    --color-sim-surface: var(--sim-surface);
+    --color-sim-border: var(--sim-border);
+    --color-warning: var(--warning);
+    --color-warning-foreground: var(--warning-foreground);
+    --color-warning-surface: var(--warning-surface);
+    --color-warning-border: var(--warning-border);
+    --color-update: var(--update);
+    --color-update-foreground: var(--update-foreground);
+    --color-update-surface: var(--update-surface);
+    --color-update-border: var(--update-border);
+    --color-fsc-run: var(--fsc-run);
+    --color-fsc-run-hover: var(--fsc-run-hover);
+    --color-fsc-stop: var(--fsc-stop);
+    --color-fsc-stop-hover: var(--fsc-stop-hover);
+    --color-fsc-island: var(--fsc-island);
+    --color-fsc-label: var(--fsc-label);
+    --color-ring: var(--ring);
+    --color-input: var(--input);
+    --color-border: var(--border);
+    --color-destructive: var(--destructive);
+    --color-destructive-foreground: var(--destructive-foreground);
+    --color-destructive-surface: var(--destructive-surface);
+    --color-destructive-border: var(--destructive-border);
+    --color-accent-foreground: var(--accent-foreground);
+    --color-accent: var(--accent);
+    --color-muted-foreground: var(--muted-foreground);
+    --color-muted: var(--muted);
+    --color-secondary-foreground: var(--secondary-foreground);
+    --color-secondary: var(--secondary);
+    --color-primary-foreground: var(--primary-foreground);
+    --color-primary: var(--primary);
+    --color-popover-foreground: var(--popover-foreground);
+    --color-popover: var(--popover);
+    --color-card-foreground: var(--card-foreground);
+    --color-card: var(--card);
+    --color-foreground: var(--foreground);
+    --color-background: var(--background);
+    --radius-sm: calc(var(--radius) * 0.6);
+    --radius-md: calc(var(--radius) * 0.8);
+    --radius-lg: var(--radius);
+    --radius-xl: calc(var(--radius) * 1.4);
+    --radius-2xl: calc(var(--radius) * 1.8);
+    --radius-3xl: calc(var(--radius) * 2.2);
+    --radius-4xl: calc(var(--radius) * 2.6);
+}
+
+/*
+ * Every light token block is scoped `:root, .light` rather than `:root` alone.
+ * The values are identical either way for the app itself — the class the theme
+ * provider puts on <html> matches `.light`, and a bare `:root` already resolves
+ * light. What the class scope buys is *previews*: an element carrying `light`
+ * or `dark` rebinds the whole palette for its subtree, which is how the theme
+ * cards in Settings show each theme with the real tokens instead of a copy.
+ */
+:root, .light {
+    color-scheme: light;
+    --background: oklch(1 0 0);
+    --foreground: oklch(0.148 0.004 228.8);
+    --card: oklch(1 0 0);
+    --card-foreground: oklch(0.148 0.004 228.8);
+    --popover: oklch(1 0 0);
+    --popover-foreground: oklch(0.148 0.004 228.8);
+    --primary: oklch(0.218 0.008 223.9);
+    --primary-foreground: oklch(0.987 0.002 197.1);
+    /*
+     * Derived from dark rather than tuned on its own, as a share of dark's
+     * contrast measured in OKLab lightness — how far each token sits from
+     * `--background`. Dark's distances: muted text 0.575, ring 0.412, input
+     * 0.158, border 0.109, muted 0.127, sidebar 0.070 (the alpha borders
+     * composited over the background first).
+     *
+     * Text and edges — `--muted-foreground`, `--ring`, `--input`, `--border` —
+     * go 82% of that distance, and the fills below 33%: shares settled by
+     * eye, not derived. A full match read heavier on white than dark does on
+     * black. 82% keeps muted text above 4.5:1 on `--muted`; 80% does not.
+     * Lightness rather than WCAG ratio, which overstates contrast on dark
+     * grounds; equalising that would chase an inflated number.
+     *
+     * The fills — `--muted` and its aliases, `--sidebar` — take the lesser
+     * share because dark needs the bigger step between surfaces: dark greys
+     * compress and a shadow does not read on a dark ground. Mirrored
+     * one-for-one here, the sidebar and the line highlight turned into grey
+     * slabs.
+     */
+    --secondary: oklch(0.958 0.002 197.1);
+    --secondary-foreground: oklch(0.218 0.008 223.9);
+    --muted: oklch(0.958 0.002 197.1);
+    --muted-foreground: oklch(0.529 0.021 213.5);
+    --accent: oklch(0.958 0.002 197.1);
+    --accent-foreground: oklch(0.218 0.008 223.9);
+    --destructive: oklch(0.577 0.245 27.325);
+    --border: oklch(0.911 0.005 214.3);
+    --input: oklch(0.87 0.005 214.3);
+    --ring: oklch(0.662 0.014 214.4);
+    --chart-1: oklch(0.872 0.007 219.6);
+    --chart-2: oklch(0.56 0.021 213.5);
+    --chart-3: oklch(0.45 0.017 213.2);
+    --chart-4: oklch(0.378 0.015 216);
+    --chart-5: oklch(0.275 0.011 216.9);
+    --radius: 0.625rem;
+    --sidebar: oklch(0.977 0.002 197.1);
+    --sidebar-foreground: oklch(0.148 0.004 228.8);
+    --sidebar-primary: oklch(0.218 0.008 223.9);
+    --sidebar-primary-foreground: oklch(0.987 0.002 197.1);
+    --sidebar-accent: oklch(0.958 0.002 197.1);
+    --sidebar-accent-foreground: oklch(0.218 0.008 223.9);
+    --sidebar-border: oklch(0.911 0.005 214.3);
+    --sidebar-ring: oklch(0.662 0.014 214.4);
+}
+
+.dark {
+    color-scheme: dark;
+    --background: oklch(0.148 0.004 228.8);
+    --foreground: oklch(0.987 0.002 197.1);
+    --card: oklch(0.218 0.008 223.9);
+    --card-foreground: oklch(0.987 0.002 197.1);
+    --popover: oklch(0.218 0.008 223.9);
+    --popover-foreground: oklch(0.987 0.002 197.1);
+    --primary: oklch(0.925 0.005 214.3);
+    --primary-foreground: oklch(0.218 0.008 223.9);
+    --secondary: oklch(0.275 0.011 216.9);
+    --secondary-foreground: oklch(0.987 0.002 197.1);
+    --muted: oklch(0.275 0.011 216.9);
+    --muted-foreground: oklch(0.723 0.014 214.4);
+    --accent: oklch(0.275 0.011 216.9);
+    --accent-foreground: oklch(0.987 0.002 197.1);
+    --destructive: oklch(0.704 0.191 22.216);
+    --border: oklch(1 0 0 / 10%);
+    --input: oklch(1 0 0 / 15%);
+    --ring: oklch(0.56 0.021 213.5);
+    --chart-1: oklch(0.872 0.007 219.6);
+    --chart-2: oklch(0.56 0.021 213.5);
+    --chart-3: oklch(0.45 0.017 213.2);
+    --chart-4: oklch(0.378 0.015 216);
+    --chart-5: oklch(0.275 0.011 216.9);
+    --sidebar: oklch(0.218 0.008 223.9);
+    --sidebar-foreground: oklch(0.987 0.002 197.1);
+    --sidebar-primary: oklch(0.488 0.243 264.376);
+    --sidebar-primary-foreground: oklch(0.987 0.002 197.1);
+    --sidebar-accent: oklch(0.275 0.011 216.9);
+    --sidebar-accent-foreground: oklch(0.987 0.002 197.1);
+    --sidebar-border: oklch(1 0 0 / 10%);
+    --sidebar-ring: oklch(0.56 0.021 213.5);
+}
+
+/*
+ * Syntax palette. The shadcn base colors are near-neutral by design, so the
+ * editor needs hues of its own — kept few, and desaturated enough to sit next
+ * to the UI rather than shout over it. Read by monaco-theme.ts, which is the
+ * only consumer.
+ */
+/*
+ * Derived from the dark palette below, which is the one that is tuned: same
+ * hue, lightness mirrored about 0.63 (L' = 1.25 − L, so what is dim on
+ * dark is dim on light), and chroma ×1.8 where the token carries a hue
+ * rather than a tint, capped just inside the sRGB gamut for that hue and
+ * lightness — dark's restraint reads as light-on-dark glow, and the same
+ * chroma on white reads dead, so light pushes harder and lets the gamut
+ * decide where it stops (teal and green stop first). Change a colour in
+ * .dark and re-derive this block by the same rule; never tune a value here
+ * on its own.
+ */
+:root, .light {
+  --syntax-block: oklch(0.49 0.16 255);
+  --syntax-key: oklch(0.53 0.14 255);
+  --syntax-prefix: oklch(0.48 0.2 305);
+  --syntax-var: oklch(0.38 0.08 72);
+  --syntax-units: oklch(0.55 0.09 305);
+  --syntax-target: oklch(0.38 0.08 72);
+  --syntax-string: oklch(0.47 0.13 150);
+  --syntax-number: oklch(0.46 0.08 195);
+  --syntax-keyword: oklch(0.48 0.2 350);
+  --syntax-injected: oklch(0.46 0.16 35);
+  --syntax-operator: oklch(0.49 0.03 240);
+  --syntax-heading: oklch(0.47 0.15 255);
+  --syntax-comment: oklch(0.65 0.02 240);
+  --syntax-comment-code: oklch(0.63 0.09 150);
+  --syntax-meta: oklch(0.55 0.11 255);
+  --syntax-rpn-operator: oklch(0.47 0.16 275);
+  --syntax-register: oklch(0.45 0.11 120);
+}
+
+.dark {
+  --syntax-block: oklch(0.76 0.11 255);
+  --syntax-key: oklch(0.72 0.08 255);
+  --syntax-prefix: oklch(0.77 0.11 305);
+  --syntax-var: oklch(87.076% 0.05828 71.989);
+  --syntax-units: oklch(0.7 0.05 305);
+  --syntax-target: oklch(87.076% 0.05828 71.989);
+  --syntax-string: oklch(0.78 0.11 150);
+  --syntax-number: oklch(0.79 0.09 195);
+  --syntax-keyword: oklch(0.77 0.12 350);
+  --syntax-injected: oklch(0.79 0.11 35);
+  --syntax-operator: oklch(0.76 0.03 240);
+  --syntax-heading: oklch(0.78 0.1 255);
+  --syntax-comment: oklch(0.6 0.02 240);
+  --syntax-comment-code: oklch(0.62 0.05 150);
+  --syntax-meta: oklch(0.7 0.06 255);
+  --syntax-rpn-operator: oklch(0.78 0.09 275);
+  --syntax-register: oklch(0.8 0.11 120);
+}
+
+/*
+ * Remote Connect. One hue, so that the rail, the session panel and the footer
+ * chip read as one feature rather than three places that happen to mention a
+ * connection — the same argument as the syntax palette above, applied to chrome
+ * instead of to text.
+ *
+ * Violet, which reads as a live connection without reading as a warning. The
+ * nearest hue already in use is `--syntax-prefix` ten degrees further round, but
+ * the two never share a surface: the syntax palette colours text inside the
+ * editor, and this colours the chrome around it.
+ *
+ * Chroma runs higher here than the teal this palette replaced. Violet holds its
+ * chroma in sRGB well past where teal starts clipping, so the saturation asked
+ * for actually arrives instead of just shifting the hue.
+ *
+ * `--remote` is the only saturated value, and is meant for small things — a
+ * status dot, an active control. It is dark enough in light mode, and light
+ * enough in dark mode, to carry `--background` as text on top of it, which the
+ * mirror switch relies on. Surfaces stay at very low chroma so a panel that is
+ * open all session tints rather than shouts. `added` and `changed` sit outside
+ * that scheme on purpose: they mean what happened to a file, not which feature
+ * is talking, so they stay semantic — and with the feature hue now round in the
+ * violets, neither of them is a near-miss for it.
+ */
+/*
+ * `--sim` is the second feature hue, and it is not ours: it is the blue from
+ * the Microsoft Flight Simulator logo, `#11b5f4`, which is
+ * `oklch(0.728 0.148 233)`.
+ *
+ * Borrowing it is the point. Everything wearing this colour is the simulator
+ * talking — the connection chip, live values, whatever Activity turns into —
+ * and a user who has just been asked to let an editor write into their game
+ * install should be able to see at a glance which parts of this app are about
+ * that. Remote Connect keeps the violet; the two features are never confusable.
+ *
+ * The brand value lands almost exactly on the dark-mode slot, so dark mode uses
+ * it verbatim. Light mode cannot: at L 0.728 it will not carry `--background`
+ * as text, which is the contract every `--remote`-shaped token here holds. So
+ * the light palette is derived like every other one, except in hue. Walked
+ * down to where it carries white text, 233 cannot hold its chroma in sRGB: asked
+ * for at full strength it clipped to a blue 9° further round, and brought
+ * inside the gamut it went dull and teal. Light sits at 242 in all four roles —
+ * the blue light mode had been showing all along, now asked for rather than
+ * arrived at. This is one system with two hues in it, not two palettes.
+ */
+:root, .light {
+  /*
+   * Every light value here is derived from its twin in the dark block below,
+   * the way the base neutrals are: it sits a share of the dark colour's
+   * distance from `--background` in OKLab lightness — 74% for the saturated
+   * value, the foreground and the border, 28% for the surface — at dark's hue.
+   * Those shares sit below the neutrals' on purpose, and were settled by eye:
+   * a feature's colour should sit under the chrome, not over it.
+   *
+   * Chroma is dark's ×1.1 on strokes, since thin lines read weaker on white;
+   * ×1 on surfaces, where area does the work. Both are capped at what sRGB can
+   * show at that lightness: a light value past the gamut is clipped by the
+   * browser, which moves its hue. The saturated value is also held where it
+   * still carries `--background` as text at 4.5:1 — the contract noted above
+   * `--remote` — and `--sim` and `--warning` sit at that limit. Two
+   * exceptions, each noted where it applies: amber keeps its own lightness,
+   * loosened by the same proportion, and `--sim` sits 9° bluer.
+   *
+   * Change a colour in `.dark` and re-derive it here; never tune one here alone.
+   */
+  --remote: oklch(0.547 0.143 295);
+  --remote-foreground: oklch(0.466 0.072 295);
+  --remote-surface: oklch(0.971 0.014 295);
+  --remote-border: oklch(0.851 0.061 295);
+
+  --remote-added: oklch(0.547 0.143 145);
+  /*
+   * Amber: keeps its lightness for the reason `--warning` gives, and stays
+   * where it is rather than loosening with the rest — it colours file names,
+   * and a lighter amber stops reading as text.
+   */
+  --remote-changed: oklch(0.56 0.117 75);
+
+  /*
+   * Radar — the panel that finds the variable a control moved.
+   *
+   * Green because that is what a radar is, and because the app's other two
+   * feature palettes are already spoken for: violet is remote-connect, blue is
+   * the simulator link. A third hue keeps "which feature is this control part
+   * of" answerable at a glance, which is the whole reason those two exist.
+   *
+   * Built on the same four steps as the others — the colour, a foreground that
+   * sits on it, a surface to tint with, a border to outline with — so a control
+   * can be dressed in it without inventing values at the call site.
+   *
+   * Emerald rather than a pure green. Hue 163 is a step past green towards
+   * blue, and the chroma is held below both other feature hues, because green
+   * goes electric sooner than violet or blue does — a bright 150 is the green
+   * every gaming keyboard is lit with, and an accent worn by a panel that stays
+   * open all session should not be the loudest thing on screen. The lightness
+   * steps stay where `--remote` and `--sim` put theirs, so the three rail
+   * buttons read at one weight.
+   *
+   * `--remote-added` stays at 145 and stays semantic. It means a file is new,
+   * not that Radar is talking, so it has no business tracking a feature hue —
+   * see the note above this one. Eighteen degrees reads as chosen rather than
+   * as a near-miss, and the two never share a surface regardless, which is the
+   * same argument `--remote` makes against `--syntax-prefix`.
+   */
+  --radar: oklch(0.551 0.108 163);
+  --radar-foreground: oklch(0.466 0.053 163);
+  --radar-surface: oklch(0.971 0.028 163);
+  --radar-border: oklch(0.851 0.046 163);
+
+  /*
+   * Issues — the panel that says what is wrong with the file being edited.
+   *
+   * Red, because that is what the panel is about — and deliberately the
+   * *feature* red, not `--destructive`: hue 15 against destructive's 27,
+   * far enough that a lit rail button never reads as an error glyph, close
+   * enough that the kinship is plainly on purpose. Remote's proportions,
+   * like every palette here — one system, another hue in it.
+   */
+  --issues: oklch(0.577 0.154 15);
+  --issues-foreground: oklch(0.481 0.077 15);
+  --issues-surface: oklch(0.971 0.013 15);
+  --issues-border: oklch(0.843 0.066 15);
+
+  --sim: oklch(0.561 0.132 242);
+  --sim-foreground: oklch(0.466 0.072 242);
+  --sim-surface: oklch(0.971 0.014 242);
+  --sim-border: oklch(0.851 0.061 242);
+
+  /*
+   * Live values in the editor, and only those.
+   *
+   * A step bluer than `--sim-foreground`, which is tuned to sit on
+   * `--sim-surface` in the footer and comes out muted against the editor's
+   * background. These sit on code instead, at a size where low chroma reads as
+   * grey rather than as blue — so the chroma goes up and the lightness moves to
+   * keep it off both ends: clearly blue, not navy, not neon.
+   */
+  --sim-value: oklch(0.58 0.115 233);
+
+  /*
+   * Something wants attention, and it is not a feature.
+   *
+   * The three palettes above answer "which part of this app is talking".
+   * This one answers "is this all right", so it belongs beside `--destructive`
+   * rather than among them — the same distinction `--remote-added` and
+   * `--remote-changed` are kept semantic for. Amber is what the app already
+   * reached for at six call sites in three different spellings, one of which
+   * had hand-rolled this exact border-surface-foreground triple because there
+   * was nothing to reach for. This is that, once.
+   *
+   * Hue 70 sits alongside `--remote-changed` at 75 on purpose, for the reason
+   * `--radar` gives for sharing green with `--remote-added`: one amber means
+   * one thing, and two of them a few degrees apart would read as a mistake.
+   *
+   * The steps are the other palettes' proportions, with the lightness walked to
+   * where amber can still hold its chroma — it cannot go as dark as violet or
+   * blue without turning brown. Measured rather than eyeballed: 5.3:1 for the
+   * foreground on its surface here, 11.8:1 in dark mode, which puts it near
+   * `--sim` at 6.3 and 10.9.
+   */
+  --warning: oklch(0.573 0.123 70);
+  --warning-foreground: oklch(0.512 0.077 70);
+  --warning-surface: oklch(0.971 0.02 70);
+  --warning-border: oklch(0.851 0.066 70);
+
+  /*
+   * A new version is downloaded and waiting for a restart.
+   *
+   * Not a feature either, and the third of the palettes that are not: it sits
+   * with `--warning` and `--destructive` as a colour that describes a moment
+   * rather than a part of the app. There is no Update panel and there never
+   * will be — this dresses one control in the title bar, which is on screen
+   * for as long as it takes somebody to press it twice.
+   *
+   * Teal at 195, and the hue was the whole decision. `--radar` is at 163 and
+   * `--sim` at 242, so this is 32 degrees off one and 47 off the other — wider
+   * than the 18 between `--radar` and `--remote-added`, which that block
+   * already argues reads as chosen rather than as a near-miss. The two lowest
+   * chroma colours in the palette are now this and Radar, and they never share
+   * a surface: Radar is a rail button, this is the header strip.
+   *
+   * Radar's proportions exactly, because the two sit at the same chroma and
+   * anything else would make one of them look like a mistake.
+   */
+  --update: oklch(0.556 0.098 195);
+  --update-foreground: oklch(0.466 0.05 195);
+  --update-surface: oklch(0.971 0.026 195);
+  --update-border: oklch(0.851 0.044 195);
+
+  /*
+   * Something failed, and it is not a question.
+   *
+   * `--destructive` has been here all along as a single value, which is enough
+   * to dress a button in red on a neutral ground — all `Button`'s `destructive`
+   * variant ever needed. A bar is the other shape: it *is* a surface, and a
+   * surface needs the border and the foreground that sit on it.
+   *
+   * So this is `--warning`'s triple at destructive's own hue rather than a
+   * fourth red. It carries the distinction `--warning` draws one step further:
+   * amber asks whether something is all right, red reports that something is
+   * not. The foreground goes darker than amber can — `--issues` at 15 shows how
+   * far red reaches — which is where the contrast on so pale a surface comes
+   * from.
+   */
+  --destructive-foreground: oklch(0.481 0.09 27);
+  --destructive-surface: oklch(0.971 0.016 27);
+  --destructive-border: oklch(0.843 0.07 27);
+
+  /*
+   * The FS Copilot launch island, and only that.
+   *
+   * Not a feature palette: the island never lights a surface or draws a
+   * border, so it takes none of the five tone roles. What it needs is the IDE
+   * reading — a go-green and a stop-red glyph — and a hover step for each,
+   * brighter in dark and deeper in light, which is the job `-foreground` does
+   * in the palettes above.
+   *
+   * The green sits at 145 with `--remote-added`, for the reason `--warning`
+   * gives for sitting beside `--remote-changed`: one green family, and the two
+   * never share a surface. The red aligns with `--destructive`'s 27 rather
+   * than Issues' feature red at 12 — stopping a program is an act with
+   * consequences, not a panel talking.
+   */
+  --fsc-run: oklch(0.55 0.155 145);
+  --fsc-run-hover: oklch(0.46 0.135 145);
+  --fsc-stop: oklch(0.55 0.17 27);
+  --fsc-stop-hover: oklch(0.47 0.155 27);
+  /*
+   * The island's own ground and the label on it. In dark mode the island is an
+   * inset — *darker* than the window, the way IDE command centers sit — which
+   * no shared token offers, since everything else lifts. The label sits in the
+   * app's own cool-neutral family, a step livelier than `--muted-foreground`:
+   * present without competing with the glyphs, which own the island's colour.
+   */
+  --fsc-island: oklch(0.936 0.003 220);
+  --fsc-label: oklch(0.52 0.012 228);
+}
+
+.dark {
+  --remote: oklch(0.76 0.13 295);
+  --remote-foreground: oklch(0.87 0.065 295);
+  --remote-surface: oklch(0.25 0.035 295);
+  --remote-border: oklch(0.35 0.055 295);
+
+  --remote-added: oklch(0.76 0.13 145);
+  --remote-changed: oklch(0.79 0.11 75);
+
+  --radar: oklch(0.755 0.098 163);
+  --radar-foreground: oklch(0.87 0.048 163);
+  --radar-surface: oklch(0.25 0.028 163);
+  --radar-border: oklch(0.35 0.042 163);
+
+  --issues: oklch(0.72 0.14 15);
+  --issues-foreground: oklch(0.85 0.07 15);
+  --issues-surface: oklch(0.25 0.04 15);
+  --issues-border: oklch(0.36 0.06 15);
+
+  /* `#11b5f4` itself. */
+  --sim: oklch(0.728 0.148 233);
+  --sim-foreground: oklch(0.87 0.065 233);
+  --sim-surface: oklch(0.25 0.035 233);
+  --sim-border: oklch(0.35 0.055 233);
+
+  --warning: oklch(0.79 0.15 70);
+  --warning-foreground: oklch(0.9 0.07 70);
+  --warning-surface: oklch(0.25 0.04 70);
+  --warning-border: oklch(0.35 0.06 70);
+
+  --update: oklch(0.758 0.096 195);
+  --update-foreground: oklch(0.87 0.048 195);
+  --update-surface: oklch(0.25 0.028 195);
+  --update-border: oklch(0.35 0.042 195);
+
+  --destructive-foreground: oklch(0.9 0.07 27);
+  --destructive-surface: oklch(0.25 0.045 27);
+  --destructive-border: oklch(0.35 0.065 27);
+
+  /* Hover brightens here where light mode deepens — see the light block. */
+  --fsc-run: oklch(0.72 0.17 145);
+  --fsc-run-hover: oklch(0.8 0.19 145);
+  --fsc-stop: oklch(0.63 0.17 27);
+  --fsc-stop-hover: oklch(0.71 0.19 27);
+  --fsc-island: oklch(0.115 0.004 228);
+  --fsc-label: oklch(0.68 0.014 228);
+
+  /*
+   * Slightly lighter than the brand and slightly less saturated — the logo blue
+   * is built to be seen once, on a splash screen, and 279 of it down one side
+   * of a file is a different job. Still unmistakably blue: `--sim-foreground`
+   * at 0.065 chroma goes pale against a dark editor, which reads as disabled.
+   */
+  --sim-value: oklch(0.72 0.1 233);
+}
+
+/*
+ * Tone — one control, five palettes.
+ *
+ * Four features here own a colour, and each of them needs the same handful of
+ * controls dressed in it: an outlined action, a toggle that stays lit while it
+ * is on, an icon button that washes on hover. Written at the call site that is
+ * four copies of the same five decisions, and they had already drifted — the
+ * Radar arm button, the Remote mirror switch, the file-list lenses, the stale
+ * bar and the Variables filters were five spellings of two ideas, one of them
+ * reaching past the token layer into `bg-[var(--sim-surface)]`.
+ *
+ * So the palette is a *parameter* rather than a variant. `Button` and `Toggle`
+ * are written once against `--tone-*`, and a `tone-<feature>` class rebinds
+ * those five properties to that feature's four tokens. Adding a fifth palette
+ * is a block here and a word in the union type; it is not a new set of classes
+ * in a `cva`, and it cannot be spelled differently in the second place it is
+ * used.
+ *
+ * The five roles, and what each is for:
+ *
+ * - `--tone`         the saturated value. Fills a control that is *on* in the
+ *                    loud sense — the mirror switch — and nothing else.
+ * - `--tone-on`      what text is when it sits on `--tone`. Every feature
+ *                    palette guarantees `--background` works here; see the
+ *                    note above `--remote`, which is where that contract was
+ *                    written down.
+ * - `--tone-foreground`  text in the tone, on the app's own background.
+ * - `--tone-surface` the tint a lit control carries. Low chroma on purpose:
+ *                    these stay on screen for a whole session.
+ * - `--tone-border`  the outline of a control at rest — a hairline, meant to
+ *                    say "this is a control" without asking to be looked at.
+ * - `--tone-edge`    the outline of a control that is *on*. A real step darker,
+ *                    because at rest a border only has to be found and when lit
+ *                    it has to be *read*: `--tone-border` sits about 0.85 in
+ *                    light mode against a 0.97 fill, an edge you find rather
+ *                    than read. On a feature palette this is the
+ *                    saturated value itself; neutral borrows `--ring`, since
+ *                    its saturated value is `--primary` and a near-black
+ *                    outline on a filter chip reads as a scolding.
+ * - `--tone-wash`    the hover fill for a control that is *not* lit. Weaker
+ *                    than the surface, so hovering an off control never looks
+ *                    like switching it on.
+ *
+ * There is deliberately no token for a control's *resting* fill. An outlined
+ * thing gets dark mode's faint neutral lift wherever it appears, because that
+ * lift says "this is a control" rather than "this is Radar" — and a toggle that
+ * is switched off has nothing to say about which feature it belongs to.
+ *
+ * The neutral values live on `:root` rather than in a `tone-neutral` class, so
+ * an untoned control needs no class at all and dark mode gets to differ from
+ * light where it should.
+ */
+:root, .light {
+  --tone: var(--primary);
+  --tone-on: var(--primary-foreground);
+  --tone-foreground: var(--foreground);
+  --tone-surface: var(--muted);
+  /*
+   * `--input`, not `--border`. The control outline is a step firmer than the
+   * region separator in both themes, which is exactly enough to make a row of
+   * controls look like it was assembled from two kits if they are mixed. `--border` is for
+   * separating regions; a control's outline is `--input`, which is what `Input`
+   * and `SelectTrigger` have always used.
+   */
+  --tone-border: var(--input);
+  --tone-edge: var(--ring);
+  --tone-wash: var(--muted);
+}
+
+.dark {
+  /* Lighter than the surface, so hover and lit stay distinguishable on a dark
+     ground where both are additions rather than tints. */
+  --tone-wash: color-mix(in oklab, var(--muted) 60%, transparent);
+}
+
+/*
+ * The feature bindings. Identical shape by construction — if one of these
+ * ever needs a role the others do not, that is a sign the role belongs in the
+ * palette above rather than in one control.
+ *
+ * `--tone-wash` is the feature colour at a tenth rather than its surface step,
+ * because these are hovers on transparent controls: mixing towards the page
+ * keeps them legible on the sidebar, on the connection bar, and on the editor's
+ * own background, which the surface step — tuned for one of those — does not.
+ */
+@utility tone-remote {
+  --tone: var(--remote);
+  --tone-on: var(--background);
+  --tone-foreground: var(--remote-foreground);
+  --tone-surface: var(--remote-surface);
+  --tone-border: var(--remote-border);
+  --tone-edge: var(--remote);
+  --tone-wash: color-mix(in oklab, var(--remote) 10%, transparent);
+}
+
+@utility tone-radar {
+  --tone: var(--radar);
+  --tone-on: var(--background);
+  --tone-foreground: var(--radar-foreground);
+  --tone-surface: var(--radar-surface);
+  --tone-border: var(--radar-border);
+  --tone-edge: var(--radar);
+  --tone-wash: color-mix(in oklab, var(--radar) 10%, transparent);
+}
+
+@utility tone-issues {
+  --tone: var(--issues);
+  --tone-on: var(--background);
+  --tone-foreground: var(--issues-foreground);
+  --tone-surface: var(--issues-surface);
+  --tone-border: var(--issues-border);
+  --tone-edge: var(--issues);
+  --tone-wash: color-mix(in oklab, var(--issues) 10%, transparent);
+}
+
+@utility tone-sim {
+  --tone: var(--sim);
+  --tone-on: var(--background);
+  --tone-foreground: var(--sim-foreground);
+  --tone-surface: var(--sim-surface);
+  --tone-border: var(--sim-border);
+  --tone-edge: var(--sim);
+  --tone-wash: color-mix(in oklab, var(--sim) 10%, transparent);
+}
+
+@utility tone-warning {
+  --tone: var(--warning);
+  --tone-on: var(--background);
+  --tone-foreground: var(--warning-foreground);
+  --tone-surface: var(--warning-surface);
+  --tone-border: var(--warning-border);
+  --tone-edge: var(--warning);
+  --tone-wash: color-mix(in oklab, var(--warning) 10%, transparent);
+}
+
+/*
+ * Not a feature either, and the pair to `tone-warning`: the bar that reports a
+ * failure and the button in it, in the palette above.
+ *
+ * Distinct from `Button`'s `destructive` *variant*, which is a red button on
+ * the page's own ground. This is what puts an ordinary variant — a `ghost`, an
+ * `outline` — into red *on a red surface*, which is the only place a bar's
+ * controls ever sit.
+ */
+/*
+ * The update control in the title bar, and nothing else.
+ *
+ * Grouped with the two above rather than with the features, for the reason
+ * `--update` gives: it dresses a moment, not a part of the app.
+ */
+@utility tone-update {
+  --tone: var(--update);
+  --tone-on: var(--background);
+  --tone-foreground: var(--update-foreground);
+  --tone-surface: var(--update-surface);
+  --tone-border: var(--update-border);
+  --tone-edge: var(--update);
+  --tone-wash: color-mix(in oklab, var(--update) 10%, transparent);
+}
+
+@utility tone-destructive {
+  --tone: var(--destructive);
+  --tone-on: var(--background);
+  --tone-foreground: var(--destructive-foreground);
+  --tone-surface: var(--destructive-surface);
+  --tone-border: var(--destructive-border);
+  --tone-edge: var(--destructive);
+  --tone-wash: color-mix(in oklab, var(--destructive) 10%, transparent);
+}
+
+/*
+ * Control primitives — the parts every control is assembled from.
+ *
+ * The tone block above solved one half of this. A feature's colour is a
+ * parameter, so a Radar control and a Remote control cannot drift apart no
+ * matter who writes the next one. What it did not solve is the other half: the
+ * measurements and states that are the same in *every* palette. Those were
+ * written out longhand in each component, and they had already begun to
+ * disagree — `Checkbox` carried dark mode's resting fill without light mode's,
+ * `SearchInput` set a font size a hair off the `Input` it wraps, and `Toggle`'s
+ * `sm` text was a step smaller than `Button`'s, which is a difference nobody
+ * chose.
+ *
+ * The comment at the top of `toggle.tsx` said the quiet part out loud: *the two
+ * files are kept in step by hand; if a size changes in one, it changes in
+ * both.* That is a promise no file can keep, and the drift above is what it
+ * looks like when it is broken. These utilities are that promise moved
+ * somewhere it can actually be kept.
+ *
+ * What belongs here: anything where changing it in one control, and not the
+ * others, would be a bug rather than a decision. What does not: anything a
+ * control is entitled to an opinion about on its own — a variant's fill, a
+ * feature's colour, a size that only one thing uses.
+ *
+ * **Two things about ordering, both learned the hard way.**
+ *
+ * A custom utility is emitted *ahead of* every one of Tailwind's own, so
+ * anything moved in here stops competing on equal terms with the classes a
+ * component writes at its call site: the component's now always wins. That is
+ * usually what you want — a variant that bothers to state a focus colour should
+ * get it — but it is a change in behaviour, not a refactor, and it is invisible
+ * in the diff. Check it rather than assume it.
+ *
+ * And the focus ring and the invalid ring live in *one* utility, in that order,
+ * rather than in two. They both set `border-color` at the same specificity, so
+ * the one emitted last wins on a control that is focused *and* holding a bad
+ * value — and the answer has always been that invalid wins. Two utilities
+ * cannot guarantee that: Tailwind orders them by name, except that a utility
+ * containing a `dark:` variant jumps ahead of one that does not, which silently
+ * put invalid *first* and handed the argument to the focus ring. Inside a
+ * single block the order is just the order, and it stays put.
+ */
+@utility control-states {
+  /*
+   * The keyboard is here. Neutral in every tone on purpose — that is a fact
+   * about the app rather than about the feature, and it has to be recognisable
+   * in the one place nobody is looking for it. 2px; 3px reads blurry at this
+   * pixel density.
+   */
+  @apply focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/30;
+  /*
+   * The value in this control will not be accepted. Stated second, and that is
+   * the whole reason these two share a block — see above.
+   */
+  @apply aria-invalid:border-destructive aria-invalid:ring-2 aria-invalid:ring-destructive/20;
+  @apply dark:aria-invalid:border-destructive/50 dark:aria-invalid:ring-destructive/40;
+}
+
+/*
+ * An icon inside a control is part of the control, not a thing in its own
+ * right: it does not take the pointer, and it does not get squeezed when the
+ * label beside it is long.
+ *
+ * The icon's *size* is deliberately not here. It travels with the size variant,
+ * and the `:not([class*='size-'])` guard each component writes lets a call site
+ * pass its own — a real escape hatch that a shared default would take away.
+ */
+@utility control-icons {
+  @apply [&_svg]:pointer-events-none [&_svg]:shrink-0;
+}
+
+/*
+ * The four control sizes.
+ *
+ * `Button` and `Toggle` had a size table each, written out longhand and kept in
+ * step by hand — `toggle.tsx` said so in its own header comment, which is the
+ * kind of note that is true right up until it is not. It was not: `sm` had
+ * drifted a step of text size between them, so a filter chip and the action
+ * beside it in the Log panel were set in different type.
+ *
+ * A filter chip and a button sit in one row all day. There is one table now.
+ *
+ * What a size owns: the box (height, inline padding), the gap between a label
+ * and its icon, the tighter padding on the side an icon sits, and the icon's
+ * own default size. What it deliberately does not own: the *type* size, which
+ * `Button` and `Toggle` still state next to the variant that needs it, and the
+ * radius, which only `xs` steps down from the shared `rounded-md`. Both of
+ * those are one-line exceptions rather than a table, and folding them in here
+ * would mean every icon-only variant had to restate a font size it has no text
+ * to apply it to.
+ *
+ * `min-w-*` is `Toggle`'s alone: a chip must not collapse narrower than it is
+ * tall when its label is a single character, and a button has no such rule.
+ *
+ * These are utilities rather than shared strings so a call site's `className`
+ * still wins — a plain utility is emitted after every custom one, which is the
+ * behaviour an override needs.
+ */
+/*
+ * Plain CSS rather than `@apply`, and every declaration inside a `&` block even
+ * the ones that need no selector. Neither is a style choice — both are load
+ * bearing, and getting either wrong fails *silently*.
+ *
+ * A `@utility` block emits either top-level declarations or nested rules, not
+ * both. Written the obvious way — a height, then a `&:has(…)` for the icon
+ * padding — the height survives and the nested rules vanish, with no warning
+ * and no error. `@apply` behaves the same way: `@apply h-7
+ * has-data-[icon=inline-end]:pr-1.5` emits the height alone. `control-states`
+ * and `control-icons` above get away with `@apply` only because every utility
+ * in them carries a variant, so there is no bare declaration to trip it.
+ *
+ * These four set a height *and* a padding that depends on an icon being
+ * present, so they cannot avoid the mix. Wrapping the bare declarations in
+ * their own `& { … }` makes every rule nested, and then all of it emits.
+ *
+ * The values are `--spacing` multiples, which is what `h-7` and `px-2` compile
+ * to anyway. `npm run check:cascade` is what proves they still match.
+ */
+
+@utility control-xs {
+  & {
+    height: calc(var(--spacing) * 5);
+    gap: var(--spacing);
+    padding-inline: calc(var(--spacing) * 2);
+  }
+
+  /* The side an icon sits on gets less room, so the glyph is not marooned. */
+  &:has([data-icon="inline-end"]) {
+    padding-right: calc(var(--spacing) * 1.5);
+  }
+
+  &:has([data-icon="inline-start"]) {
+    padding-left: calc(var(--spacing) * 1.5);
+  }
+
+  /* `:not([class*='size-'])` leaves a call site free to pass its own size. */
+  & svg:not([class*='size-']) {
+    width: calc(var(--spacing) * 2.5);
+    height: calc(var(--spacing) * 2.5);
+  }
+}
+
+@utility control-sm {
+  & {
+    height: calc(var(--spacing) * 6);
+    gap: var(--spacing);
+    padding-inline: calc(var(--spacing) * 2);
+  }
+
+  /* The side an icon sits on gets less room, so the glyph is not marooned. */
+  &:has([data-icon="inline-end"]) {
+    padding-right: calc(var(--spacing) * 1.5);
+  }
+
+  &:has([data-icon="inline-start"]) {
+    padding-left: calc(var(--spacing) * 1.5);
+  }
+
+  /* `:not([class*='size-'])` leaves a call site free to pass its own size. */
+  & svg:not([class*='size-']) {
+    width: calc(var(--spacing) * 3);
+    height: calc(var(--spacing) * 3);
+  }
+}
+
+@utility control-md {
+  & {
+    height: calc(var(--spacing) * 7);
+    gap: var(--spacing);
+    padding-inline: calc(var(--spacing) * 2);
+  }
+
+  /* The side an icon sits on gets less room, so the glyph is not marooned. */
+  &:has([data-icon="inline-end"]) {
+    padding-right: calc(var(--spacing) * 1.5);
+  }
+
+  &:has([data-icon="inline-start"]) {
+    padding-left: calc(var(--spacing) * 1.5);
+  }
+
+  /* `:not([class*='size-'])` leaves a call site free to pass its own size. */
+  & svg:not([class*='size-']) {
+    width: calc(var(--spacing) * 3.5);
+    height: calc(var(--spacing) * 3.5);
+  }
+}
+
+@utility control-lg {
+  & {
+    height: calc(var(--spacing) * 8);
+    gap: var(--spacing);
+    padding-inline: calc(var(--spacing) * 2.5);
+  }
+
+  /* The side an icon sits on gets less room, so the glyph is not marooned. */
+  &:has([data-icon="inline-end"]) {
+    padding-right: calc(var(--spacing) * 2);
+  }
+
+  &:has([data-icon="inline-start"]) {
+    padding-left: calc(var(--spacing) * 2);
+  }
+
+  /* `:not([class*='size-'])` leaves a call site free to pass its own size. */
+  & svg:not([class*='size-']) {
+    width: calc(var(--spacing) * 4);
+    height: calc(var(--spacing) * 4);
+  }
+}
+
+/*
+ * The take-a-change arrow, drawn in our pane's glyph margin beside each
+ * difference. A widget rather than a decoration, so this styles a real node.
+ *
+ * It points left because that is the direction the content travels — the host's
+ * file is on the right, ours on the left, and clicking this pulls one change
+ * across. Dim until the pointer is on it, so a file with thirty differences is
+ * not thirty arrows competing with the code.
+ */
+/*
+ * The diff's per-line + and − marks, centred in the column they are drawn in.
+ *
+ * Monaco gives each one a box spanning the whole line-decorations width and
+ * lays it out with `display: flex` and no `justify-content`, so the glyph falls
+ * against the left edge. That went unnoticed while the column was Monaco's
+ * default ten pixels and became a visible offset once it was widened to stand
+ * in for the folding margin the diff cannot have.
+ */
+.insert-sign,
+.delete-sign {
+  justify-content: center;
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+    }
+  body {
+    @apply bg-background text-foreground;
+    }
+  html {
+    @apply font-sans;
+    }
+}
+
+/*
+ * The window has no frame of its own, so the header strip is what it gets
+ * dragged by. A drag region swallows every pointer event inside it — the events
+ * go to the window manager, not to the page — so anything clickable in that
+ * strip has to opt back out by hand.
+ */
+.drag-region {
+  -webkit-app-region: drag;
+}
+
+.no-drag {
+  -webkit-app-region: no-drag;
+}
+
+/*
+ * Windows draws a classic, always-visible scrollbar. The standard
+ * scrollbar-color property is used rather than ::-webkit-scrollbar: a styled
+ * webkit scrollbar paints on its own layer, so a change driven by the parent's
+ * :hover does not invalidate it and the thumb only updates when the scrollbar
+ * itself receives an event. Styling the element instead goes through normal
+ * style recalc, so hovering anywhere in the pane reveals the thumb.
+ *
+ * The two mechanisms are mutually exclusive — Chromium ignores
+ * scrollbar-color entirely once a custom webkit scrollbar is defined.
+ *
+ * The track stays transparent in both states and scrollbar-width keeps the
+ * gutter a constant size, so nothing reflows as the thumb appears.
+ */
+.scrollbar-overlay {
+  scrollbar-width: thin;
+  scrollbar-color: transparent transparent;
+}
+
+.scrollbar-overlay:hover {
+  scrollbar-color: color-mix(in oklab, var(--muted-foreground) 40%, transparent)
+    transparent;
+}
+
+/*
+ * For a scroller whose height is the design — the tab strip — where even a thin
+ * gutter would eat into the tabs. The wheel still scrolls it.
+ */
+.scrollbar-none {
+  scrollbar-width: none;
+}
+/*
+ * Live simulator values, injected after the `get:` line they belong to.
+ *
+ * Monaco's own inlay-hint proportions — same font as the code beside it, a
+ * chip barely distinct from the editor — in the simulator's hue, so that the
+ * one thing on this screen coming from *outside the file* is identifiable as
+ * such. It is the same argument as the footer chip: everything the sim is
+ * saying wears `--sim`.
+ *
+ * Restrained on purpose, and more than the footer is. There is one chip in the
+ * footer and there can be 291 of these on a screen — `pa24-250.yaml` has 279
+ * `L:` lines — so this uses the surface and foreground steps of the palette
+ * rather than `--sim` itself. At full strength a screenful reads as a heat map
+ * of nothing in particular; the value is an annotation on the line, not the
+ * point of it.
+ *
+ * Applied through `after.inlineClassName` from `live-decorations.ts`, which
+ * declares `inlineClassNameAffectsLetterSpacing` because the padding and margin
+ * here move the glyphs around it.
+ */
+/*
+ * Scoped to `.monaco-editor` for specificity, not for scoping.
+ *
+ * Injected text is tokenized like the rest of the line, so the span carries a
+ * `.mtk<n>` class as well as this one — and Monaco emits those as bare
+ * `.mtk1 { color: … }` into a `<style>` element it creates at runtime, which
+ * lands after the bundled stylesheet. Equal specificity, later in the document,
+ * so it wins: a plain `.fsc-live-value { color }` is silently overridden while
+ * `background` and `padding` apply normally, which is a confusing way to find
+ * out. The extra class here outranks it without `!important`.
+ */
+.monaco-editor .fsc-live-value {
+  margin-left: 0.75ch;
+  padding: 0 0.4ch;
+  border-radius: 3px;
+  color: var(--sim-value);
+  background: color-mix(in oklab, var(--sim) 7%, transparent);
+}
+
+/*
+ * The entry the Trace panel is describing.
+ *
+ * Neutral by decision rather than by omission: the panel has no feature hue,
+ * because its content is already the syntax palette and a twelfth colour for
+ * the chrome would compete with the eleven that carry meaning. See
+ * `trace-highlight.ts`.
+ *
+ * A lift rather than a border, so it cannot move a glyph. The active-line
+ * highlight sits under it and the two add up on the caret's own line, which
+ * is correct — that line is both.
+ */
+.monaco-editor .fsc-traced-entry {
+  background: color-mix(in oklab, var(--foreground) 6%, transparent);
+}

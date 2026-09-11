@@ -1,0 +1,143 @@
+# Releasing, in three jobs: decide, then build the editor, then deploy the relay.
+#
+# release-please maintains a release pull request per component and does nothing
+# else on an ordinary merge. Merging one of those pull requests is what creates
+# a release — and only then does anything here build or deploy. That gate is the
+# entire reason the relay carries a version number; see
+# docs/pipeline/07-relay.md.
+#
+# Tag shapes differ on purpose. The editor is tagged `vX.Y.Z` because
+# electron-updater reads the version out of the tag of the latest release, and a
+# component prefix would make that unparseable. The relay, which nothing
+# downloads, is tagged `relay-vX.Y.Z`. See docs/pipeline/04-versioning.md.
+name: Release
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  prepare:
+    runs-on: ubuntu-latest
+    # The two components are keyed differently, and not by choice. The action
+    # prefixes an output with its component's path only when that path is not
+    # the root — `setPathOutput` in release-please-action is literally
+    # `if (path === '.') setOutput(key)` else `setOutput(`${path}--${key}`)`.
+    # So the editor, which is the root package, reads as bare `release_created`
+    # and a `.--release_created` would be forever empty. Worth spelling out:
+    # that mistake does not fail, it skips — release-please would tag `vX.Y.Z`
+    # and publish a release with no installer and no `latest.yml` in it, and
+    # the version is not reusable afterwards.
+    outputs:
+      editor: ${{ steps.release.outputs.release_created }}
+      editor_tag: ${{ steps.release.outputs.tag_name }}
+      relay: ${{ steps.release.outputs['relay--release_created'] }}
+    steps:
+      # A PAT rather than the default `secrets.GITHUB_TOKEN`, for one reason:
+      # GitHub does not start a workflow run for events raised by
+      # `GITHUB_TOKEN`. A release pull request opened with it would show *no
+      # checks at all* — not red, absent — so a required check could never be
+      # satisfied on the one pull request that performs a release. With a PAT
+      # the release pull request is an ordinary pull request and pr.yml runs on
+      # it like any other.
+      #
+      # It also sidesteps "Allow GitHub Actions to create and approve pull
+      # requests", which gates `GITHUB_TOKEN` and nothing else.
+      #
+      # Scopes: a fine-grained token on this repository, with Contents
+      # read/write (tags, releases, the changelog commit) and Pull requests
+      # read/write (the release pull request). Nothing further.
+      - uses: googleapis/release-please-action@v4
+        id: release
+        with:
+          token: ${{ secrets.RELEASE_PLEASE_TOKEN }}
+          config-file: release-please-config.json
+          manifest-file: .release-please-manifest.json
+
+      # GitHub's "latest" release is whichever was created last, and
+      # release-please gives the relay a GitHub Release too. Two things read
+      # "latest" and both want the editor: electron-updater, which takes the
+      # version from that release's tag and then asks it for latest.yml, and the
+      # download link in README.md. A `relay-vX.Y.Z` release answers neither.
+      #
+      # So a relay release is taken out of the running as soon as it exists, and
+      # the newest `vX.Y.Z` release is named latest again rather than trusting
+      # GitHub to fall back to it.
+      - name: Keep "latest" pointing at the editor
+        if: steps.release.outputs['relay--release_created'] == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+          RELAY_TAG: ${{ steps.release.outputs['relay--tag_name'] }}
+        run: |
+          gh release edit "$RELAY_TAG" --latest=false
+
+          editor_tag=$(gh release list --limit 100 --json tagName,isDraft,isPrerelease \
+            --jq '[.[] | select(.tagName | test("^v[0-9]")) | select((.isDraft or .isPrerelease) | not)][0].tagName // empty')
+
+          if [ -n "$editor_tag" ]; then
+            gh release edit "$editor_tag" --latest
+          fi
+
+  # The installer, its blockmap and latest.yml. The three of them together are
+  # what an already-installed copy consumes — see docs/pipeline/06-updater.md.
+  #
+  # Windows because electron-builder produces an NSIS installer, and because the
+  # WASM module is carried through as a folder that has to survive the copy
+  # intact.
+  editor:
+    needs: prepare
+    if: needs.prepare.outputs.editor == 'true'
+    runs-on: windows-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      # A last look before anything is published. The module guards matter most
+      # here: the package in link/Packages/ is about to be shipped inside an
+      # installer, and nothing downstream can tell whether it matches its source.
+      - run: npm run check:module
+
+      # `--publish always` uploads to the release release-please just created,
+      # found by the `vX.Y.Z` tag. The publish block in electron-builder.yml is
+      # also what bakes app-update.yml into resources/, so the installed app
+      # knows its feed without being configured at runtime.
+      - name: Build and publish
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: npm run release:win
+
+  # No artifact, no download. Merging the relay's release pull request is the
+  # deploy, and this is the only thing that performs one.
+  relay:
+    needs: prepare
+    if: needs.prepare.outputs.relay == 'true'
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      - run: npm run relay:check
+
+      - name: Deploy
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: npm run relay:deploy

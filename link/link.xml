@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  The fspackagetool project. Names which packages to build and where they land.
+
+  `Packages` is the output folder fspackagetool writes into; `_PackageInt` is
+  its scratch. Both are build output and neither is committed.
+-->
+<Project Version="2" Name="FscEditorLink" FolderName="Packages" MetadataFolderName="PackagesMetadata">
+	<OutputDirectory>.</OutputDirectory>
+	<TemporaryOutputDirectory>_PackageInt</TemporaryOutputDirectory>
+	<Packages>
+		<Package>PackageDefinitions\fsc-editor-link.xml</Package>
+	</Packages>
+	<PublishingGroups/>
+</Project>

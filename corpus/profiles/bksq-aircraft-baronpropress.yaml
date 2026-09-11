@@ -1,0 +1,1652 @@
+# Author: xip
+# Updated: 2026-08-15
+
+include:
+  - modules/PMS50_GTN_650-750.yaml
+  - modules/AS_GNS430.yaml
+  - modules/AS_GNS530.yaml
+  - modules/fuel.yaml
+  - modules/payload.yaml
+  - modules/bksq_bendix_rdr1150xl.yaml
+  - modules/bksq_kfc_150.yaml
+
+pointer:
+  - BlackSquareTablet
+  - GTN650_INT_2
+  - GTN750_INT
+  - WasmInstrument|wasm_module=Gauge/TDSGTNXiGaugeModule.wasm&wasm_gauge=GTNXI650U2
+  - WasmInstrument|wasm_module=Gauge/TDSGTNXiGaugeModule.wasm&wasm_gauge=GTNXI750U1
+
+master:
+  # ═══ TPM ══════════════════════════════════════════════════════════════════
+
+  # Throttle
+  - get: A:GENERAL ENG THROTTLE LEVER POSITION:1, Position 16k
+  - get: A:GENERAL ENG THROTTLE LEVER POSITION:2, Position 16k
+
+  # Propeller
+  - get: A:GENERAL ENG PROPELLER LEVER POSITION:1, Position 16k
+    set: (>K:PROP_PITCH1_SET)
+  - get: A:GENERAL ENG PROPELLER LEVER POSITION:2, Position 16k
+    set: (>K:PROP_PITCH2_SET)
+
+  # Mixture
+  - get: A:GENERAL ENG MIXTURE LEVER POSITION:1, Position 16k
+  - get: A:GENERAL ENG MIXTURE LEVER POSITION:2, Position 16k
+  - get: L:BKSQ_MixtureLeverPosition_1, Percent
+  - get: L:BKSQ_MixtureLeverPosition_2, Percent
+
+  # ═══ TRIMS ════════════════════════════════════════════════════════════════
+  - get: A:AILERON TRIM PCT
+  - get: A:ELEVATOR TRIM PCT, Percent
+    set: >
+      (() => {
+        const raw = Math.round(value * 163.83);
+        return `${Math.max(-16383, Math.min(16383, raw))} (>K:ELEVATOR_TRIM_SET)`;
+      })()
+  - get: A:RUDDER TRIM PCT, Percent
+    set: (>K:RUDDER_TRIM_SET)
+
+  # ═══ OXYGEN ═══════════════════════════════════════════════════════════════
+  - get: L:var_oxygenPressure
+  - get: L:var_PulseOxyPercent
+
+shared:
+  # ═══ PEDESTAL ═════════════════════════════════════════════════════════════
+  # Visibility
+  - get: L:XMLVAR_AllThrottlesHidden
+  - get: L:XMLVAR_LeverThrottleHidden1
+  - get: L:XMLVAR_LeverPropellerHidden1
+
+  # Friction Lock
+  - get: L:var_FrictionLock
+
+  # Cowl Flaps
+  - get: A:RECIP ENG COWL FLAP POSITION:1, Position 16k
+    set: (>K:COWLFLAP1_SET)
+  - get: A:RECIP ENG COWL FLAP POSITION:2, Position 16k
+    set: (>K:COWLFLAP2_SET)
+
+  # ═══ TABLET ═══════════════════════════════════════════════════════════════
+  # - get: L:bksq_TabletVisible
+  # - get: L:bksq_TabletDisabled
+
+  # Options
+  - get: L:BKSQ_NewStrobeEffect
+  - get: L:BKSQ_LoadWithCovers
+  # - get: L:BKSQ_StaticTabletPosition
+  - get: L:BKSQ_ForceToggleWinglets
+  - get: L:BKSQ_VatsimClientMonitorBoth
+  - get: L:BKSQ_TabletPayloadUnitKg
+  - get: L:BKSQ_ShowCopilotInterior
+
+  # Avionics
+  - get: L:var_radio1Mode
+  - get: L:var_radio2Mode
+  # - get: L:var_JpiMode
+  # - get: L:var_JpiTempUnit
+  - get: L:var_yokeChronoMode_L
+  - get: L:var_yokeChronoMode_R
+
+  # ═══ EXTERIOR ═════════════════════════════════════════════════════════════
+  # Solar Brightness - not sure what this does
+  - get: L:bksq_SolarBrightness
+
+  # Doors & window
+  - get: L:bksq_CabinDoor
+  - get: L:bksq_PilotDoor
+
+  # Chocks & covers
+  - get: L:bksq_WheelChocks
+  - get: L:bksq_PitotCovers
+  - get: L:bksq_EngineCovers
+
+  # Preflight Play
+  - get: L:var_PreflightFlapPlay
+
+  # External Power
+  - get: A:EXTERNAL POWER ON:1, Bool
+    set: |
+      value
+        ? '(A:EXTERNAL POWER ON:1, Bool) 0 == if{ (>K:TOGGLE_EXTERNAL_POWER) }'
+        : '(A:EXTERNAL POWER ON:1, Bool) 1 == if{ (>K:TOGGLE_EXTERNAL_POWER) }'
+
+  # Engine Heater
+  - get: L:bksq_PreHeater
+
+  # Nose Door
+  - get: L:bksq_NoseDoor
+
+  # ═══ FUEL ═════════════════════════════════════════════════════════════════
+  - get: A:FUEL TANK SELECTOR:1, Number
+    set: |
+      switch (value) {
+          case   0: return '0 (>K:FUEL_SELECTOR_OFF)'
+          case  19: return '0 (>K:FUEL_SELECTOR_LEFT_MAIN)'
+          case  20: return '0 (>K:FUEL_SELECTOR_RIGHT_MAIN)'
+          default: return ''
+      }
+
+  - get: A:FUEL TANK SELECTOR:2, Number
+    set: |
+      switch (value) {
+          case   0: return '0 (>K:FUEL_SELECTOR_2_OFF)'
+          case  19: return '0 (>K:FUEL_SELECTOR_2_LEFT_MAIN)'
+          case  20: return '0 (>K:FUEL_SELECTOR_2_RIGHT_MAIN)'
+          default: return ''
+      }
+
+  # ═══ GLASS TAP ════════════════════════════════════════════════════════════
+  - get: L:var_OatNeedle_GlassTap
+
+  # Pilot
+  - get: L:var_PropAmpsNeedle_GlassTap
+  - get: L:var_SuctionNeedle_GlassTap
+  - get: L:var_RadarAltimeterNeedle_GlassTap
+  - get: L:var_AirspeedNeedle_L_GlassTap
+  - get: L:var_TurnCoordinator_L_Glasstap
+  - get: L:var_RmiGlassTap
+  - get: L:var_Attitude_L_GlassTap
+  - get: L:var_Hsi_GlassTap
+  - get: L:var_Altimeter_L_GlassTap
+  - get: L:var_VerticalSpeedNeedle_L_GlassTap
+  - get: L:var_Localizer_L_GlassTap
+
+  # Engine
+  - get: L:var_ManifoldPressureNeedle_L_GlassTap
+  - get: L:var_ManifoldPressureNeedle_R_GlassTap
+  - get: L:var_PropellerRpmNeedle_L_GlassTap
+  - get: L:var_PropellerRpmNeedle_R_GlassTap
+  - get: L:var_FuelFlowNeedle_L_GlassTap
+  - get: L:var_FuelFlowNeedle_R_GlassTap
+  - get: L:var_EngineTemperatures_L_GlassTap
+  - get: L:var_EngineTemperatures_R_GlassTap
+  - get: L:var_EnginePressures_L_GlassTap
+  - get: L:var_EnginePressures_R_GlassTap
+
+  # Center
+  - get: L:var_FuelNeedle_L_GlassTap
+  - get: L:var_FuelNeedle_R_GlassTap
+  - get: L:var_AltLoadNeedle_L_GlassTap
+  - get: L:var_AltLoadNeedle_R_GlassTap
+  - get: L:var_BusVoltsNeedle_GlassTap
+  - get: L:var_BootPressureNeedle_GlassTap
+  - get: L:var_CabinAltitude_GlassTap
+  - get: L:var_CabinClimbNeedle_GlassTap
+
+  # Copilot
+  - get: L:var_AirspeedNeedle_R_GlassTap
+  - get: L:var_Attitude_R_GlassTap
+  - get: L:var_Altimeter_R_GlassTap
+
+  # ═══ INSTRUMENTS ══════════════════════════════════════════════════════════
+  - get: L:var_rnavDrivesHsi
+  - get: L:var_GyroSlaveModeSwitch
+
+  # MD41 NAV GPS button
+  - get: A:GPS DRIVES NAV1, Bool
+    set: >
+      value
+        ? `(L:XMLVAR_GPS_DISABLED_AS530_1, bool)
+            if{ (A:GPS DRIVES NAV1, Bool) 0 == if{ (>K:TOGGLE_GPS_DRIVES_NAV1) } }
+          els{ (L:AS530_CDI_Source_1, Bool) 0 == if{ (>H:AS530_CDI_Push) } }`
+        : `(L:XMLVAR_GPS_DISABLED_AS530_1, bool)
+            if{ (A:GPS DRIVES NAV1, Bool) 1 == if{ (>K:TOGGLE_GPS_DRIVES_NAV1) } }
+          els{ (L:AS530_CDI_Source_1, Bool) 1 == if{ (>H:AS530_CDI_Push) } }`
+
+  # MD41 GPS APR Button
+  - get: A:GPS APPROACH MODE, Enum
+    set: >
+      (() => {
+        if (current === value) return '';
+        // Only arm/de-arm via button when KLN90B is active
+        // Transition to/from armed (1); active (2) is automatic
+        if ((value === 1 && current !== 1) || (value === 0 && current === 1)) {
+          return '(L:var_radio1Mode, number) 2 == if{ (>H:KLN90B_ApprArm_Push) }';
+        }
+        return '';
+      })()
+
+  # MD41 OBS LEG Button
+  - get: A:GPS OBS ACTIVE, Bool
+    set: >
+      value
+        ? '(L:var_radio1Mode, number) 2 == if{ (A:GPS OBS ACTIVE, Bool) 0 == if{ (>K:GPS_OBS) } }'
+        : '(L:var_radio1Mode, number) 2 == if{ (A:GPS OBS ACTIVE, Bool) 1 == if{ (>K:GPS_OBS) } }'
+
+  # MD41 Test Button
+  - get: L:var_md41Test
+
+  # Decision Height
+  - get: A:DECISION HEIGHT
+    set: >
+      (() => {
+        // A:DECISION HEIGHT has no absolute setter that I could find.
+        // Inc/dec events step in 3.048 (= 10ft; the simvar is stored natively in meters).
+        // We compute the delta between the pilot's value and the copilot's current value,
+        // divide by the step size to get the number inc/dec calls needed, then emit
+        // exactly that many calls as a flat RPN string. Inc/dec event writes accumulate 
+        // within a single RPN execution, so N calls = N * 3.048m of movement. 
+        // Max 250 calls (full range).
+
+        const stepSize = 3.048; // 10 feet in meters
+        const steps = Math.round((value - current) / stepSize);
+        if (steps === 0) return '';
+        const event = steps > 0
+          ? '1 (>B:NAVCOM_Decision_Height_Inc, number)'
+          : '1 (>B:NAVCOM_Decision_Height_Dec, number)';
+        return Array(Math.abs(steps)).fill(event).join(' ');
+      })()
+
+  # True Airspeed Knobs
+  - get: L:var_TrueAirspeedKnob_L
+  - get: L:var_TrueAirspeedKnob_R
+
+  # Attitude Indicator Calibration
+  # - get: A:ATTITUDE BARS POSITION, percent
+  #   set: >
+  #     (() => {
+  #       const stepSize = 0.01; // 1% per click
+  #       const steps = Math.round((value - current) / stepSize);
+  #       if (steps === 0) return '';
+  #       const event = steps > 0 ? '1 (>B:INSTRUMENT_Attitude_Indicator_Bars_Position_Up)' : '1 (>B:INSTRUMENT_Attitude_Indicator_Bars_Position_Down)';
+  #       return Array(Math.abs(steps)).fill(event).join(' ');
+  #     })()
+
+  # HSI Course
+  - get: A:NAV OBS:1
+    set: >
+      (() => {
+        let delta = value - current;
+        if (delta > 180) delta -= 360;
+        if (delta < -180) delta += 360;
+        const steps = Math.round(delta);
+        if (steps === 0) return '';
+        const event = steps > 0 ? '(>K:VOR1_OBI_INC)' : '(>K:VOR1_OBI_DEC)';
+        return Array(Math.abs(steps)).fill(event).join(' ');
+      })()
+
+  # HSI Heading
+  - get: A:AUTOPILOT HEADING LOCK DIR:1, Degrees
+    set: "`${value} (>B:INSTRUMENT_HEADING_BUG_Set)`"
+
+  # NAV 2 OBS
+  - get: A:NAV OBS:2, Degrees
+    set: >
+      (() => {
+        let delta = value - current;
+        if (delta > 180) delta -= 360;
+        if (delta < -180) delta += 360;
+        const steps = Math.round(delta);
+        if (steps === 0) return '';
+        const event = steps > 0 ? '(>K:VOR2_OBI_INC)' : '(>K:VOR2_OBI_DEC)';
+        return Array(Math.abs(steps)).fill(event).join(' ');
+      })()
+
+  # TODO knob hdg
+  # DME mode
+  - get: L:var_dmeMode
+
+  # Autopilot ALT Knob
+  - get: A:AUTOPILOT ALTITUDE LOCK VAR
+    set: "`0 ${Math.round(value * 3.28084)} (>K:2:AP_ALT_VAR_SET_ENGLISH)`"
+
+  # Autopilot VS Knob - only syncs when vs engaged
+  - get: A:AUTOPILOT VERTICAL HOLD VAR:1
+    set: "`0 ${Math.round(value)} (>K:2:AP_VS_VAR_SET_ENGLISH)`"
+
+  # ALT/VS Knob Mode
+  - get: L:var_VsAdjustMode, Bool
+
+  # Autopilot VS Engage
+  - get: A:AUTOPILOT VERTICAL HOLD, Bool
+    set: >
+      value
+        ? '(A:AUTOPILOT VERTICAL HOLD, Bool) 0 == if{ 1 (>K:AP_PANEL_VS_HOLD) }'
+        : '(A:AUTOPILOT VERTICAL HOLD, Bool) 1 == if{ 1 (>K:AP_PANEL_VS_HOLD) }'
+
+  # Autopilot ALT Arm
+  # This button cannot be synced deterministically, and I understand that ARM annunciator
+  # will show if VS is engaged and pointing towards a set altitude, so in practice,
+  # this should be fine.
+  # - get: H:kas297b_ArmButton
+
+  # Altimeters
+  - get: L:INSTRUMENT_Altimeter_1
+    set: (>B:INSTRUMENT_ALTIMETER_1_Set)
+  - get: L:INSTRUMENT_Altimeter_2
+    set: (>B:INSTRUMENT_Altimeter_2_Set)
+
+  #### ADF AND STUFF TODO HERE
+
+  # JPI
+  - get: L:var_JpiMode
+  - get: H:bksq_JpiButton_1_L_Short
+  - get: H:bksq_JpiButton_1_L_Long
+  - get: H:bksq_JpiButton_1_B_Short
+  - get: H:bksq_JpiButton_1_B_Long
+  - get: H:bksq_JpiButton_1_R_Short
+  - get: H:bksq_JpiButton_1_R_Long
+
+  # Cabin Temp Unit Mode
+  - get: L:var_CabinTempUnitMode
+
+  # ═══ INTERIOR ═════════════════════════════════════════════════════════════
+  # Interior interactive elements.
+
+  # Storm Window
+  - get: L:bksq_stormWindow
+
+  # Controls Lock
+  - get: L:bksq_controlLocks
+
+  # Visors
+  - get: L:var_Visor_L
+  - get: L:var_Visor_R
+
+  # Fresh Air Knob
+  - get: L:var_FreshAirKnob # TODO: Check if exists in other variants
+
+  # Ceiling Lights
+  - get: L:var_LIGHTING_Push_Cockpit_1
+  - get: L:var_LIGHTING_Push_Cockpit_2
+  - get: L:var_LIGHTING_Push_Cockpit_3
+  - get: L:var_LIGHTING_Push_Cockpit_4
+  - get: L:var_LIGHTING_Push_Cockpit_5
+  - get: L:var_LIGHTING_Push_Cockpit_6
+
+  # Table
+  - get: L:bksq_CabinTable
+
+  # Co Test
+  - get: L:var_CoTest
+  - get: L:var_CoTest_IsDown
+
+  # Alternate Static Air Source
+  - get: A:ALTERNATE STATIC SOURCE OPEN, Bool
+    set: |
+      value
+        ? '(A:ALTERNATE STATIC SOURCE OPEN, Bool) 0 == if{ (>K:TOGGLE_ALTERNATE_STATIC) }'
+        : '(A:ALTERNATE STATIC SOURCE OPEN, Bool) 1 == if{ (>K:TOGGLE_ALTERNATE_STATIC) }'
+
+  # Armrests
+  - get: L:var_FrontArmrest
+  - get: L:var_RearArmrest
+
+  # Emergency/Manual Gear
+  - get: L:var_manualExtensionHandleDeployed
+  - get: L:var_manualExtensionHandleTurns
+  # !!! Might need more work
+
+  - get: L:var_PilotDoorPressureBypass
+  - get: L:var_CabinDoorPressureBypass
+
+  # ═══ SWITCHES ═════════════════════════════════════════════════════════════
+  # ELT
+  - get: L:XMLVAR_ELT_STATE
+    set: "`${value - 1} (>B:SAFETY_ELT_1_Set)`"
+
+  # Battery
+  - get: B:ELECTRICAL_Battery_1, Number
+    set: |
+      value
+        ? '(B:ELECTRICAL_Battery_1, Number) 0 == if{ (>B:ELECTRICAL_Battery_1_Toggle) }'
+        : '(B:ELECTRICAL_Battery_1, Number) 1 == if{ (>B:ELECTRICAL_Battery_1_Toggle) }'
+
+  # Alternator
+  - get: B:ELECTRICAL_Alternator_1, Number
+    set: |
+      value
+        ? '(B:ELECTRICAL_Alternator_1, Number) 0 == if{ (>B:ELECTRICAL_Alternator_1_Toggle) }'
+        : '(B:ELECTRICAL_Alternator_1, Number) 1 == if{ (>B:ELECTRICAL_Alternator_1_Toggle) }'
+
+  # Alternator - Standby
+  - get: B:ELECTRICAL_Alternator_2, Number
+    set: |
+      value
+        ? '(B:ELECTRICAL_Alternator_2, Number) 0 == if{ (>B:ELECTRICAL_Alternator_2_Toggle) }'
+        : '(B:ELECTRICAL_Alternator_2, Number) 1 == if{ (>B:ELECTRICAL_Alternator_2_Toggle) }'
+
+  # Avionics Master
+  - get: B:ELECTRICAL_Avionics_Bus_1, Bool
+    set: |
+      value
+        ? '(B:ELECTRICAL_Avionics_Bus_1, Bool) 0 == if{ (>B:ELECTRICAL_Avionics_Bus_1_Toggle) }'
+        : '(B:ELECTRICAL_Avionics_Bus_1, Bool) 1 == if{ (>B:ELECTRICAL_Avionics_Bus_1_Toggle) }'
+
+  # Prop Sync
+  - get: L:var_PropSyncSwitch
+
+  # Fuel Boost Pumps
+  - get: L:var_FUEL_Switch_Pump_1
+  - get: L:var_FUEL_Switch_Pump_2
+
+  # Pitot Heats
+  - get: A:CIRCUIT SWITCH ON:29, Bool
+    set: |
+      value
+        ? '(A:CIRCUIT SWITCH ON:29, Bool) 0 == if{ 1 (>K:PITOT_HEAT_TOGGLE) }'
+        : '(A:CIRCUIT SWITCH ON:29, Bool) 1 == if{ 1 (>K:PITOT_HEAT_TOGGLE) }'
+  - get: A:CIRCUIT SWITCH ON:37, Bool
+    set: |
+      value
+        ? '(A:CIRCUIT SWITCH ON:37, Bool) 0 == if{ 2 (>K:PITOT_HEAT_TOGGLE) }'
+        : '(A:CIRCUIT SWITCH ON:37, Bool) 1 == if{ 2 (>K:PITOT_HEAT_TOGGLE) }'
+
+  # Fuel Vent Heat
+  - get: L:var_FuelVentHeatSwitch
+
+  # Stall Warning
+  - get: L:var_StallWarningHeatSwitch
+
+  # Windshield Heat
+  - get: L:var_windshieldHeatSwitch
+
+  # Prop De-ice
+  - get: L:var_PropHeatSwitch
+
+  # Surface De-ice
+  - get: L:var_SurfaceDeiceSwitch
+
+  # Vent Blower
+  - get: L:var_VentBlowersSwitch
+
+  # Air Conditioning
+  - get: L:var_AirConditionerSwitch
+  - get: L:var_AirConditioningBlowerSwitch
+
+  # Heater
+  - get: L:var_CabinHeaterIgnitionSwitch
+  - get: L:var_CabinHeaterBlowerSwitch
+
+  # Annunciator Test
+  - get: L:var_AnnunciatorTestButton
+  - get: L:var_AnnunciatorTestButton_IsDown
+
+  # Magneto Switches
+  - get: L:BKSQ_IgnitionPosition_1
+  - get: L:BKSQ_IgnitionPosition_1
+    set: |
+      switch (value) {
+          case  3: return '0 (>K:SET_STARTER1_HELD)'
+          case  4: return '1 (>K:SET_STARTER1_HELD)'
+          default: return ''
+        }
+  - get: L:BKSQ_IgnitionPosition_2
+  - get: L:BKSQ_IgnitionPosition_2
+    set: |
+      switch (value) {
+          case  3: return '0 (>K:SET_STARTER2_HELD)'
+          case  4: return '1 (>K:SET_STARTER2_HELD)'
+          default: return ''
+        }
+
+  # Lights - Ice
+  - get: B:LIGHTING_WING_1
+    set: |
+      value
+        ? '(B:LIGHTING_WING_1, Bool) 0 == if{ (>B:LIGHTING_WING_1_Toggle) }'
+        : '(B:LIGHTING_WING_1, Bool) 1 == if{ (>B:LIGHTING_WING_1_Toggle) }'
+
+  # Lights - Strobe
+  - get: B:LIGHTING_STROBE_1, Bool
+    set: |
+      value
+        ? '(B:LIGHTING_STROBE_1, Bool) 0 == if{ (>B:LIGHTING_STROBE_1_Toggle) }'
+        : '(B:LIGHTING_STROBE_1, Bool) 1 == if{ (>B:LIGHTING_STROBE_1_Toggle) }'
+
+  # Lights - Beacon
+  - get: B:LIGHTING_BEACON_1, Bool
+    set: |
+      value
+        ? '(B:LIGHTING_BEACON_1, Bool) 0 == if{ (>B:LIGHTING_BEACON_1_Toggle) }'
+        : '(B:LIGHTING_BEACON_1, Bool) 1 == if{ (>B:LIGHTING_BEACON_1_Toggle) }'
+
+  # Lights - Nav
+  - get: B:LIGHTING_NAV_1, Bool
+    set: |
+      value
+        ? '(B:LIGHTING_NAV_1, Bool) 0 == if{ (>B:LIGHTING_NAV_1_Toggle) }'
+        : '(B:LIGHTING_NAV_1, Bool) 1 == if{ (>B:LIGHTING_NAV_1_Toggle) }'
+
+  # Lights - Flood
+  - get: L:bksq_MasterGlareshieldLights
+  - get: L:bksq_MasterPanelLights
+
+  # Lights - Taxi
+  - get: B:LIGHTING_TAXI_1, Bool
+    set: |
+      value
+        ? '(B:LIGHTING_TAXI_1, Bool) 0 == if{ (>B:LIGHTING_TAXI_1_Toggle) }'
+        : '(B:LIGHTING_TAXI_1, Bool) 1 == if{ (>B:LIGHTING_TAXI_1_Toggle) }'
+
+  # Lights - Landing
+  - get: B:LIGHTING_LANDING_1, Bool
+    set: |
+      value
+        ? '(B:LIGHTING_LANDING_1, Bool) 0 == if{ (>B:LIGHTING_LANDING_1_Toggle) }'
+        : '(B:LIGHTING_LANDING_1, Bool) 1 == if{ (>B:LIGHTING_LANDING_1_Toggle) }'
+  - get: B:LIGHTING_LANDING_2, Bool
+    set: |
+      value
+        ? '(B:LIGHTING_LANDING_2, Bool) 0 == if{ (>B:LIGHTING_LANDING_2_Toggle) }'
+        : '(B:LIGHTING_LANDING_2, Bool) 1 == if{ (>B:LIGHTING_LANDING_2_Toggle) }'
+
+  # Gear
+  - get: L:LANDING_GEAR_Gear
+    set: (>B:LANDING_GEAR_Gear_Set)
+
+  # Pressurization
+  - get: L:var_pressurizationClimbRate
+  - get: L:var_pressurizationGoal
+  - get: L:var_pressurizationTest
+  - get: L:var_pressurizationTest_IsDown
+  - get: L:var_pressurizationPress
+  - get: L:var_doorSealStandbyInflate
+  - get: L:var_doorSealStandbyInflate_IsDown
+  - get: L:var_doorSealPrimaryInflate
+
+  # Flaps
+  - get: A:FLAPS HANDLE PERCENT, Position 16k, Number
+    set: (>K:FLAPS_SET)
+
+  # Lighting Knobs
+  - get: L:var_FlightInstrumentsLightingKnob
+  - get: L:var_GlareshieldLightingKnob
+  - get: L:var_EngineInstrumentsLightingKnob
+  - get: L:var_SubpanelLightingKnob
+
+  # Pilot Air
+  - get: L:var_PilotAirHandle, Number
+    set: (>B:PASSENGER_Cabin_Heat_3_set)
+
+  # Copilot Air
+  - get: L:var_CopilotAirHandle, Number
+    set: (>B:PASSENGER_Cabin_Heat_7_set)
+
+  # Cabin Heat
+  - get: L:var_CabinHeatHandle, Number
+    set: (>B:PASSENGER_Cabin_Heat_2_set)
+
+  # Defrost
+  - get: L:var_DefrosterHandle, Number
+    set: (>B:PASSENGER_Cabin_Heat_4_set)
+
+  # Cabin Press Air Shutoff
+  - get: L:var_PressurizationAirShutoffHandle_L
+    set: (>B:PASSENGER_Cabin_Heat_5_set)
+  - get: L:var_PressurizationAirShutoffHandle_R
+    set: (>B:PASSENGER_Cabin_Heat_6_set)
+
+  # Door Seal Standy System
+  - get: L:var_doorSealStandbyAirValve
+
+  # Parking Brake
+  - get: L:ParkingBrake_Position, Number
+    set: |
+      value
+        ? '(L:ParkingBrake_Position, Number) 0 == if{ (>B:LANDING_GEAR_ParkingBrake_Toggle) }'
+        : '(L:ParkingBrake_Position, Number) 100 == if{ (>B:LANDING_GEAR_ParkingBrake_Toggle) }'
+
+  # ═══ BREAKERS ═════════════════════════════════════════════════════════════
+  # bksq-aircraft-baronpropress — Circuit Breakers
+  #
+  # Source: BaronProfessional_Base_INT.xml (baronpropress inherits from baronpro base)
+  #
+  # Bus ID mapping:
+  #   HotBatteryBus=1  MainBus=2  AvionicsBus=3  FlapBus=4
+  #   IntermediateAvionicsBus=5  GearBus=6  RetractableLightsBus=7
+  #   AlternatorBus1=8  AlternatorBus2=9  WingletsBus=10  NoWingletsBus=11
+  #
+  # Notes:
+  #   - Bus relay breakers (LandingGearRelay, FlapRelay, AvionicsPowerRelay) use
+  #     L:var_Breaker_*_readonly as sensor — A:BUS CONNECTION ON requires
+  #     BUS LOOKUP INDEX and is not usable standalone as a get:.
+  #   - Multi-circuit physical CBs (TEMPLATE_2, MULTI_6) use one entry per
+  #     sub-circuit rather than a chained multi-K: approach (more reliable).
+  #   - Soft circuits with no physical CB node (omitted):
+  #     2 (GeneralPanel), 8 (GearMonitor), 29 (PitotHeat L), 30 (PropHeat),
+  #     35 (WindshieldHeat), 37 (PitotHeat R), 38 (FuelVentHeat),
+  #     39 (StallWarningHeat), 40 (StrobeLight Winglets), 41 (BeaconLight),
+  #     42 (NavLights Winglets), 43 (TaxiLights), 44 (LandingLights L),
+  #     55 (YokeLight1), 56 (YokeLight2), 57 (LandingLights R), 58 (IceLight),
+  #     59 (GeneralAvionics), 62 (GyroSlaving), 65/66 (Com3/4 internal),
+  #     70 (Nav4 internal), 81/82 (MarkerBeacon internal),
+  #     86 (Strobe NoWinglets), 87 (Nav NoWinglets)
+
+  # ── HOT BATTERY BUS ───────────────────────────────────────────────────────
+
+  # CB - Starter (L+R) — Circuits 1+32 / HotBatteryBus(1) — TEMPLATE_2
+  - get: A:CIRCUIT CONNECTION ON:1, Bool
+    set: >
+      value
+        ? '(A:CIRCUIT CONNECTION ON:1, Bool) 0 == if{ 1 1 (>K:2:ELECTRICAL_BUS_TO_CIRCUIT_CONNECTION_TOGGLE) }'
+        : '(A:CIRCUIT CONNECTION ON:1, Bool) 1 == if{ 1 1 (>K:2:ELECTRICAL_BUS_TO_CIRCUIT_CONNECTION_TOGGLE) }'
+
+  - get: A:CIRCUIT CONNECTION ON:32, Bool
+    set: >
+      value
+        ? '(A:CIRCUIT CONNECTION ON:32, Bool) 0 == if{ 32 1 (>K:2:ELECTRICAL_BUS_TO_CIRCUIT_CONNECTION_TOGGLE) }'
+        : '(A:CIRCUIT CONNECTION ON:32, Bool) 1 == if{ 32 1 (>K:2:ELECTRICAL_BUS_TO_CIRCUIT_CONNECTION_TOGGLE) }'
+
+  # ── MAIN BUS ──────────────────────────────────────────────────────────────
+
+  # CB - Fuel Pump L — Circuit 4 / MainBus(2)
+  - get: A:CIRCUIT CONNECTION ON:4, Bool
+    set: >
+      value
+        ? '(A:CIRCUIT CONNECTION ON:4, Bool) 0 == if{ 4 2 (>K:2:ELECTRICAL_BUS_TO_CIRCUIT_CONNECTION_TOGGLE) }'
+        : '(A:CIRCUIT CONNECTION ON:4, Bool) 1 == if{ 4 2 (>K:2:ELECTRICAL_BUS_TO_CIRCUIT_CONNECTION_TOGGLE) }'
+
+  # CB - Fuel Pump R — Circuit 5 / MainBus(2)
+  - get: A:CIRCUIT CONNECTION ON:5, Bool
+    set: >
+      value
+        ? '(A:CIRCUIT CONNECTION ON:5, Bool) 0 == if{ 5 2 (>K:2:ELECTRICAL_BUS_TO_CIRCUIT_CONNECTION_TOGGLE) }'
+        : '(A:CIRCUIT CONNECTION ON:5, Bool) 1 == if{ 5 2 (>K:2:ELECTRICAL_BUS_TO_CIRCUIT_CONNECTION_TOGGLE) }'
+
+  # CB - Gear Warning — Circuit 7 / MainBus(2)
+  - get: A:CIRCUIT CONNECTION ON:7, Bool
+    set: >
+      value
+        ? '(A:CIRCUIT CONNECTION ON:7, Bool) 0 == if{ 7 2 (>K:2:ELECTRICAL_BUS_TO_CIRCUIT_CONNECTION_TOGGLE) }'
+        : '(A:CIRCUIT CONNECTION ON:7, Bool) 1 == if{ 7 2 (>K:2:ELECTRICAL_BUS_TO_CIRCUIT_CONNECTION_TOGGLE) }'
+
+  # CB - Fuel Quantity L — Circuit 9 / MainBus(2)
+  - get: A:CIRCUIT CONNECTION ON:9, Bool
+    set: >
+      value
+        ? '(A:CIRCUIT CONNECTION ON:9, Bool) 0 == if{ 9 2 (>K:2:ELECTRICAL_BUS_TO_CIRCUIT_CONNECTION_TOGGLE) }'
+        : '(A:CIRCUIT CONNECTION ON:9, Bool) 1 == if{ 9 2 (>K:2:ELECTRICAL_BUS_TO_CIRCUIT_CONNECTION_TOGGLE) }'
+
+  # CB - Fuel Quantity R — Circuit 10 / MainBus(2)
+  - get: A:CIRCUIT CONNECTION ON:10, Bool
+    set: >
+      value
+        ? '(A:CIRCUIT CONNECTION ON:10, Bool) 0 == if{ 10 2 (>K:2:ELECTRICAL_BUS_TO_CIRCUIT_CONNECTION_TOGGLE) }'
+        : '(A:CIRCUIT CONNECTION ON:10, Bool) 1 == if{ 10 2 (>K:2:ELECTRICAL_BUS_TO_CIRCUIT_CONNECTION_TOGGLE) }'
+
+  # CB - Tach and Fuel Flow L — Circuit 11 / MainBus(2)
+  - get: A:CIRCUIT CONNECTION ON:11, Bool
+    set: >
+      value
+        ? '(A:CIRCUIT CONNECTION ON:11, Bool) 0 == if{ 11 2 (>K:2:ELECTRICAL_BUS_TO_CIRCUIT_CONNECTION_TOGGLE) }'
+        : '(A:CIRCUIT CONNECTION ON:11, Bool) 1 == if{ 11 2 (>K:2:ELECTRICAL_BUS_TO_CIRCUIT_CONNECTION_TOGGLE) }'
+
+  # CB - Standby Avionics — Circuit 12 / MainBus(2)
+  - get: A:CIRCUIT CONNECTION ON:12, Bool
+    set: >
+      value
+        ? '(A:CIRCUIT CONNECTION ON:12, Bool) 0 == if{ 12 2 (>K:2:ELECTRICAL_BUS_TO_CIRCUIT_CONNECTION_TOGGLE) }'
+        : '(A:CIRCUIT CONNECTION ON:12, Bool) 1 == if{ 12 2 (>K:2:ELECTRICAL_BUS_TO_CIRCUIT_CONNECTION_TOGGLE) }'
+
+  # CB - Tach and Fuel Flow R — Circuit 13 / MainBus(2)
+  - get: A:CIRCUIT CONNECTION ON:13, Bool
+    set: >
+      value
+        ? '(A:CIRCUIT CONNECTION ON:13, Bool) 0 == if{ 13 2 (>K:2:ELECTRICAL_BUS_TO_CIRCUIT_CONNECTION_TOGGLE) }'
+        : '(A:CIRCUIT CONNECTION ON:13, Bool) 1 == if{ 13 2 (>K:2:ELECTRICAL_BUS_TO_CIRCUIT_CONNECTION_TOGGLE) }'
+
+  # CB - Oil and Cylinders L — Circuit 14 / MainBus(2)
+  - get: A:CIRCUIT CONNECTION ON:14, Bool
+    set: >
+      value
+        ? '(A:CIRCUIT CONNECTION ON:14, Bool) 0 == if{ 14 2 (>K:2:ELECTRICAL_BUS_TO_CIRCUIT_CONNECTION_TOGGLE) }'
+        : '(A:CIRCUIT CONNECTION ON:14, Bool) 1 == if{ 14 2 (>K:2:ELECTRICAL_BUS_TO_CIRCUIT_CONNECTION_TOGGLE) }'
+
+  # CB - Oil and Cylinders R — Circuit 15 / MainBus(2)
+  - get: A:CIRCUIT CONNECTION ON:15, Bool
+    set: >
+      value
+        ? '(A:CIRCUIT CONNECTION ON:15, Bool) 0 == if{ 15 2 (>K:2:ELECTRICAL_BUS_TO_CIRCUIT_CONNECTION_TOGGLE) }'
+        : '(A:CIRCUIT CONNECTION ON:15, Bool) 1 == if{ 15 2 (>K:2:ELECTRICAL_BUS_TO_CIRCUIT_CONNECTION_TOGGLE) }'
+
+  # CB - Turn Coordinator — Circuit 16 / MainBus(2)
+  - get: A:CIRCUIT CONNECTION ON:16, Bool
+    set: >
+      value
+        ? '(A:CIRCUIT CONNECTION ON:16, Bool) 0 == if{ 16 2 (>K:2:ELECTRICAL_BUS_TO_CIRCUIT_CONNECTION_TOGGLE) }'
+        : '(A:CIRCUIT CONNECTION ON:16, Bool) 1 == if{ 16 2 (>K:2:ELECTRICAL_BUS_TO_CIRCUIT_CONNECTION_TOGGLE) }'
+
+  # CB - Volt Meter — Circuit 17 / MainBus(2)
+  - get: A:CIRCUIT CONNECTION ON:17, Bool
+    set: >
+      value
+        ? '(A:CIRCUIT CONNECTION ON:17, Bool) 0 == if{ 17 2 (>K:2:ELECTRICAL_BUS_TO_CIRCUIT_CONNECTION_TOGGLE) }'
+        : '(A:CIRCUIT CONNECTION ON:17, Bool) 1 == if{ 17 2 (>K:2:ELECTRICAL_BUS_TO_CIRCUIT_CONNECTION_TOGGLE) }'
+
+  # CB - Yoke Chronometers — Circuit 18 / MainBus(2)
+  - get: A:CIRCUIT CONNECTION ON:18, Bool
+    set: >
+      value
+        ? '(A:CIRCUIT CONNECTION ON:18, Bool) 0 == if{ 18 2 (>K:2:ELECTRICAL_BUS_TO_CIRCUIT_CONNECTION_TOGGLE) }'
+        : '(A:CIRCUIT CONNECTION ON:18, Bool) 1 == if{ 18 2 (>K:2:ELECTRICAL_BUS_TO_CIRCUIT_CONNECTION_TOGGLE) }'
+
+  # CB - Landing Gear Position Lights — Circuit 19 / MainBus(2)
+  - get: A:CIRCUIT CONNECTION ON:19, Bool
+    set: >
+      value
+        ? '(A:CIRCUIT CONNECTION ON:19, Bool) 0 == if{ 19 2 (>K:2:ELECTRICAL_BUS_TO_CIRCUIT_CONNECTION_TOGGLE) }'
+        : '(A:CIRCUIT CONNECTION ON:19, Bool) 1 == if{ 19 2 (>K:2:ELECTRICAL_BUS_TO_CIRCUIT_CONNECTION_TOGGLE) }'
+
+  # CB - Annunciator Lights — Circuit 20 / MainBus(2)
+  - get: A:CIRCUIT CONNECTION ON:20, Bool
+    set: >
+      value
+        ? '(A:CIRCUIT CONNECTION ON:20, Bool) 0 == if{ 20 2 (>K:2:ELECTRICAL_BUS_TO_CIRCUIT_CONNECTION_TOGGLE) }'
+        : '(A:CIRCUIT CONNECTION ON:20, Bool) 1 == if{ 20 2 (>K:2:ELECTRICAL_BUS_TO_CIRCUIT_CONNECTION_TOGGLE) }'
+
+  # CB - Accessories Power — Circuit 21 / MainBus(2)
+  - get: A:CIRCUIT CONNECTION ON:21, Bool
+    set: >
+      value
+        ? '(A:CIRCUIT CONNECTION ON:21, Bool) 0 == if{ 21 2 (>K:2:ELECTRICAL_BUS_TO_CIRCUIT_CONNECTION_TOGGLE) }'
+        : '(A:CIRCUIT CONNECTION ON:21, Bool) 1 == if{ 21 2 (>K:2:ELECTRICAL_BUS_TO_CIRCUIT_CONNECTION_TOGGLE) }'
+
+  # CB - Vent Blowers — Circuit 22 / MainBus(2)
+  - get: A:CIRCUIT CONNECTION ON:22, Bool
+    set: >
+      value
+        ? '(A:CIRCUIT CONNECTION ON:22, Bool) 0 == if{ 22 2 (>K:2:ELECTRICAL_BUS_TO_CIRCUIT_CONNECTION_TOGGLE) }'
+        : '(A:CIRCUIT CONNECTION ON:22, Bool) 1 == if{ 22 2 (>K:2:ELECTRICAL_BUS_TO_CIRCUIT_CONNECTION_TOGGLE) }'
+
+  # CB - Air Conditioner — Circuit 23 / MainBus(2)
+  - get: A:CIRCUIT CONNECTION ON:23, Bool
+    set: >
+      value
+        ? '(A:CIRCUIT CONNECTION ON:23, Bool) 0 == if{ 23 2 (>K:2:ELECTRICAL_BUS_TO_CIRCUIT_CONNECTION_TOGGLE) }'
+        : '(A:CIRCUIT CONNECTION ON:23, Bool) 1 == if{ 23 2 (>K:2:ELECTRICAL_BUS_TO_CIRCUIT_CONNECTION_TOGGLE) }'
+
+  # CB - Air Cond and Heater Blower — Circuits 24+36 / MainBus(2) — TEMPLATE_2
+  - get: A:CIRCUIT CONNECTION ON:24, Bool
+    set: >
+      value
+        ? '(A:CIRCUIT CONNECTION ON:24, Bool) 0 == if{ 24 2 (>K:2:ELECTRICAL_BUS_TO_CIRCUIT_CONNECTION_TOGGLE) }'
+        : '(A:CIRCUIT CONNECTION ON:24, Bool) 1 == if{ 24 2 (>K:2:ELECTRICAL_BUS_TO_CIRCUIT_CONNECTION_TOGGLE) }'
+
+  - get: A:CIRCUIT CONNECTION ON:36, Bool
+    set: >
+      value
+        ? '(A:CIRCUIT CONNECTION ON:36, Bool) 0 == if{ 36 2 (>K:2:ELECTRICAL_BUS_TO_CIRCUIT_CONNECTION_TOGGLE) }'
+        : '(A:CIRCUIT CONNECTION ON:36, Bool) 1 == if{ 36 2 (>K:2:ELECTRICAL_BUS_TO_CIRCUIT_CONNECTION_TOGGLE) }'
+
+  # CB - Engine Monitor — Circuit 25 / MainBus(2)
+  - get: A:CIRCUIT CONNECTION ON:25, Bool
+    set: >
+      value
+        ? '(A:CIRCUIT CONNECTION ON:25, Bool) 0 == if{ 25 2 (>K:2:ELECTRICAL_BUS_TO_CIRCUIT_CONNECTION_TOGGLE) }'
+        : '(A:CIRCUIT CONNECTION ON:25, Bool) 1 == if{ 25 2 (>K:2:ELECTRICAL_BUS_TO_CIRCUIT_CONNECTION_TOGGLE) }'
+
+  # CB - Stall Warning — Circuit 26 / MainBus(2)
+  - get: A:CIRCUIT CONNECTION ON:26, Bool
+    set: >
+      value
+        ? '(A:CIRCUIT CONNECTION ON:26, Bool) 0 == if{ 26 2 (>K:2:ELECTRICAL_BUS_TO_CIRCUIT_CONNECTION_TOGGLE) }'
+        : '(A:CIRCUIT CONNECTION ON:26, Bool) 1 == if{ 26 2 (>K:2:ELECTRICAL_BUS_TO_CIRCUIT_CONNECTION_TOGGLE) }'
+
+  # CB - Deicing Boots — Circuit 27 / MainBus(2)
+  - get: A:CIRCUIT CONNECTION ON:27, Bool
+    set: >
+      value
+        ? '(A:CIRCUIT CONNECTION ON:27, Bool) 0 == if{ 27 2 (>K:2:ELECTRICAL_BUS_TO_CIRCUIT_CONNECTION_TOGGLE) }'
+        : '(A:CIRCUIT CONNECTION ON:27, Bool) 1 == if{ 27 2 (>K:2:ELECTRICAL_BUS_TO_CIRCUIT_CONNECTION_TOGGLE) }'
+
+  # CB - Prop Sync — Circuit 28 / MainBus(2)
+  - get: A:CIRCUIT CONNECTION ON:28, Bool
+    set: >
+      value
+        ? '(A:CIRCUIT CONNECTION ON:28, Bool) 0 == if{ 28 2 (>K:2:ELECTRICAL_BUS_TO_CIRCUIT_CONNECTION_TOGGLE) }'
+        : '(A:CIRCUIT CONNECTION ON:28, Bool) 1 == if{ 28 2 (>K:2:ELECTRICAL_BUS_TO_CIRCUIT_CONNECTION_TOGGLE) }'
+
+  # CB - Cabin Heater — Circuit 31 / MainBus(2)
+  - get: A:CIRCUIT CONNECTION ON:31, Bool
+    set: >
+      value
+        ? '(A:CIRCUIT CONNECTION ON:31, Bool) 0 == if{ 31 2 (>K:2:ELECTRICAL_BUS_TO_CIRCUIT_CONNECTION_TOGGLE) }'
+        : '(A:CIRCUIT CONNECTION ON:31, Bool) 1 == if{ 31 2 (>K:2:ELECTRICAL_BUS_TO_CIRCUIT_CONNECTION_TOGGLE) }'
+
+  # CB - Cabin Pressurization Controller — Circuit 33 / MainBus(2)
+  - get: A:CIRCUIT CONNECTION ON:33, Bool
+    set: >
+      value
+        ? '(A:CIRCUIT CONNECTION ON:33, Bool) 0 == if{ 33 2 (>K:2:ELECTRICAL_BUS_TO_CIRCUIT_CONNECTION_TOGGLE) }'
+        : '(A:CIRCUIT CONNECTION ON:33, Bool) 1 == if{ 33 2 (>K:2:ELECTRICAL_BUS_TO_CIRCUIT_CONNECTION_TOGGLE) }'
+
+  # CB - Door Seal Pump — Circuit 34 / MainBus(2)
+  - get: A:CIRCUIT CONNECTION ON:34, Bool
+    set: >
+      value
+        ? '(A:CIRCUIT CONNECTION ON:34, Bool) 0 == if{ 34 2 (>K:2:ELECTRICAL_BUS_TO_CIRCUIT_CONNECTION_TOGGLE) }'
+        : '(A:CIRCUIT CONNECTION ON:34, Bool) 1 == if{ 34 2 (>K:2:ELECTRICAL_BUS_TO_CIRCUIT_CONNECTION_TOGGLE) }'
+
+  # CB - Panel Lights — Circuits 45+46+47+48 / MainBus(2) — MULTI_6 (4 sub-circuits)
+  - get: A:CIRCUIT CONNECTION ON:45, Bool
+    set: >
+      value
+        ? '(A:CIRCUIT CONNECTION ON:45, Bool) 0 == if{ 45 2 (>K:2:ELECTRICAL_BUS_TO_CIRCUIT_CONNECTION_TOGGLE) }'
+        : '(A:CIRCUIT CONNECTION ON:45, Bool) 1 == if{ 45 2 (>K:2:ELECTRICAL_BUS_TO_CIRCUIT_CONNECTION_TOGGLE) }'
+
+  - get: A:CIRCUIT CONNECTION ON:46, Bool
+    set: >
+      value
+        ? '(A:CIRCUIT CONNECTION ON:46, Bool) 0 == if{ 46 2 (>K:2:ELECTRICAL_BUS_TO_CIRCUIT_CONNECTION_TOGGLE) }'
+        : '(A:CIRCUIT CONNECTION ON:46, Bool) 1 == if{ 46 2 (>K:2:ELECTRICAL_BUS_TO_CIRCUIT_CONNECTION_TOGGLE) }'
+
+  - get: A:CIRCUIT CONNECTION ON:47, Bool
+    set: >
+      value
+        ? '(A:CIRCUIT CONNECTION ON:47, Bool) 0 == if{ 47 2 (>K:2:ELECTRICAL_BUS_TO_CIRCUIT_CONNECTION_TOGGLE) }'
+        : '(A:CIRCUIT CONNECTION ON:47, Bool) 1 == if{ 47 2 (>K:2:ELECTRICAL_BUS_TO_CIRCUIT_CONNECTION_TOGGLE) }'
+
+  - get: A:CIRCUIT CONNECTION ON:48, Bool
+    set: >
+      value
+        ? '(A:CIRCUIT CONNECTION ON:48, Bool) 0 == if{ 48 2 (>K:2:ELECTRICAL_BUS_TO_CIRCUIT_CONNECTION_TOGGLE) }'
+        : '(A:CIRCUIT CONNECTION ON:48, Bool) 1 == if{ 48 2 (>K:2:ELECTRICAL_BUS_TO_CIRCUIT_CONNECTION_TOGGLE) }'
+
+  # CB - Cabin Lights — Circuits 49–54 / MainBus(2) — MULTI_6 (6 sub-circuits)
+  - get: A:CIRCUIT CONNECTION ON:49, Bool
+    set: >
+      value
+        ? '(A:CIRCUIT CONNECTION ON:49, Bool) 0 == if{ 49 2 (>K:2:ELECTRICAL_BUS_TO_CIRCUIT_CONNECTION_TOGGLE) }'
+        : '(A:CIRCUIT CONNECTION ON:49, Bool) 1 == if{ 49 2 (>K:2:ELECTRICAL_BUS_TO_CIRCUIT_CONNECTION_TOGGLE) }'
+
+  - get: A:CIRCUIT CONNECTION ON:50, Bool
+    set: >
+      value
+        ? '(A:CIRCUIT CONNECTION ON:50, Bool) 0 == if{ 50 2 (>K:2:ELECTRICAL_BUS_TO_CIRCUIT_CONNECTION_TOGGLE) }'
+        : '(A:CIRCUIT CONNECTION ON:50, Bool) 1 == if{ 50 2 (>K:2:ELECTRICAL_BUS_TO_CIRCUIT_CONNECTION_TOGGLE) }'
+
+  - get: A:CIRCUIT CONNECTION ON:51, Bool
+    set: >
+      value
+        ? '(A:CIRCUIT CONNECTION ON:51, Bool) 0 == if{ 51 2 (>K:2:ELECTRICAL_BUS_TO_CIRCUIT_CONNECTION_TOGGLE) }'
+        : '(A:CIRCUIT CONNECTION ON:51, Bool) 1 == if{ 51 2 (>K:2:ELECTRICAL_BUS_TO_CIRCUIT_CONNECTION_TOGGLE) }'
+
+  - get: A:CIRCUIT CONNECTION ON:52, Bool
+    set: >
+      value
+        ? '(A:CIRCUIT CONNECTION ON:52, Bool) 0 == if{ 52 2 (>K:2:ELECTRICAL_BUS_TO_CIRCUIT_CONNECTION_TOGGLE) }'
+        : '(A:CIRCUIT CONNECTION ON:52, Bool) 1 == if{ 52 2 (>K:2:ELECTRICAL_BUS_TO_CIRCUIT_CONNECTION_TOGGLE) }'
+
+  - get: A:CIRCUIT CONNECTION ON:53, Bool
+    set: >
+      value
+        ? '(A:CIRCUIT CONNECTION ON:53, Bool) 0 == if{ 53 2 (>K:2:ELECTRICAL_BUS_TO_CIRCUIT_CONNECTION_TOGGLE) }'
+        : '(A:CIRCUIT CONNECTION ON:53, Bool) 1 == if{ 53 2 (>K:2:ELECTRICAL_BUS_TO_CIRCUIT_CONNECTION_TOGGLE) }'
+
+  - get: A:CIRCUIT CONNECTION ON:54, Bool
+    set: >
+      value
+        ? '(A:CIRCUIT CONNECTION ON:54, Bool) 0 == if{ 54 2 (>K:2:ELECTRICAL_BUS_TO_CIRCUIT_CONNECTION_TOGGLE) }'
+        : '(A:CIRCUIT CONNECTION ON:54, Bool) 1 == if{ 54 2 (>K:2:ELECTRICAL_BUS_TO_CIRCUIT_CONNECTION_TOGGLE) }'
+
+  # ── LANDING GEAR BUS (MainBus relay → GearBus) ────────────────────────────
+
+  # CB - Landing Gear Relay — bus relay MainBus(2)→GearBus(6) — EXPORT_LVAR
+  # get: lvar because A:BUS CONNECTION ON requires BUS LOOKUP INDEX
+  - get: L:var_Breaker_LandingGearRelay_readonly, Bool
+    set: >
+      value
+        ? '(L:var_Breaker_LandingGearRelay_readonly, Bool) 0 == if{ 6 2 (>K:2:ELECTRICAL_BUS_TO_BUS_CONNECTION_TOGGLE) }'
+        : '(L:var_Breaker_LandingGearRelay_readonly, Bool) 1 == if{ 6 2 (>K:2:ELECTRICAL_BUS_TO_BUS_CONNECTION_TOGGLE) }'
+
+  # CB - Landing Gear Motor — Circuit 6 / GearBus(6)
+  - get: A:CIRCUIT CONNECTION ON:6, Bool
+    set: >
+      value
+        ? '(A:CIRCUIT CONNECTION ON:6, Bool) 0 == if{ 6 6 (>K:2:ELECTRICAL_BUS_TO_CIRCUIT_CONNECTION_TOGGLE) }'
+        : '(A:CIRCUIT CONNECTION ON:6, Bool) 1 == if{ 6 6 (>K:2:ELECTRICAL_BUS_TO_CIRCUIT_CONNECTION_TOGGLE) }'
+
+  # ── FLAP BUS (MainBus relay → FlapBus) ────────────────────────────────────
+
+  # CB - Flap Relay — bus relay MainBus(2)→FlapBus(4) — EXPORT_LVAR
+  - get: L:var_Breaker_FlapRelay_readonly, Bool
+    set: >
+      value
+        ? '(L:var_Breaker_FlapRelay_readonly, Bool) 0 == if{ 4 2 (>K:2:ELECTRICAL_BUS_TO_BUS_CONNECTION_TOGGLE) }'
+        : '(L:var_Breaker_FlapRelay_readonly, Bool) 1 == if{ 4 2 (>K:2:ELECTRICAL_BUS_TO_BUS_CONNECTION_TOGGLE) }'
+
+  # CB - Flap Motor — Circuit 3 / FlapBus(4)
+  - get: A:CIRCUIT CONNECTION ON:3, Bool
+    set: >
+      value
+        ? '(A:CIRCUIT CONNECTION ON:3, Bool) 0 == if{ 3 4 (>K:2:ELECTRICAL_BUS_TO_CIRCUIT_CONNECTION_TOGGLE) }'
+        : '(A:CIRCUIT CONNECTION ON:3, Bool) 1 == if{ 3 4 (>K:2:ELECTRICAL_BUS_TO_CIRCUIT_CONNECTION_TOGGLE) }'
+
+  # ── AVIONICS BUS ──────────────────────────────────────────────────────────
+
+  # CB - Audio Panel — Circuit 60 / AvionicsBus(3)
+  - get: A:CIRCUIT CONNECTION ON:60, Bool
+    set: >
+      value
+        ? '(A:CIRCUIT CONNECTION ON:60, Bool) 0 == if{ 60 3 (>K:2:ELECTRICAL_BUS_TO_CIRCUIT_CONNECTION_TOGGLE) }'
+        : '(A:CIRCUIT CONNECTION ON:60, Bool) 1 == if{ 60 3 (>K:2:ELECTRICAL_BUS_TO_CIRCUIT_CONNECTION_TOGGLE) }'
+
+  # CB - Remote Compass — Circuit 61 / AvionicsBus(3)
+  - get: A:CIRCUIT CONNECTION ON:61, Bool
+    set: >
+      value
+        ? '(A:CIRCUIT CONNECTION ON:61, Bool) 0 == if{ 61 3 (>K:2:ELECTRICAL_BUS_TO_CIRCUIT_CONNECTION_TOGGLE) }'
+        : '(A:CIRCUIT CONNECTION ON:61, Bool) 1 == if{ 61 3 (>K:2:ELECTRICAL_BUS_TO_CIRCUIT_CONNECTION_TOGGLE) }'
+
+  # CB - COM 1 — Circuit 63 / AvionicsBus(3)
+  - get: A:CIRCUIT CONNECTION ON:63, Bool
+    set: >
+      value
+        ? '(A:CIRCUIT CONNECTION ON:63, Bool) 0 == if{ 63 3 (>K:2:ELECTRICAL_BUS_TO_CIRCUIT_CONNECTION_TOGGLE) }'
+        : '(A:CIRCUIT CONNECTION ON:63, Bool) 1 == if{ 63 3 (>K:2:ELECTRICAL_BUS_TO_CIRCUIT_CONNECTION_TOGGLE) }'
+
+  # CB - COM 2 — Circuit 64 / AvionicsBus(3)
+  - get: A:CIRCUIT CONNECTION ON:64, Bool
+    set: >
+      value
+        ? '(A:CIRCUIT CONNECTION ON:64, Bool) 0 == if{ 64 3 (>K:2:ELECTRICAL_BUS_TO_CIRCUIT_CONNECTION_TOGGLE) }'
+        : '(A:CIRCUIT CONNECTION ON:64, Bool) 1 == if{ 64 3 (>K:2:ELECTRICAL_BUS_TO_CIRCUIT_CONNECTION_TOGGLE) }'
+
+  # CB - NAV 1 — Circuit 67 / AvionicsBus(3)
+  - get: A:CIRCUIT CONNECTION ON:67, Bool
+    set: >
+      value
+        ? '(A:CIRCUIT CONNECTION ON:67, Bool) 0 == if{ 67 3 (>K:2:ELECTRICAL_BUS_TO_CIRCUIT_CONNECTION_TOGGLE) }'
+        : '(A:CIRCUIT CONNECTION ON:67, Bool) 1 == if{ 67 3 (>K:2:ELECTRICAL_BUS_TO_CIRCUIT_CONNECTION_TOGGLE) }'
+
+  # CB - NAV 2 — Circuit 68 / AvionicsBus(3)
+  - get: A:CIRCUIT CONNECTION ON:68, Bool
+    set: >
+      value
+        ? '(A:CIRCUIT CONNECTION ON:68, Bool) 0 == if{ 68 3 (>K:2:ELECTRICAL_BUS_TO_CIRCUIT_CONNECTION_TOGGLE) }'
+        : '(A:CIRCUIT CONNECTION ON:68, Bool) 1 == if{ 68 3 (>K:2:ELECTRICAL_BUS_TO_CIRCUIT_CONNECTION_TOGGLE) }'
+
+  # CB - RNAV — Circuit 69 / AvionicsBus(3)
+  - get: A:CIRCUIT CONNECTION ON:69, Bool
+    set: >
+      value
+        ? '(A:CIRCUIT CONNECTION ON:69, Bool) 0 == if{ 69 3 (>K:2:ELECTRICAL_BUS_TO_CIRCUIT_CONNECTION_TOGGLE) }'
+        : '(A:CIRCUIT CONNECTION ON:69, Bool) 1 == if{ 69 3 (>K:2:ELECTRICAL_BUS_TO_CIRCUIT_CONNECTION_TOGGLE) }'
+
+  # CB - Transponder — Circuit 71 / AvionicsBus(3)
+  - get: A:CIRCUIT CONNECTION ON:71, Bool
+    set: >
+      value
+        ? '(A:CIRCUIT CONNECTION ON:71, Bool) 0 == if{ 71 3 (>K:2:ELECTRICAL_BUS_TO_CIRCUIT_CONNECTION_TOGGLE) }'
+        : '(A:CIRCUIT CONNECTION ON:71, Bool) 1 == if{ 71 3 (>K:2:ELECTRICAL_BUS_TO_CIRCUIT_CONNECTION_TOGGLE) }'
+
+  # CB - Autopilot Controller — Circuit 72 / AvionicsBus(3)
+  - get: A:CIRCUIT CONNECTION ON:72, Bool
+    set: >
+      value
+        ? '(A:CIRCUIT CONNECTION ON:72, Bool) 0 == if{ 72 3 (>K:2:ELECTRICAL_BUS_TO_CIRCUIT_CONNECTION_TOGGLE) }'
+        : '(A:CIRCUIT CONNECTION ON:72, Bool) 1 == if{ 72 3 (>K:2:ELECTRICAL_BUS_TO_CIRCUIT_CONNECTION_TOGGLE) }'
+
+  # CB - Electric Trim and Autopilot Actuators — Circuit 73 / AvionicsBus(3)
+  - get: A:CIRCUIT CONNECTION ON:73, Bool
+    set: >
+      value
+        ? '(A:CIRCUIT CONNECTION ON:73, Bool) 0 == if{ 73 3 (>K:2:ELECTRICAL_BUS_TO_CIRCUIT_CONNECTION_TOGGLE) }'
+        : '(A:CIRCUIT CONNECTION ON:73, Bool) 1 == if{ 73 3 (>K:2:ELECTRICAL_BUS_TO_CIRCUIT_CONNECTION_TOGGLE) }'
+
+  # CB - ADF — Circuit 74 / AvionicsBus(3)
+  - get: A:CIRCUIT CONNECTION ON:74, Bool
+    set: >
+      value
+        ? '(A:CIRCUIT CONNECTION ON:74, Bool) 0 == if{ 74 3 (>K:2:ELECTRICAL_BUS_TO_CIRCUIT_CONNECTION_TOGGLE) }'
+        : '(A:CIRCUIT CONNECTION ON:74, Bool) 1 == if{ 74 3 (>K:2:ELECTRICAL_BUS_TO_CIRCUIT_CONNECTION_TOGGLE) }'
+
+  # CB - Weather Radar Controller — Circuit 75 / AvionicsBus(3)
+  - get: A:CIRCUIT CONNECTION ON:75, Bool
+    set: >
+      value
+        ? '(A:CIRCUIT CONNECTION ON:75, Bool) 0 == if{ 75 3 (>K:2:ELECTRICAL_BUS_TO_CIRCUIT_CONNECTION_TOGGLE) }'
+        : '(A:CIRCUIT CONNECTION ON:75, Bool) 1 == if{ 75 3 (>K:2:ELECTRICAL_BUS_TO_CIRCUIT_CONNECTION_TOGGLE) }'
+
+  # CB - Weather Radar Transceiver — Circuit 76 / AvionicsBus(3)
+  - get: A:CIRCUIT CONNECTION ON:76, Bool
+    set: >
+      value
+        ? '(A:CIRCUIT CONNECTION ON:76, Bool) 0 == if{ 76 3 (>K:2:ELECTRICAL_BUS_TO_CIRCUIT_CONNECTION_TOGGLE) }'
+        : '(A:CIRCUIT CONNECTION ON:76, Bool) 1 == if{ 76 3 (>K:2:ELECTRICAL_BUS_TO_CIRCUIT_CONNECTION_TOGGLE) }'
+
+  # CB - Radar Altimeter — Circuit 77 / AvionicsBus(3)
+  - get: A:CIRCUIT CONNECTION ON:77, Bool
+    set: >
+      value
+        ? '(A:CIRCUIT CONNECTION ON:77, Bool) 0 == if{ 77 3 (>K:2:ELECTRICAL_BUS_TO_CIRCUIT_CONNECTION_TOGGLE) }'
+        : '(A:CIRCUIT CONNECTION ON:77, Bool) 1 == if{ 77 3 (>K:2:ELECTRICAL_BUS_TO_CIRCUIT_CONNECTION_TOGGLE) }'
+
+  # CB - HSI — Circuit 78 / AvionicsBus(3)
+  - get: A:CIRCUIT CONNECTION ON:78, Bool
+    set: >
+      value
+        ? '(A:CIRCUIT CONNECTION ON:78, Bool) 0 == if{ 78 3 (>K:2:ELECTRICAL_BUS_TO_CIRCUIT_CONNECTION_TOGGLE) }'
+        : '(A:CIRCUIT CONNECTION ON:78, Bool) 1 == if{ 78 3 (>K:2:ELECTRICAL_BUS_TO_CIRCUIT_CONNECTION_TOGGLE) }'
+
+  # CB - DME — Circuit 79 / AvionicsBus(3)
+  - get: A:CIRCUIT CONNECTION ON:79, Bool
+    set: >
+      value
+        ? '(A:CIRCUIT CONNECTION ON:79, Bool) 0 == if{ 79 3 (>K:2:ELECTRICAL_BUS_TO_CIRCUIT_CONNECTION_TOGGLE) }'
+        : '(A:CIRCUIT CONNECTION ON:79, Bool) 1 == if{ 79 3 (>K:2:ELECTRICAL_BUS_TO_CIRCUIT_CONNECTION_TOGGLE) }'
+
+  # CB - Encoder — Circuit 80 / AvionicsBus(3)
+  - get: A:CIRCUIT CONNECTION ON:80, Bool
+    set: >
+      value
+        ? '(A:CIRCUIT CONNECTION ON:80, Bool) 0 == if{ 80 3 (>K:2:ELECTRICAL_BUS_TO_CIRCUIT_CONNECTION_TOGGLE) }'
+        : '(A:CIRCUIT CONNECTION ON:80, Bool) 1 == if{ 80 3 (>K:2:ELECTRICAL_BUS_TO_CIRCUIT_CONNECTION_TOGGLE) }'
+
+  # CB - Low Thrust Detector — Circuit 83 / AvionicsBus(3)
+  - get: A:CIRCUIT CONNECTION ON:83, Bool
+    set: >
+      value
+        ? '(A:CIRCUIT CONNECTION ON:83, Bool) 0 == if{ 83 3 (>K:2:ELECTRICAL_BUS_TO_CIRCUIT_CONNECTION_TOGGLE) }'
+        : '(A:CIRCUIT CONNECTION ON:83, Bool) 1 == if{ 83 3 (>K:2:ELECTRICAL_BUS_TO_CIRCUIT_CONNECTION_TOGGLE) }'
+
+  # ── INTERMEDIATE AVIONICS BUS (AvionicsBus relay → IntermediateAvionicsBus) ─ ──
+
+  # CB - Avionics Power Relay — bus relay AvionicsBus(3)→IntermediateAvionicsBus(5) — EXPORT_LVAR
+  - get: L:var_Breaker_AvionicsPowerRelay_readonly, Bool
+    set: >
+      value
+        ? '(L:var_Breaker_AvionicsPowerRelay_readonly, Bool) 0 == if{ 5 3 (>K:2:ELECTRICAL_BUS_TO_BUS_CONNECTION_TOGGLE) }'
+        : '(L:var_Breaker_AvionicsPowerRelay_readonly, Bool) 1 == if{ 5 3 (>K:2:ELECTRICAL_BUS_TO_BUS_CONNECTION_TOGGLE) }'
+
+  # ═══ CONDITION ════════════════════════════════════════════════════════════
+  # Wear state. Accumulated locally by 1 Hz / 5 Hz model-XML loops on BOTH
+  # machines — the slave is frozen for position/attitude only, engines and
+  # electrics keep simulating — so these drift apart on their own and the
+  # aircraft never reconciles them. Persisted by MSFS via systems.cfg
+  # [LocalVars], so drift compounds across sessions.
+  #
+  # Shared with the default set (write the value straight back): last writer
+  # wins. Both sides also keep incrementing locally, so expect these to track
+  # loosely rather than exactly. Move to `master:` if you want the master to be
+  # strictly authoritative.
+  #
+  # The var_ prefix is mandatory. L:engineFouling_L (no prefix) is a different,
+  # unused variable that nothing in the aircraft reads.
+
+  # Engine damage (0–100). At >=100 the model fires K:TOGGLE_ENGINE{n}_FAILURE
+  # by itself, and the tablet then refuses to clear that engine's failure.
+  - get: L:var_engineDamage_L
+  - get: L:var_engineDamage_R
+
+  # Spark plug fouling (0–100). Accumulates below 17 inHg MAP / 160 °C CHT.
+  - get: L:var_engineFouling_L
+  - get: L:var_engineFouling_R
+
+  # Battery. >250 °F trips var_BatteryDisconnect, which drops MainBus off the
+  # HotBatteryBus. Tablet "Recharge Battery" resets temp to ambient.
+  - get: L:var_BatteryTemperature, Fahrenheit
+  - get: L:var_BatteryDisconnect, Bool
+
+  # Starters. >300 °F trips var_StarterDisconnect_*, which drops circuit 1/32.
+  - get: L:var_starterTemperature_L, Fahrenheit
+  - get: L:var_starterTemperature_R, Fahrenheit
+  - get: L:var_StarterDisconnect_L, Bool
+  - get: L:var_StarterDisconnect_R, Bool
+
+  # Flooded / vapour-locked cylinders (hot start modelling).
+  - get: L:var_fuelInCylinders_L
+  - get: L:var_fuelInCylinders_R
+  - get: L:var_vaporInCylinders_L
+  - get: L:var_vaporInCylinders_R
+
+  # Fire bottles.
+  - get: L:var_extinguisherPushed_L
+  - get: L:var_extinguisherPushed_R
+
+  # ═══ FAILURES ═════════════════════════════════════════════════════════════
+  #
+  # Design: mirror-on-trigger. Both machines run their own failure generator at
+  # whatever rate is set on the tablet (default 1x). Whenever a failure
+  # activates or clears on one side, the other side is driven to match.
+  #
+  # Mechanism: the Black Square tablet owns all failure state in a JS array
+  # (failureMatrix) and re-asserts it every 10 s. Its only external API is
+  # H:BKSQ_FAILURE_<NAME>, which *toggles* the matching row — there is no
+  # set/clear. So each entry below watches the variable the tablet writes when
+  # the failure applies, and on an edge fires the peer's toggle.
+  #
+  # The `if (!!value === !!current) return ''` guard is what makes this safe:
+  #   - it makes the mirror edge-triggered rather than level-triggered, and
+  #   - it makes it idempotent, so if both sides happen to fail the same item
+  #     independently the incoming edge is swallowed instead of toggling the
+  #     peer back to healthy.
+  # Do not remove it from any entry.
+  #
+  # Recovery: if the two matrices ever fall out of phase, every subsequent
+  # mirror is inverted and stays wrong. `(>H:BKSQ_FAILURE_RESET_ALL_FAILURES)`
+  # on both machines clears everything and re-establishes a common baseline.
+  # Worth doing at the start of a session; there is no way to trigger it from
+  # this file.
+  #
+  # Failure rate is a persisted LocalVar and is deliberately NOT synced —
+  # syncing it would only make both generators agree on how fast to roll their
+  # own independent dice, which is what this design already assumes. Set it by
+  # hand on the tablet if you want both sides at the same rate.
+  #   - get: L:var_globalFailureRate, Number
+  #
+  # Circuit/bus failures (~60 of them) are NOT mirrored as toggles. The tablet
+  # applies those by disconnecting the circuit, which is indistinguishable from
+  # a pulled breaker and already propagates through the CIRCUIT CONNECTION ON
+  # entries in the breakers section; adding toggles here would give the peer a
+  # second, competing authority over the same circuits. The peer's tablet won't
+  # list the failure, but the electrical effect is correct both ways. The 18
+  # failure circuits that have no cockpit breaker are picked up at the end of
+  # this section instead.
+  #
+  # Also NOT covered here, on purpose:
+  #   - Fuel leaks (L/R FUEL LEAK). The tablet drains the tank directly; the
+  #     quantity propagates via modules/fuel.yaml.
+  #   - Pitot blockage, static blockage, L/R brake, full instrument air. These
+  #     are fired as bare K: events with no reliable read-back variable, so
+  #     there is nothing to watch. See the "type 5" note at the bottom.
+
+  # ── ENGINE FAILURES ───────────────────────────────────────────────────────
+  # Note: an engine at 100 damage is failed by the model itself, and the tablet
+  # will not clear a failure on an engine whose damage is still >=100 — so a
+  # mirrored "repair" of that engine is a no-op until damage is reset.
+
+  - get: A:ENG FAILED:1, Bool
+    set: >
+      (() => {
+        if (!!value === !!current) return '';
+        return '(>H:BKSQ_FAILURE_L_ENGINE_FAILURE)';
+      })()
+
+  - get: A:ENG FAILED:2, Bool
+    set: >
+      (() => {
+        if (!!value === !!current) return '';
+        return '(>H:BKSQ_FAILURE_R_ENGINE_FAILURE)';
+      })()
+
+  - get: A:ENG ON FIRE:1, Bool
+    set: >
+      (() => {
+        if (!!value === !!current) return '';
+        return '(>H:BKSQ_FAILURE_L_ENGINE_FIRE)';
+      })()
+
+  - get: A:ENG ON FIRE:2, Bool
+    set: >
+      (() => {
+        if (!!value === !!current) return '';
+        return '(>H:BKSQ_FAILURE_R_ENGINE_FIRE)';
+      })()
+
+  # ── TURBOCHARGER ──────────────────────────────────────────────────────────
+  # These rows are added by the tablet whenever BKSQ_Turbocharged is set, which
+  # includes the pressurised 58P (its .flt files set both Turbocharged=1 and
+  # Pressurized=1). So they are live on this aircraft, not inert.
+
+  - get: A:RECIP ENG TURBOCHARGER FAILED:1, Bool
+    set: >
+      (() => {
+        if (!!value === !!current) return '';
+        return '(>H:BKSQ_FAILURE_L_TURBOCHARGER)';
+      })()
+
+  - get: A:RECIP ENG TURBOCHARGER FAILED:2, Bool
+    set: >
+      (() => {
+        if (!!value === !!current) return '';
+        return '(>H:BKSQ_FAILURE_R_TURBOCHARGER)';
+      })()
+
+  # ── L ENGINE ──────────────────────────────────────────────────────────────
+
+  - get: L:var_magnetoFailure_1_L, Bool
+    set: >
+      (() => {
+        if (!!value === !!current) return '';
+        return '(>H:BKSQ_FAILURE_L_ENG_L_MAGNETO)';
+      })()
+
+  - get: L:var_magnetoFailure_1_R, Bool
+    set: >
+      (() => {
+        if (!!value === !!current) return '';
+        return '(>H:BKSQ_FAILURE_L_ENG_R_MAGNETO)';
+      })()
+
+  - get: L:var_magnetoGroundingFailure_1_L, Bool
+    set: >
+      (() => {
+        if (!!value === !!current) return '';
+        return '(>H:BKSQ_FAILURE_L_ENG_L_MAGNETO_GROUNDING)';
+      })()
+
+  - get: L:var_magnetoGroundingFailure_1_R, Bool
+    set: >
+      (() => {
+        if (!!value === !!current) return '';
+        return '(>H:BKSQ_FAILURE_L_ENG_R_MAGNETO_GROUNDING)';
+      })()
+
+  - get: L:var_switchGroundingFailure_1, Bool
+    set: >
+      (() => {
+        if (!!value === !!current) return '';
+        return '(>H:BKSQ_FAILURE_L_IGNITION_SWITCH_GROUND)';
+      })()
+
+  - get: L:var_alternatorFailure_L, Bool
+    set: >
+      (() => {
+        if (!!value === !!current) return '';
+        return '(>H:BKSQ_FAILURE_L_ALTERNATOR)';
+      })()
+
+  - get: L:var_engineDrivenFuelPumpFailure_L, Bool
+    set: >
+      (() => {
+        if (!!value === !!current) return '';
+        return '(>H:BKSQ_FAILURE_L_ENG_DRIVEN_FUEL_PUMP)';
+      })()
+
+  - get: L:var_OilPumpFailure_L, Bool
+    set: >
+      (() => {
+        if (!!value === !!current) return '';
+        return '(>H:BKSQ_FAILURE_L_ENG_DRIVEN_OIL_PUMP)';
+      })()
+
+  - get: L:var_unfeatheringAccumulatorFailure_L, Bool
+    set: >
+      (() => {
+        if (!!value === !!current) return '';
+        return '(>H:BKSQ_FAILURE_L_UNFEATHERING_ACCMLTR)';
+      })()
+
+  # ── R ENGINE ──────────────────────────────────────────────────────────────
+
+  - get: L:var_magnetoFailure_2_L, Bool
+    set: >
+      (() => {
+        if (!!value === !!current) return '';
+        return '(>H:BKSQ_FAILURE_R_ENG_L_MAGNETO)';
+      })()
+
+  - get: L:var_magnetoFailure_2_R, Bool
+    set: >
+      (() => {
+        if (!!value === !!current) return '';
+        return '(>H:BKSQ_FAILURE_R_ENG_R_MAGNETO)';
+      })()
+
+  - get: L:var_magnetoGroundingFailure_2_L, Bool
+    set: >
+      (() => {
+        if (!!value === !!current) return '';
+        return '(>H:BKSQ_FAILURE_R_ENG_L_MAGNETO_GROUNDING)';
+      })()
+
+  - get: L:var_magnetoGroundingFailure_2_R, Bool
+    set: >
+      (() => {
+        if (!!value === !!current) return '';
+        return '(>H:BKSQ_FAILURE_R_ENG_R_MAGNETO_GROUNDING)';
+      })()
+
+  - get: L:var_switchGroundingFailure_2, Bool
+    set: >
+      (() => {
+        if (!!value === !!current) return '';
+        return '(>H:BKSQ_FAILURE_R_IGNITION_SWITCH_GROUND)';
+      })()
+
+  - get: L:var_alternatorFailure_R, Bool
+    set: >
+      (() => {
+        if (!!value === !!current) return '';
+        return '(>H:BKSQ_FAILURE_R_ALTERNATOR)';
+      })()
+
+  - get: L:var_engineDrivenFuelPumpFailure_R, Bool
+    set: >
+      (() => {
+        if (!!value === !!current) return '';
+        return '(>H:BKSQ_FAILURE_R_ENG_DRIVEN_FUEL_PUMP)';
+      })()
+
+  - get: L:var_OilPumpFailure_R, Bool
+    set: >
+      (() => {
+        if (!!value === !!current) return '';
+        return '(>H:BKSQ_FAILURE_R_ENG_DRIVEN_OIL_PUMP)';
+      })()
+
+  - get: L:var_unfeatheringAccumulatorFailure_R, Bool
+    set: >
+      (() => {
+        if (!!value === !!current) return '';
+        return '(>H:BKSQ_FAILURE_R_UNFEATHERING_ACCMLTR)';
+      })()
+
+  # ── INSTRUMENT AIR ────────────────────────────────────────────────────────
+  # The full INSTRUMENT AIR failure is a bare K:TOGGLE_VACUUM_FAILURE with no
+  # Black Square state variable. This watches the stock MSFS gauge fail flag
+  # instead, on the theory that the key event is what sets it.
+  #
+  # UNVERIFIED — if PARTIAL PANEL VACUUM never moves, this entry is simply
+  # inert and does no harm; delete it then. Check by failing INSTRUMENT AIR
+  # from the tablet and watching the variable. Unlike the A:SUCTION PRESSURE
+  # heuristic this replaces, it should not track engine state, so it cannot
+  # produce the spurious start/shutdown edges that one did.
+  #
+  # Treats any non-zero as failed. If it turns out that INSTRUMENT AIR PARTIAL
+  # also moves this variable, the two entries will fight — in that case make
+  # this one test for the specific enum value the full failure produces.
+  - get: A:PARTIAL PANEL VACUUM, Enum
+    set: >
+      (() => {
+        if (!!value === !!current) return '';
+        return '(>H:BKSQ_FAILURE_INSTRUMENT_AIR)';
+      })()
+
+  - get: L:var_PartialVacuumFailure, Bool
+    set: >
+      (() => {
+        if (!!value === !!current) return '';
+        return '(>H:BKSQ_FAILURE_INSTRUMENT_AIR_PARTIAL)';
+      })()
+
+  # ── PRESSURIZATION ────────────────────────────────────────────────────────
+  # Pressurised variant only.
+
+  - get: L:var_pressurizationSafetyValveFailure, Bool
+    set: >
+      (() => {
+        if (!!value === !!current) return '';
+        return '(>H:BKSQ_FAILURE_CABIN_SAFETY_VALVE)';
+      })()
+
+  - get: L:var_pressurizationOutflowValveFailure, Bool
+    set: >
+      (() => {
+        if (!!value === !!current) return '';
+        return '(>H:BKSQ_FAILURE_CABIN_OUTFLOW_VALVE)';
+      })()
+
+  - get: L:var_pressurizationInflowFailure, Bool
+    set: >
+      (() => {
+        if (!!value === !!current) return '';
+        return '(>H:BKSQ_FAILURE_INFLOW_CONTROL_UNIT)';
+      })()
+
+  - get: L:var_doorSealPrimaryFailure, Bool
+    set: >
+      (() => {
+        if (!!value === !!current) return '';
+        return '(>H:BKSQ_FAILURE_DOOR_SEAL_PRIMARY)';
+      })()
+
+  - get: L:var_doorSealStandbyFailure, Bool
+    set: >
+      (() => {
+        if (!!value === !!current) return '';
+        return '(>H:BKSQ_FAILURE_DOOR_SEAL_STANDBY)';
+      })()
+
+  - get: L:var_CoLeak_L, Bool
+    set: >
+      (() => {
+        if (!!value === !!current) return '';
+        return '(>H:BKSQ_FAILURE_L_ENG_CO_LEAK)';
+      })()
+
+  - get: L:var_CoLeak_R, Bool
+    set: >
+      (() => {
+        if (!!value === !!current) return '';
+        return '(>H:BKSQ_FAILURE_R_ENG_CO_LEAK)';
+      })()
+
+  # ── CABIN / ENVIRONMENTAL ─────────────────────────────────────────────────
+
+  - get: L:var_CoLeak_H, Bool
+    set: >
+      (() => {
+        if (!!value === !!current) return '';
+        return '(>H:BKSQ_FAILURE_CABIN_HEATER_CO_LEAK)';
+      })()
+
+  - get: L:var_CoDetectFailure, Bool
+    set: >
+      (() => {
+        if (!!value === !!current) return '';
+        return '(>H:BKSQ_FAILURE_CO_DETECTOR)';
+      })()
+
+  - get: L:var_combustionHeaterFailure, Bool
+    set: >
+      (() => {
+        if (!!value === !!current) return '';
+        return '(>H:BKSQ_FAILURE_COMBUSTION_HEATER)';
+      })()
+
+  - get: L:var_condenserLimitFailure, Bool
+    set: >
+      (() => {
+        if (!!value === !!current) return '';
+        return '(>H:BKSQ_FAILURE_CONDENSER_LIMIT)';
+      })()
+
+  - get: L:var_airframeDeiceFailure, Bool
+    set: >
+      (() => {
+        if (!!value === !!current) return '';
+        return '(>H:BKSQ_FAILURE_DEICE_BOOTS_INTEG)';
+      })()
+
+  # ── DOORS ─────────────────────────────────────────────────────────────────
+  # These three are also the only failures with a visible cockpit consequence
+  # before the door is used. Don't add plain (setter-less) entries for them
+  # elsewhere in this file — a direct write to the LVar fights the tablet,
+  # which re-asserts its own matrix value within 10 s.
+
+  - get: L:var_NoseDoorLatchingFailure, Bool
+    set: >
+      (() => {
+        if (!!value === !!current) return '';
+        return '(>H:BKSQ_FAILURE_NOSE_DOOR_LATCH)';
+      })()
+
+  - get: L:var_PilotDoorLatchingFailure, Bool
+    set: >
+      (() => {
+        if (!!value === !!current) return '';
+        return '(>H:BKSQ_FAILURE_PILOT_DOOR_LATCH)';
+      })()
+
+  - get: L:var_CabinDoorLatchingFailure, Bool
+    set: >
+      (() => {
+        if (!!value === !!current) return '';
+        return '(>H:BKSQ_FAILURE_CABIN_DOOR_LATCH)';
+      })()
+
+
+  # ── CIRCUIT FAILURES WITH NO COCKPIT BREAKER ──────────────────────────────
+  # The tablet applies circuit-type failures by disconnecting the circuit from
+  # its bus. For circuits that have a breaker on the panel that state is
+  # already mirrored by the breakers section above. These 18 have no breaker —
+  # de-ice heats, exterior lights, gyro slaving, yoke lights, turbo panel
+  # cards — so without these entries the corresponding failures (L/R PITOT
+  # HEAT, PROP HEAT, WINDSHIELD HEAT, FUEL VENT HEAT, STALL WARN HEAT, GYRO
+  # SLAVING, STROBE/BEACON/NAV/TAXI/LANDING/WING LIGHT and part of the PANEL
+  # LIGHTS and CABIN LIGHTS groups) do not reach the other pilot at all.
+  #
+  # Same shape as the breaker entries: mirror the connection state, guarded so
+  # the toggle only fires when the peer actually differs. This mirrors the
+  # electrical effect, not the tablet's failure list — the peer's tablet will
+  # not show the failure and will not re-assert it.
+
+  # L Pitot Heat — Circuit 29 / Bus 2
+  - get: A:CIRCUIT CONNECTION ON:29, Bool
+    set: >
+      value
+        ? '(A:CIRCUIT CONNECTION ON:29, Bool) 0 == if{ 29 2 (>K:2:ELECTRICAL_BUS_TO_CIRCUIT_CONNECTION_TOGGLE) }'
+        : '(A:CIRCUIT CONNECTION ON:29, Bool) 1 == if{ 29 2 (>K:2:ELECTRICAL_BUS_TO_CIRCUIT_CONNECTION_TOGGLE) }'
+
+  # R Pitot Heat — Circuit 37 / Bus 2
+  - get: A:CIRCUIT CONNECTION ON:37, Bool
+    set: >
+      value
+        ? '(A:CIRCUIT CONNECTION ON:37, Bool) 0 == if{ 37 2 (>K:2:ELECTRICAL_BUS_TO_CIRCUIT_CONNECTION_TOGGLE) }'
+        : '(A:CIRCUIT CONNECTION ON:37, Bool) 1 == if{ 37 2 (>K:2:ELECTRICAL_BUS_TO_CIRCUIT_CONNECTION_TOGGLE) }'
+
+  # Prop Heat — Circuit 30 / Bus 2
+  - get: A:CIRCUIT CONNECTION ON:30, Bool
+    set: >
+      value
+        ? '(A:CIRCUIT CONNECTION ON:30, Bool) 0 == if{ 30 2 (>K:2:ELECTRICAL_BUS_TO_CIRCUIT_CONNECTION_TOGGLE) }'
+        : '(A:CIRCUIT CONNECTION ON:30, Bool) 1 == if{ 30 2 (>K:2:ELECTRICAL_BUS_TO_CIRCUIT_CONNECTION_TOGGLE) }'
+
+  # Windshield Heat — Circuit 35 / Bus 2
+  - get: A:CIRCUIT CONNECTION ON:35, Bool
+    set: >
+      value
+        ? '(A:CIRCUIT CONNECTION ON:35, Bool) 0 == if{ 35 2 (>K:2:ELECTRICAL_BUS_TO_CIRCUIT_CONNECTION_TOGGLE) }'
+        : '(A:CIRCUIT CONNECTION ON:35, Bool) 1 == if{ 35 2 (>K:2:ELECTRICAL_BUS_TO_CIRCUIT_CONNECTION_TOGGLE) }'
+
+  # Fuel Vent Heat — Circuit 38 / Bus 2
+  - get: A:CIRCUIT CONNECTION ON:38, Bool
+    set: >
+      value
+        ? '(A:CIRCUIT CONNECTION ON:38, Bool) 0 == if{ 38 2 (>K:2:ELECTRICAL_BUS_TO_CIRCUIT_CONNECTION_TOGGLE) }'
+        : '(A:CIRCUIT CONNECTION ON:38, Bool) 1 == if{ 38 2 (>K:2:ELECTRICAL_BUS_TO_CIRCUIT_CONNECTION_TOGGLE) }'
+
+  # Stall Warning Heat — Circuit 39 / Bus 2
+  - get: A:CIRCUIT CONNECTION ON:39, Bool
+    set: >
+      value
+        ? '(A:CIRCUIT CONNECTION ON:39, Bool) 0 == if{ 39 2 (>K:2:ELECTRICAL_BUS_TO_CIRCUIT_CONNECTION_TOGGLE) }'
+        : '(A:CIRCUIT CONNECTION ON:39, Bool) 1 == if{ 39 2 (>K:2:ELECTRICAL_BUS_TO_CIRCUIT_CONNECTION_TOGGLE) }'
+
+  # Gyro Slaving — Circuit 62 / Bus 3
+  - get: A:CIRCUIT CONNECTION ON:62, Bool
+    set: >
+      value
+        ? '(A:CIRCUIT CONNECTION ON:62, Bool) 0 == if{ 62 3 (>K:2:ELECTRICAL_BUS_TO_CIRCUIT_CONNECTION_TOGGLE) }'
+        : '(A:CIRCUIT CONNECTION ON:62, Bool) 1 == if{ 62 3 (>K:2:ELECTRICAL_BUS_TO_CIRCUIT_CONNECTION_TOGGLE) }'
+
+  # Strobe and nav lights are wired to different circuits per variant. The
+  # tablet selects them with `this.turbocharged ? 40 : 86` — and the
+  # pressurised 58P has BKSQ_Turbocharged=1 (see its .flt files), so THIS
+  # aircraft uses the winglet circuits 40 and 42 on bus 10. Circuits 86/87 on
+  # bus 11 are the normally-aspirated Baron's. All four are defined in every
+  # variant's systems.cfg, so keeping both pairs here costs nothing and makes
+  # this block portable to bksq-aircraft-baronpro without edits — the unused
+  # pair simply never changes.
+
+  # Strobe Light (winglets) — Circuit 40 / Bus 10 — turbo + pressurised
+  - get: A:CIRCUIT CONNECTION ON:40, Bool
+    set: >
+      value
+        ? '(A:CIRCUIT CONNECTION ON:40, Bool) 0 == if{ 40 10 (>K:2:ELECTRICAL_BUS_TO_CIRCUIT_CONNECTION_TOGGLE) }'
+        : '(A:CIRCUIT CONNECTION ON:40, Bool) 1 == if{ 40 10 (>K:2:ELECTRICAL_BUS_TO_CIRCUIT_CONNECTION_TOGGLE) }'
+
+  # Nav Lights (winglets) — Circuit 42 / Bus 10 — turbo + pressurised
+  - get: A:CIRCUIT CONNECTION ON:42, Bool
+    set: >
+      value
+        ? '(A:CIRCUIT CONNECTION ON:42, Bool) 0 == if{ 42 10 (>K:2:ELECTRICAL_BUS_TO_CIRCUIT_CONNECTION_TOGGLE) }'
+        : '(A:CIRCUIT CONNECTION ON:42, Bool) 1 == if{ 42 10 (>K:2:ELECTRICAL_BUS_TO_CIRCUIT_CONNECTION_TOGGLE) }'
+
+  # Strobe Light (no winglets) — Circuit 86 / Bus 11 — normally aspirated only
+  - get: A:CIRCUIT CONNECTION ON:86, Bool
+    set: >
+      value
+        ? '(A:CIRCUIT CONNECTION ON:86, Bool) 0 == if{ 86 11 (>K:2:ELECTRICAL_BUS_TO_CIRCUIT_CONNECTION_TOGGLE) }'
+        : '(A:CIRCUIT CONNECTION ON:86, Bool) 1 == if{ 86 11 (>K:2:ELECTRICAL_BUS_TO_CIRCUIT_CONNECTION_TOGGLE) }'
+
+  # Nav Lights (no winglets) — Circuit 87 / Bus 11 — normally aspirated only
+  - get: A:CIRCUIT CONNECTION ON:87, Bool
+    set: >
+      value
+        ? '(A:CIRCUIT CONNECTION ON:87, Bool) 0 == if{ 87 11 (>K:2:ELECTRICAL_BUS_TO_CIRCUIT_CONNECTION_TOGGLE) }'
+        : '(A:CIRCUIT CONNECTION ON:87, Bool) 1 == if{ 87 11 (>K:2:ELECTRICAL_BUS_TO_CIRCUIT_CONNECTION_TOGGLE) }'
+
+  # Beacon Light — Circuit 41 / Bus 2
+  - get: A:CIRCUIT CONNECTION ON:41, Bool
+    set: >
+      value
+        ? '(A:CIRCUIT CONNECTION ON:41, Bool) 0 == if{ 41 2 (>K:2:ELECTRICAL_BUS_TO_CIRCUIT_CONNECTION_TOGGLE) }'
+        : '(A:CIRCUIT CONNECTION ON:41, Bool) 1 == if{ 41 2 (>K:2:ELECTRICAL_BUS_TO_CIRCUIT_CONNECTION_TOGGLE) }'
+
+  # Taxi Lights — Circuit 43 / Bus 7
+  - get: A:CIRCUIT CONNECTION ON:43, Bool
+    set: >
+      value
+        ? '(A:CIRCUIT CONNECTION ON:43, Bool) 0 == if{ 43 7 (>K:2:ELECTRICAL_BUS_TO_CIRCUIT_CONNECTION_TOGGLE) }'
+        : '(A:CIRCUIT CONNECTION ON:43, Bool) 1 == if{ 43 7 (>K:2:ELECTRICAL_BUS_TO_CIRCUIT_CONNECTION_TOGGLE) }'
+
+  # L Landing Lights — Circuit 44 / Bus 2
+  - get: A:CIRCUIT CONNECTION ON:44, Bool
+    set: >
+      value
+        ? '(A:CIRCUIT CONNECTION ON:44, Bool) 0 == if{ 44 2 (>K:2:ELECTRICAL_BUS_TO_CIRCUIT_CONNECTION_TOGGLE) }'
+        : '(A:CIRCUIT CONNECTION ON:44, Bool) 1 == if{ 44 2 (>K:2:ELECTRICAL_BUS_TO_CIRCUIT_CONNECTION_TOGGLE) }'
+
+  # R Landing Lights — Circuit 57 / Bus 2
+  - get: A:CIRCUIT CONNECTION ON:57, Bool
+    set: >
+      value
+        ? '(A:CIRCUIT CONNECTION ON:57, Bool) 0 == if{ 57 2 (>K:2:ELECTRICAL_BUS_TO_CIRCUIT_CONNECTION_TOGGLE) }'
+        : '(A:CIRCUIT CONNECTION ON:57, Bool) 1 == if{ 57 2 (>K:2:ELECTRICAL_BUS_TO_CIRCUIT_CONNECTION_TOGGLE) }'
+
+  # Wing/Ice Light — Circuit 58 / Bus 2
+  - get: A:CIRCUIT CONNECTION ON:58, Bool
+    set: >
+      value
+        ? '(A:CIRCUIT CONNECTION ON:58, Bool) 0 == if{ 58 2 (>K:2:ELECTRICAL_BUS_TO_CIRCUIT_CONNECTION_TOGGLE) }'
+        : '(A:CIRCUIT CONNECTION ON:58, Bool) 1 == if{ 58 2 (>K:2:ELECTRICAL_BUS_TO_CIRCUIT_CONNECTION_TOGGLE) }'
+
+  # Panel Lights (turbo cards 1) — Circuit 84 / Bus 2
+  - get: A:CIRCUIT CONNECTION ON:84, Bool
+    set: >
+      value
+        ? '(A:CIRCUIT CONNECTION ON:84, Bool) 0 == if{ 84 2 (>K:2:ELECTRICAL_BUS_TO_CIRCUIT_CONNECTION_TOGGLE) }'
+        : '(A:CIRCUIT CONNECTION ON:84, Bool) 1 == if{ 84 2 (>K:2:ELECTRICAL_BUS_TO_CIRCUIT_CONNECTION_TOGGLE) }'
+
+  # Panel Lights (turbo cards 2) — Circuit 85 / Bus 2
+  - get: A:CIRCUIT CONNECTION ON:85, Bool
+    set: >
+      value
+        ? '(A:CIRCUIT CONNECTION ON:85, Bool) 0 == if{ 85 2 (>K:2:ELECTRICAL_BUS_TO_CIRCUIT_CONNECTION_TOGGLE) }'
+        : '(A:CIRCUIT CONNECTION ON:85, Bool) 1 == if{ 85 2 (>K:2:ELECTRICAL_BUS_TO_CIRCUIT_CONNECTION_TOGGLE) }'
+
+  # Cabin Lights (yoke light 1) — Circuit 55 / Bus 2
+  - get: A:CIRCUIT CONNECTION ON:55, Bool
+    set: >
+      value
+        ? '(A:CIRCUIT CONNECTION ON:55, Bool) 0 == if{ 55 2 (>K:2:ELECTRICAL_BUS_TO_CIRCUIT_CONNECTION_TOGGLE) }'
+        : '(A:CIRCUIT CONNECTION ON:55, Bool) 1 == if{ 55 2 (>K:2:ELECTRICAL_BUS_TO_CIRCUIT_CONNECTION_TOGGLE) }'
+
+  # Cabin Lights (yoke light 2) — Circuit 56 / Bus 2
+  - get: A:CIRCUIT CONNECTION ON:56, Bool
+    set: >
+      value
+        ? '(A:CIRCUIT CONNECTION ON:56, Bool) 0 == if{ 56 2 (>K:2:ELECTRICAL_BUS_TO_CIRCUIT_CONNECTION_TOGGLE) }'
+        : '(A:CIRCUIT CONNECTION ON:56, Bool) 1 == if{ 56 2 (>K:2:ELECTRICAL_BUS_TO_CIRCUIT_CONNECTION_TOGGLE) }'
+  # ── UNREACHABLE: "type 5" bare K: event failures ──────────────────────────
+  # INSTRUMENT AIR, PITOT BLOCKAGE, STATIC BLOCKAGE, L BRAKE, R BRAKE.
+  #
+  # The tablet fires K:TOGGLE_VACUUM_FAILURE / K:TOGGLE_PITOT_BLOCKAGE /
+  # K:TOGGLE_STATIC_PORT_BLOCKAGE / K:TOGGLE_{LEFT,RIGHT}_BRAKE_FAILURE once on
+  # each state change and keeps no LVar, so there is nothing to watch.
+  #
+  # A previous revision inferred the vacuum failure from A:SUCTION PRESSURE
+  # < 1.0 inHg. That was removed: suction is also near zero any time the
+  # engines are not running, so every engine start and shutdown produced a
+  # spurious edge and toggled the peer's vacuum failure the wrong way.
+  #
+  # Untested candidates, if you want to try them: MSFS exposes PARTIAL PANEL
+  # VACUUM and PARTIAL PANEL PITOT ("gauge fail flag"). Whether the Black
+  # Square toggles actually move them has not been verified in-sim. Test by
+  # triggering each failure from the tablet and watching the variable before
+  # wiring anything up.

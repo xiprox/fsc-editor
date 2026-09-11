@@ -1,0 +1,59 @@
+/*
+ * The Pick button, drawn as injected text after the caret on an empty item.
+ *
+ * It wears the same `--sim` tint as the live values and the run button,
+ * because it is the same promise: this comes from the simulator that is
+ * connected right now. The box is `.fsc-live-value`'s — same inset, same
+ * corner — so the two read as one family of things the sim put in the editor.
+ * That is a second copy of those three numbers; a third is the signal to give
+ * them a name in `index.css`.
+ *
+ * Scoped under `.monaco-editor` for specificity rather than for scoping:
+ * injected text carries a `.mtk<n>` class as well, and Monaco emits those into
+ * a runtime `<style>` that lands after the bundled stylesheet.
+ *
+ * No transition. The hover is a recolour of pixels the button already owns.
+ */
+.monaco-editor .fsc-panel-pick {
+  margin-left: 0.75ch;
+  padding: 0 0.6ch;
+  border-radius: 3px;
+  cursor: pointer;
+  color: var(--sim);
+  background: color-mix(in oklab, var(--sim) 12%, transparent);
+  font-family: var(--font-sans, system-ui, sans-serif);
+}
+
+.monaco-editor .fsc-panel-pick:hover {
+  background: color-mix(in oklab, var(--sim) 22%, transparent);
+}
+
+/*
+ * The popover's own node. Monaco positions it; everything inside is the
+ * panel's.
+ */
+.fsc-panel-picker-widget {
+  /* The editor's font is monospace and the panel's is not. */
+  font-family: var(--font-sans, system-ui, sans-serif);
+}
+
+/*
+ * No focus ring on the popover or its list.
+ *
+ * Both take focus so that the keyboard works the moment the popover opens, and
+ * neither is a control: a ring round the whole popover says "this box is
+ * selected", which means nothing, and it vanished at the first click inside,
+ * which made it look like a glitch. Where the keyboard is, is said by the
+ * active line instead. Buttons inside keep their rings — they come from
+ * `control-states`, not from here.
+ *
+ * Under `.monaco-editor` because that is where the ring came from: Monaco
+ * styles `:focus` inside its own tree, and a utility class on the element
+ * loses to it for the reason every other rule in this file is scoped this way.
+ */
+.monaco-editor .fsc-panel-picker-surface:focus,
+.monaco-editor .fsc-panel-picker-surface:focus-visible,
+.monaco-editor .fsc-panel-picker-list:focus,
+.monaco-editor .fsc-panel-picker-list:focus-visible {
+  outline: none;
+}

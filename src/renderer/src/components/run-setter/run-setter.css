@@ -1,0 +1,115 @@
+/*
+ * How far everything but the open entry steps back.
+ *
+ * One number for the text and the margin buttons, so the two cannot drift: a
+ * column of buttons at a different strength from the code beside them reads as
+ * a mistake. Low enough that the lit entry is unmistakably the subject, and not
+ * so low that the file stops being a file — the surroundings are context, and
+ * context you cannot read at all is the same as no context.
+ */
+:root {
+  --fsc-run-dim: 0.22;
+}
+
+/*
+ * The run button, drawn in the editor's per-line margin.
+ *
+ * In the margin rather than in the line's text because injected text takes
+ * horizontal space: with the button in front of the key, a `set:` line shifted
+ * right by a glyph while the `get:` line above it did not, and two lines
+ * indented the same in the file stopped lining up on screen. This column —
+ * `lineDecorationsWidth`, between the line numbers and the text — is outside
+ * the flow, so nothing moves.
+ *
+ * The glyph is **text in a `::before`**, not a mask over a background. A mask
+ * fills a box with a flat colour and reads muddy at this size; a character is
+ * antialiased and takes the same `--sim` tint the live values wear, which is
+ * the blue this is supposed to match.
+ *
+ * Scoped under `.monaco-editor` for specificity rather than for scoping, the
+ * same reason `.fsc-live-value` is in `index.css`: Monaco emits its own rules
+ * into a runtime `<style>` that lands after the bundled stylesheet.
+ *
+ * In its own file so the feature carries its own styling, and so adding it does
+ * not touch a file three other features are also editing.
+ */
+
+.monaco-editor .fsc-run-setter {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: color-mix(in oklab, var(--sim) 55%, transparent);
+  /*
+   * Sized against VS Code's own gutter controls, whose run glyph is about 16 px
+   * in a 20 px column — which is what `lineDecorationsWidth` is now set to. The
+   * character draws smaller than its em box, so the font-size is larger than
+   * the triangle it produces.
+   */
+  font-size: 15px;
+  line-height: 1;
+}
+
+.monaco-editor .fsc-run-setter::before {
+  content: "▶";
+}
+
+/*
+ * Brighter under the pointer, and nothing else changes.
+ *
+ * A recolour of a glyph already occupying its pixels — no fill appearing, no
+ * box growing, and no transition: this is an IDE, and the answer to a hover is
+ * the hover.
+ *
+ * The line's own hover cannot reach here: the margin and the text are different
+ * subtrees of Monaco's DOM (`.margin-view-overlays` beside `.lines-content`),
+ * so no selector spans them. Lighting up on line hover would need a mousemove
+ * listener maintaining a class, which is a lot of machinery for a tint. The
+ * button is therefore visible at rest rather than revealed — which is also
+ * honest, since it is only drawn at all when a run would mean something.
+ */
+.monaco-editor .fsc-run-setter:hover {
+  color: var(--sim);
+}
+
+/*
+ * Everything but the entry being run steps back while the popover is open.
+ *
+ * The popover asks you to watch one number, and a screenful of other entries is
+ * the competition for it.
+ *
+ * This is an ordinary inline decoration over the two ranges either side of the
+ * open entry — see `dimAround`. It was a `:not(:has(.fsc-run-lit))` on every
+ * line, which read well and did not paint on the first open of a session: the
+ * selector's subject depends on a descendant Monaco had never rendered before,
+ * and the first style pass missed it. Naming the lines to dim needs no
+ * invalidation to go right.
+ *
+ * No transition: the dim arrives with the popover, in the same frame as the
+ * click that asked for it.
+ */
+.monaco-editor .fsc-run-dimmed {
+  opacity: var(--fsc-run-dim);
+}
+
+/*
+ * The buttons step back with the text.
+ *
+ * They are in the margin, which the decoration above does not reach, so they
+ * take the editor-wide class instead. A column of full-strength buttons beside
+ * dimmed code reads as the buttons being the point, when the point is the one
+ * entry still lit.
+ */
+.fsc-run-dim .fsc-run-setter {
+  opacity: var(--fsc-run-dim);
+}
+
+/*
+ * The popover's own node. Monaco positions it; everything inside is the
+ * panel's. `z-index` is left to Monaco, which stacks content widgets above the
+ * text for exactly this.
+ */
+.fsc-run-setter-widget {
+  /* The editor's font is monospace and the panel's is not. */
+  font-family: var(--font-sans, system-ui, sans-serif);
+}

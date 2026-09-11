@@ -1,0 +1,259 @@
+<!doctype html>
+<html lang="en" class="dark">
+<head>
+<meta charset="utf-8">
+<title>Trace panel — live field, honest outcomes</title>
+<style>
+.dark{color-scheme:dark;
+--background:oklch(0.148 0.004 228.8);--foreground:oklch(0.987 0.002 197.1);
+--muted:oklch(0.275 0.011 216.9);--muted-foreground:oklch(0.723 0.014 214.4);
+--border:oklch(1 0 0/10%);--input:oklch(1 0 0/15%);--ring:oklch(0.56 0.021 213.5);
+--sidebar:oklch(0.218 0.008 223.9);--destructive:oklch(0.704 0.191 22.216);
+--destructive-surface:oklch(0.25 0.045 27);--destructive-border:oklch(0.35 0.065 27);
+--fsc-island:oklch(0.115 0.004 228);--fsc-label:oklch(0.68 0.014 228);
+--sim-value:oklch(0.72 0.1 233);--radius-sm:6px;--radius-md:8px;
+--syntax-block:oklch(0.76 0.11 255);--syntax-key:oklch(0.72 0.08 255);
+--syntax-prefix:oklch(0.77 0.11 305);--syntax-var:oklch(87.076% 0.05828 71.989);
+--syntax-units:oklch(0.7 0.05 305);--syntax-target:oklch(87.076% 0.05828 71.989);
+--syntax-string:oklch(0.78 0.11 150);--syntax-number:oklch(0.79 0.09 195);
+--syntax-keyword:oklch(0.77 0.12 350);--syntax-injected:oklch(0.79 0.11 35);
+--syntax-operator:oklch(0.76 0.03 240);}
+*{box-sizing:border-box}
+body{margin:0;padding:22px 22px 60px;background:oklch(0.09 0.003 228);color:var(--foreground);
+font-family:'Inter Variable',Inter,system-ui,sans-serif;font-size:13px}
+h1{font-size:15px;font-weight:600;margin:0 0 4px}
+h2{font-size:13px;font-weight:600;margin:26px 0 3px}
+h2 span{color:var(--muted-foreground);font-weight:400}
+.sub,.note{color:var(--muted-foreground);font-size:12px;line-height:1.55;max-width:90ch}
+.sub{margin:0 0 18px}.note{margin:0 0 10px}
+.bad{color:var(--destructive)}
+
+.panel{background:var(--sidebar);border:1px solid var(--border);border-radius:var(--radius-md)}
+.hdr{display:flex;align-items:center;gap:10px;height:36px;padding:0 12px;font-size:12.5px;font-weight:500}
+.locator{display:inline-flex;align-items:center;height:20px;padding:0 8px;border-radius:var(--radius-md);
+background:var(--fsc-island);color:var(--fsc-label);font-family:'Cascadia Code',monospace;font-size:10.5px}
+.body{border-top:1px solid var(--border);padding:14px 0}
+.cols{display:grid;grid-template-columns:1fr 1px 1fr}
+.vrule{background:var(--border)}
+.cols>section{padding:0 14px;min-width:0}
+
+.colhead{display:flex;align-items:center;gap:8px;padding-bottom:14px;font-size:10.5px;
+text-transform:uppercase;letter-spacing:.06em;color:var(--muted-foreground);font-weight:500}
+.bind{margin-left:auto;display:flex;align-items:center;gap:7px;text-transform:none;letter-spacing:0}
+.bindname{font-family:'Cascadia Code',monospace;font-size:11px;font-weight:600;color:var(--syntax-injected)}
+
+/* the field — wider, and blue while it is being read rather than typed */
+.field{position:relative;display:inline-flex;align-items:center}
+.val{height:22px;width:112px;padding:0 7px;font-family:'Cascadia Code',monospace;font-size:11px;
+color:var(--foreground);border-radius:var(--radius-sm);
+background:color-mix(in oklab,var(--input) 20%,transparent);border:1px solid var(--input)}
+.val:focus{outline:2px solid var(--ring);outline-offset:-1px}
+.val.live{color:var(--sim-value);padding-right:20px}
+.field .lamp{position:absolute;right:7px;width:5px;height:5px;border-radius:50%;
+background:var(--sim-value);pointer-events:none}
+
+ol.tl{list-style:none;margin:0;padding:0}
+.tl li{display:grid;grid-template-columns:12px 56px 1fr;gap:0 8px}
+.tl .r{position:relative}
+.tl .r::before{content:"";position:absolute;left:5.5px;top:0;bottom:0;width:1px;background:var(--border)}
+.tl li:first-child .r::before{top:7px}
+.tl li:last-child .r::before{bottom:calc(100% - 8px)}
+.tl .node{position:absolute;left:2.5px;top:4px;width:7px;height:7px;border-radius:50%;background:var(--muted-foreground)}
+.tl .lab{font-family:'Cascadia Code',monospace;font-size:10.5px;color:var(--muted-foreground);padding-top:1px}
+.tl .txt{font-size:12px;line-height:1.5;padding-bottom:9px}
+.tl li.fail .node{background:var(--destructive);box-shadow:0 0 0 3px var(--destructive-surface)}
+.tl li.fail .lab{color:var(--destructive)}
+.tl li.fail .r::before{background:var(--destructive-border)}
+.tl li.unk .node{background:transparent;border:1px dashed var(--muted-foreground)}
+.tl li.skip .node{background:transparent;border:1px solid var(--muted-foreground)}
+.tl li.skip .txt,.tl li.skip .txt *{color:var(--muted-foreground)!important;font-weight:400!important}
+.tl li.skip .r::before{background:repeating-linear-gradient(to bottom,var(--border) 0 2px,transparent 2px 5px)}
+.tl li.out .node{width:11px;height:11px;left:0.5px;top:2px;background:var(--foreground)}
+.tl li.out.bad .node{background:var(--destructive)}
+.tl li.out .lab{color:var(--foreground);font-weight:600}
+.tl li.out.bad .lab{color:var(--destructive)}
+.tl li.out .txt{font-size:12.5px;padding-bottom:0}
+
+.c{font-family:'Cascadia Code','JetBrains Mono',Consolas,monospace;font-size:11.5px}
+.pre{color:var(--syntax-prefix);font-weight:600}.var{color:var(--syntax-var)}
+.tgt{color:var(--syntax-target);font-weight:600}.uni{color:var(--syntax-units)}
+.op{color:var(--syntax-operator)}.num{color:var(--syntax-number)}.str{color:var(--syntax-string)}
+.typ{color:var(--syntax-keyword);font-weight:600}.inj{color:var(--syntax-injected);font-weight:600}
+.key{color:var(--syntax-key)}.blk{color:var(--syntax-block);font-weight:600}
+.hint{border-bottom:1px dotted currentColor;cursor:help}
+.strike{text-decoration:line-through;opacity:.6}
+</style>
+</head>
+<body>
+
+<h1>The live field, and outcomes that are actually derivable</h1>
+<p class="sub">
+  Fields are 112px now — room for <span class="c">16256</span> or <span class="c">1013.25</span>
+  without clipping, which the slot has space for. <span class="c inj">current</span> is drawn in
+  <code class="c">--sim-value</code> with a lamp on the right while it is being read; type in it and
+  it goes to normal foreground and the lamp goes out.
+</p>
+
+<h2>On “the altimeter is set to…” — you are right, and I should not have written it</h2>
+<p class="note">
+  <span class="strike">the altimeter is set to 1016 millibars</span> requires knowing that
+  <span class="c"><span class="pre">A:</span><span class="var">KOHLSMAN SETTING MB:1</span></span>
+  <i>is</i> an altimeter. Nothing in the model knows that. The SDK catalogue has a description —
+  “Sets altimeter setting (Millibars * 16)” — but turning that into a sentence about what happened
+  is generative, and this panel's whole contract is that every line is computed. It is also exactly
+  how the card ended up serving <span class="c">########### Pilot Lower Panel #########</span> as a
+  description. The catalogue text has a home already: the hover.
+  <br><br>
+  So an outcome names <b>variables and events</b>, never aircraft systems. Below is what each shape
+  can honestly end with.
+</p>
+
+<h2>1 · a JavaScript setter that fires an event</h2>
+<div class="panel">
+  <div class="hdr">Trace <span class="locator">shared&nbsp;·&nbsp;lines&nbsp;44–45</span></div>
+  <div class="body"><div class="cols">
+    <section>
+      <div class="colhead">When it changes here
+        <span class="bind"><span class="bindname">current</span>
+          <span class="field"><input class="val live" value="1013"><span class="lamp"></span></span></span>
+      </div>
+      <ol class="tl">
+        <li><div class="r"><span class="node"></span></div><div class="lab">read</div><div class="txt"><span class="c"><span class="pre">A:</span><span class="var">KOHLSMAN SETTING MB:1</span></span> in <span class="c uni">Millibars</span> — as <span class="c typ hint" title="A 64-bit float: decimals survive.">double</span></div></li>
+        <li class="unk"><div class="r"><span class="node"></span></div><div class="lab">unless</div><div class="txt">a <span class="c key">skp:</span> elsewhere marked this name in the last 2 s</div></li>
+        <li class="out"><div class="r"><span class="node"></span></div><div class="lab">result</div><div class="txt"><span class="c num">1013</span> is sent to the other pilot</div></li>
+      </ol>
+    </section>
+    <div class="vrule"></div>
+    <section>
+      <div class="colhead">When a value arrives
+        <span class="bind"><span class="bindname">value</span>
+          <span class="field"><input class="val" value="1016"></span></span>
+      </div>
+      <ol class="tl">
+        <li><div class="r"><span class="node"></span></div><div class="lab">kind</div><div class="txt">javascript — contains one of <span class="c str">'</span> <span class="c str">`</span> <span class="c op">?</span> <span class="c op">{</span> <span class="c op">}</span></div></li>
+        <li><div class="r"><span class="node"></span></div><div class="lab">builds</div><div class="txt"><span class="c"><span class="num">16256</span> <span class="num">2</span> <span class="op">(&gt;</span><span class="pre">K:2:</span><span class="tgt">KOHLSMAN_SET</span><span class="op">)</span></span></div></li>
+        <li><div class="r"><span class="node"></span></div><div class="lab">echo</div><div class="txt">the next change of this name is not sent back&nbsp;&nbsp;(2s)</div></li>
+        <li class="out"><div class="r"><span class="node"></span></div><div class="lab">result</div><div class="txt">the calculator runs <span class="c"><span class="num">16256</span> <span class="num">2</span> <span class="op">(&gt;</span><span class="pre">K:2:</span><span class="tgt">KOHLSMAN_SET</span><span class="op">)</span></span></div></li>
+      </ol>
+    </section>
+  </div></div>
+</div>
+<p class="note" style="margin-top:8px">
+  Note what the result can and cannot say here. This is a <span class="c blk">shared:</span> entry,
+  so the string goes to the calculator whole and <b>we do not evaluate RPN</b> — so the honest ending
+  is that the calculator receives it, not what the aircraft does. Slightly redundant with
+  <span class="c">builds</span>, and that redundancy is the truthful version.
+</p>
+
+<h2>2 · master:, where the result really is derivable</h2>
+<p class="note">
+  Here FS Copilot parses rather than runs, so the model knows the target, the operands and the
+  fallback — every part of the ending is computed.
+</p>
+<div class="panel">
+  <div class="hdr">Trace <span class="locator">master&nbsp;·&nbsp;lines&nbsp;31–33</span></div>
+  <div class="body"><div class="cols">
+    <section>
+      <div class="colhead">When it changes here
+        <span class="bind"><span class="bindname">current</span>
+          <span class="field"><input class="val live" value="22"><span class="lamp"></span></span></span>
+      </div>
+      <ol class="tl">
+        <li><div class="r"><span class="node"></span></div><div class="lab">read</div><div class="txt"><span class="c"><span class="pre">A:</span><span class="var">GENERAL ENG THROTTLE LEVER POSITION:1</span></span> in <span class="c uni">Percent</span> — as <span class="c typ hint" title="Whole numbers only. A fraction is dropped, so a control that moves smoothly here syncs in steps.">int</span></div></li>
+        <li><div class="r"><span class="node"></span></div><div class="lab">sampled</div><div class="txt">about 33 times a second</div></li>
+        <li class="unk"><div class="r"><span class="node"></span></div><div class="lab">sends</div><div class="txt">only while you are the pilot in control</div></li>
+        <li class="out"><div class="r"><span class="node"></span></div><div class="lab">result</div><div class="txt"><span class="c num">22</span> is sent to the other pilot, unreliably</div></li>
+      </ol>
+    </section>
+    <div class="vrule"></div>
+    <section>
+      <div class="colhead">When a value arrives
+        <span class="bind"><span class="bindname">value</span>
+          <span class="field"><input class="val" value="50"></span></span>
+      </div>
+      <ol class="tl">
+        <li class="unk"><div class="r"><span class="node"></span></div><div class="lab">applies</div><div class="txt">only while you are not the pilot in control</div></li>
+        <li><div class="r"><span class="node"></span></div><div class="lab">kind</div><div class="txt">literal — sent exactly as written</div></li>
+        <li><div class="r"><span class="node"></span></div><div class="lab">builds</div><div class="txt"><span class="c"><span class="pre">K:</span><span class="var">THROTTLE1_SET</span></span></div></li>
+        <li><div class="r"><span class="node"></span></div><div class="lab">master:</div><div class="txt">not run — read as <span class="c"><span class="op">args (&gt;</span><span class="var">NAME</span><span class="op">,</span> <span class="uni">units</span><span class="op">)</span></span></div></li>
+        <li class="fail"><div class="r"><span class="node"></span></div><div class="lab">match</div><div class="txt">no <span class="c op">(&gt;…)</span> at the end — this text is never used</div></li>
+        <li class="out bad"><div class="r"><span class="node"></span></div><div class="lab">result</div><div class="txt"><span class="c num">50</span> is written to <span class="c"><span class="pre">A:</span><span class="var">GENERAL ENG THROTTLE LEVER POSITION:1</span><span class="op">,</span> <span class="uni">Percent</span></span>, and <span class="c"><span class="pre">K:</span><span class="var">THROTTLE1_SET</span></span> never fires</div></li>
+      </ol>
+    </section>
+  </div></div>
+</div>
+
+<h2>3 · a master: entry that works — the operands are the ending</h2>
+<div class="panel">
+  <div class="hdr">Trace <span class="locator">master&nbsp;·&nbsp;lines&nbsp;50–51</span></div>
+  <div class="body"><div class="cols">
+    <section>
+      <div class="colhead">When it changes here
+        <span class="bind"><span class="bindname">current</span>
+          <span class="field"><input class="val" value="0"></span></span>
+      </div>
+      <ol class="tl">
+        <li><div class="r"><span class="node"></span></div><div class="lab">read</div><div class="txt"><span class="c"><span class="pre">A:</span><span class="var">LIGHT LANDING</span></span> in <span class="c uni">Bool</span> — as <span class="c typ hint" title="Whole numbers only.">int</span></div></li>
+        <li class="unk"><div class="r"><span class="node"></span></div><div class="lab">sends</div><div class="txt">only while you are the pilot in control</div></li>
+        <li class="out"><div class="r"><span class="node"></span></div><div class="lab">result</div><div class="txt"><span class="c num">0</span> is sent to the other pilot, unreliably</div></li>
+      </ol>
+    </section>
+    <div class="vrule"></div>
+    <section>
+      <div class="colhead">When a value arrives
+        <span class="bind"><span class="bindname">value</span>
+          <span class="field"><input class="val" value="1"></span></span>
+      </div>
+      <ol class="tl">
+        <li><div class="r"><span class="node"></span></div><div class="lab">builds</div><div class="txt"><span class="c"><span class="num">1</span> <span class="num">2</span> <span class="op">(&gt;</span><span class="pre">K:2:</span><span class="tgt">LANDING_LIGHTS_SET</span><span class="op">)</span></span></div></li>
+        <li><div class="r"><span class="node"></span></div><div class="lab">strips</div><div class="txt"><span class="c"><span class="pre">K:2:</span><span class="tgt">LANDING_LIGHTS_SET</span></span> → <span class="c"><span class="pre">K:</span><span class="tgt">LANDING_LIGHTS_SET</span></span></div></li>
+        <li><div class="r"><span class="node"></span></div><div class="lab">sends</div><div class="txt"><span class="c op">[</span><span class="c num">2</span><span class="c op">,</span> <span class="c num">1</span><span class="c op">]</span></div></li>
+        <li class="out"><div class="r"><span class="node"></span></div><div class="lab">result</div><div class="txt"><span class="c"><span class="pre">K:</span><span class="tgt">LANDING_LIGHTS_SET</span></span> fires with <span class="c op">[</span><span class="c num">2</span><span class="c op">,</span> <span class="c num">1</span><span class="c op">]</span></div></li>
+      </ol>
+    </section>
+  </div></div>
+</div>
+
+<h2>4 · nothing applied <span>· the guard closes</span></h2>
+<div class="panel">
+  <div class="hdr">Trace <span class="locator">shared&nbsp;·&nbsp;lines&nbsp;12–14</span></div>
+  <div class="body"><div class="cols">
+    <section>
+      <div class="colhead">When it changes here
+        <span class="bind"><span class="bindname">current</span>
+          <span class="field"><input class="val live" value="1"><span class="lamp"></span></span></span>
+      </div>
+      <ol class="tl">
+        <li><div class="r"><span class="node"></span></div><div class="lab">read</div><div class="txt"><span class="c"><span class="pre">A:</span><span class="var">LIGHT LANDING</span></span> in <span class="c uni">Bool</span> — as <span class="c typ hint" title="Whole numbers only.">int</span></div></li>
+        <li><div class="r"><span class="node"></span></div><div class="lab">skp</div><div class="txt">the next change of <span class="c"><span class="pre">L:</span><span class="var">LANDING_LIGHT_SW</span></span> is not sent&nbsp;&nbsp;(2s)</div></li>
+        <li class="out"><div class="r"><span class="node"></span></div><div class="lab">result</div><div class="txt"><span class="c num">1</span> is sent to the other pilot</div></li>
+      </ol>
+    </section>
+    <div class="vrule"></div>
+    <section>
+      <div class="colhead">When a value arrives
+        <span class="bind"><span class="bindname">value</span>
+          <span class="field"><input class="val" value="1"></span></span>
+      </div>
+      <ol class="tl">
+        <li><div class="r"><span class="node"></span></div><div class="lab">builds</div><div class="txt"><span class="c"><span class="num">1</span> <span class="op">(&gt;</span><span class="pre">K:</span><span class="tgt">LANDING_LIGHTS_TOGGLE</span><span class="op">)</span></span></div></li>
+        <li class="skip"><div class="r"><span class="node"></span></div><div class="lab">guard</div><div class="txt">writes an event and says <span class="c str">TOGGLE</span> — <span class="c inj">value</span> <span class="c num">1</span> = <span class="c inj">current</span> <span class="c num">1</span>, so it is skipped</div></li>
+        <li class="skip"><div class="r"><span class="node"></span></div><div class="lab">echo</div><div class="txt">the next change of this name is not sent back&nbsp;&nbsp;(2s)</div></li>
+        <li class="out bad"><div class="r"><span class="node"></span></div><div class="lab">result</div><div class="txt">nothing is applied — <span class="c inj">value</span> already matches <span class="c inj">current</span></div></li>
+      </ol>
+    </section>
+  </div></div>
+</div>
+
+<p class="note" style="margin-top:20px">
+  The five endings the model can derive, and nothing beyond them:
+  <b>sent to the other pilot</b> (with “unreliably” for <span class="c blk">master:</span>) ·
+  <b>the calculator runs <i>code</i></b> ·
+  <b><i>EVENT</i> fires with <i>[args]</i></b> ·
+  <b><i>n</i> is written to <i>NAME, units</i></b>, with “and <i>EVENT</i> never fires” when the
+  fallback swallowed a named event ·
+  <b>nothing is applied</b>, with the reason.
+</p>
+
+</body>
+</html>

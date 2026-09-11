@@ -1,0 +1,23 @@
+# Build output. The module is rebuilt from src/module.cpp; the package is
+# rebuilt from PackageDefinitions by fspackagetool. Nothing here is source.
+build/
+PackagesMetadata/
+PackageSources/Modules/
+_PackageInt/
+
+# `Packages/` is the exception, and is committed.
+#
+# It is build output like the rest, but it is the only build output that can
+# never be reproduced by anything but a maintainer: the SDK has no unattended
+# install and `fspackagetool` drives the game executable, so no hosted runner
+# can produce it. The app's install flow copies this folder into somebody's
+# Community folder, and `electron-builder.yml` ships it through
+# `extraResources` — a checkout without it builds an app that cannot install
+# the module at all.
+#
+# ~300 KB, three files. Rebuilt by `npm run link:build`, which is also what
+# updates it here.
+
+# Reader transcripts. Evidence, but session-local — promote one to
+# src/main/sim/fixtures/ if it is worth keeping.
+transcripts/
