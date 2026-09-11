@@ -1,0 +1,674 @@
+Every column the Trace panel can draw, from fixtures/trace-coverage.yaml.
+Generated — see trace-coverage.test.ts. Read the diff; do not edit.
+
+══════════════════════════════════════════════════════════════════════════
+
+WHEN IT CHANGES HERE — 27 distinct
+
+shared: A:LIGHT LANDING
+  with no current
+
+    ok      read     A:LIGHT LANDING in Bool — as int
+    unknown unless   a skp: elsewhere marked A:LIGHT LANDING in the last 2s
+    ok      result   the new value is sent to the other pilot
+
+──────────────────────────────────────────────────────────────────────────
+
+shared: A:LIGHT LANDING
+  with current 0
+
+    ok      read     A:LIGHT LANDING in Bool — as int
+    unknown unless   a skp: elsewhere marked A:LIGHT LANDING in the last 2s
+    ok      result   0 is sent to the other pilot
+
+──────────────────────────────────────────────────────────────────────────
+
+shared: L:ToggleBait
+  set: (L:ToggleGuard) 1 (>K:LANDING_LIGHTS_SET)
+  with no current
+
+    ok      read     L:ToggleBait — as float, Number is ignored
+    unknown unless   a skp: elsewhere marked L:ToggleBait in the last 2s
+    ok      result   the new value is sent to the other pilot
+
+──────────────────────────────────────────────────────────────────────────
+
+shared: L:ToggleBait
+  set: (L:ToggleGuard) 1 (>K:LANDING_LIGHTS_SET)
+  with current 0
+
+    ok      read     L:ToggleBait — as float, Number is ignored
+    unknown unless   a skp: elsewhere marked L:ToggleBait in the last 2s
+    ok      result   0 is sent to the other pilot
+
+──────────────────────────────────────────────────────────────────────────
+
+shared: H:Piper_Yoke_Hide
+  set: (>H:Piper_Yoke_Hide)
+  with no current
+
+    ok      read     H:Piper_Yoke_Hide, an HTML event
+    ok      waits    half a second, because the name is H:
+    unknown unless   a skp: elsewhere marked H:Piper_Yoke_Hide in the last 2s
+    ok      result   the new value is sent to the other pilot
+
+──────────────────────────────────────────────────────────────────────────
+
+shared: H:Piper_Yoke_Hide
+  set: (>H:Piper_Yoke_Hide)
+  with current 0
+
+    ok      read     H:Piper_Yoke_Hide, an HTML event
+    ok      waits    half a second, because the name is H:
+    unknown unless   a skp: elsewhere marked H:Piper_Yoke_Hide in the last 2s
+    ok      result   0 is sent to the other pilot
+
+──────────────────────────────────────────────────────────────────────────
+
+shared: K:PARKING_BRAKES
+  with no current
+
+    ok      read     K:PARKING_BRAKES, a key event
+    unknown unless   a skp: elsewhere marked K:PARKING_BRAKES in the last 2s
+    ok      result   the new value is sent to the other pilot
+
+──────────────────────────────────────────────────────────────────────────
+
+shared: K:PARKING_BRAKES
+  with current 0
+
+    ok      read     K:PARKING_BRAKES, a key event
+    unknown unless   a skp: elsewhere marked K:PARKING_BRAKES in the last 2s
+    ok      result   0 is sent to the other pilot
+
+──────────────────────────────────────────────────────────────────────────
+
+shared: B:ELECTRICAL_Battery_1
+  with no current
+
+    ok      read     B:ELECTRICAL_Battery_1, through the calculator
+    unknown unless   a skp: elsewhere marked B:ELECTRICAL_Battery_1 in the last 2s
+    ok      result   the new value is sent to the other pilot
+
+──────────────────────────────────────────────────────────────────────────
+
+shared: B:ELECTRICAL_Battery_1
+  with current 0
+
+    ok      read     B:ELECTRICAL_Battery_1, through the calculator
+    unknown unless   a skp: elsewhere marked B:ELECTRICAL_Battery_1 in the last 2s
+    ok      result   0 is sent to the other pilot
+
+──────────────────────────────────────────────────────────────────────────
+
+shared: LANDING_GEAR_POSITION
+  with no current
+
+    failed  read     nothing — LANDING_GEAR_POSITION has no X: prefix, so it is never read
+    unknown unless   a skp: elsewhere marked LANDING_GEAR_POSITION in the last 2s
+    failed  result   nothing is sent — LANDING_GEAR_POSITION is never read
+
+──────────────────────────────────────────────────────────────────────────
+
+shared: L:ENGINE_Lever_Condition_1
+  with no current
+
+    ok      read     L:ENGINE_Lever_Condition_1 — as float, Number is ignored
+    unknown unless   a skp: elsewhere marked L:ENGINE_Lever_Condition_1 in the last 2s
+    ok      skp      the next change of L:ENGINE_Lever_Condition_2 is not sent (2s)
+    ok      result   the new value is sent to the other pilot
+
+──────────────────────────────────────────────────────────────────────────
+
+shared: L:ENGINE_Lever_Condition_1
+  with current 0
+
+    ok      read     L:ENGINE_Lever_Condition_1 — as float, Number is ignored
+    unknown unless   a skp: elsewhere marked L:ENGINE_Lever_Condition_1 in the last 2s
+    ok      skp      the next change of L:ENGINE_Lever_Condition_2 is not sent (2s)
+    ok      result   0 is sent to the other pilot
+
+──────────────────────────────────────────────────────────────────────────
+
+master: A:GENERAL ENG STARTER:1
+  set: (>K:TOGGLE_STARTER1)
+  with no current
+
+    ok      read     A:GENERAL ENG STARTER:1 in Bool — as int
+    ok      sampled  about 33 times a second
+    unknown sends    only while you are the pilot in control
+    ok      result   the new value is sent to the other pilot
+
+──────────────────────────────────────────────────────────────────────────
+
+master: A:GENERAL ENG STARTER:1
+  set: (>K:TOGGLE_STARTER1)
+  with current 0
+
+    ok      read     A:GENERAL ENG STARTER:1 in Bool — as int
+    ok      sampled  about 33 times a second
+    unknown sends    only while you are the pilot in control
+    ok      result   0 is sent to the other pilot
+
+──────────────────────────────────────────────────────────────────────────
+
+master: A:KOHLSMAN SETTING MB:1
+  set: `${value * 16} 1 (>K:2:KOHLSMAN_SET)`
+  with no current
+
+    ok      read     A:KOHLSMAN SETTING MB:1 in Millibars — as double
+    ok      sampled  about 33 times a second
+    unknown sends    only while you are the pilot in control
+    ok      result   the new value is sent to the other pilot
+
+──────────────────────────────────────────────────────────────────────────
+
+master: A:KOHLSMAN SETTING MB:1
+  set: `${value * 16} 1 (>K:2:KOHLSMAN_SET)`
+  with current 0
+
+    ok      read     A:KOHLSMAN SETTING MB:1 in Millibars — as double
+    ok      sampled  about 33 times a second
+    unknown sends    only while you are the pilot in control
+    ok      result   0 is sent to the other pilot
+
+──────────────────────────────────────────────────────────────────────────
+
+master: A:AUTOPILOT ALTITUDE LOCK VAR:1
+  set: -1.5 (>K:AP_ALT_VAR_INC)
+  with no current
+
+    ok      read     A:AUTOPILOT ALTITUDE LOCK VAR:1 in Feet — as int
+    ok      sampled  about 33 times a second
+    unknown sends    only while you are the pilot in control
+    ok      result   the new value is sent to the other pilot
+
+──────────────────────────────────────────────────────────────────────────
+
+master: A:AUTOPILOT ALTITUDE LOCK VAR:1
+  set: -1.5 (>K:AP_ALT_VAR_INC)
+  with current 0
+
+    ok      read     A:AUTOPILOT ALTITUDE LOCK VAR:1 in Feet — as int
+    ok      sampled  about 33 times a second
+    unknown sends    only while you are the pilot in control
+    ok      result   0 is sent to the other pilot
+
+──────────────────────────────────────────────────────────────────────────
+
+master: L:SixOperands
+  set: 1 2 3 4 5 6 (>K:ROTOR_BRAKE)
+  with no current
+
+    ok      read     L:SixOperands — as float, Number is ignored
+    ok      sampled  about 33 times a second
+    unknown sends    only while you are the pilot in control
+    ok      result   the new value is sent to the other pilot
+
+──────────────────────────────────────────────────────────────────────────
+
+master: L:SixOperands
+  set: 1 2 3 4 5 6 (>K:ROTOR_BRAKE)
+  with current 0
+
+    ok      read     L:SixOperands — as float, Number is ignored
+    ok      sampled  about 33 times a second
+    unknown sends    only while you are the pilot in control
+    ok      result   0 is sent to the other pilot
+
+──────────────────────────────────────────────────────────────────────────
+
+master: A:GENERAL ENG THROTTLE LEVER POSITION:1
+  set: K:THROTTLE1_SET
+  with no current
+
+    ok      read     A:GENERAL ENG THROTTLE LEVER POSITION:1 in Percent — as int
+    ok      sampled  about 33 times a second
+    unknown sends    only while you are the pilot in control
+    ok      result   the new value is sent to the other pilot
+
+──────────────────────────────────────────────────────────────────────────
+
+master: A:GENERAL ENG THROTTLE LEVER POSITION:1
+  set: K:THROTTLE1_SET
+  with current 0
+
+    ok      read     A:GENERAL ENG THROTTLE LEVER POSITION:1 in Percent — as int
+    ok      sampled  about 33 times a second
+    unknown sends    only while you are the pilot in control
+    ok      result   0 is sent to the other pilot
+
+──────────────────────────────────────────────────────────────────────────
+
+master: L:ENGINE_Push_Ignition_1
+  set: `${value} (>L:ENGINE_Push_Ignition_1, Bool)`
+  with no current
+
+    ok      read     L:ENGINE_Push_Ignition_1 — as float, Bool is ignored
+    ok      sampled  about 33 times a second
+    unknown sends    only while you are the pilot in control
+    ok      result   the new value is sent to the other pilot
+
+──────────────────────────────────────────────────────────────────────────
+
+master: L:ENGINE_Push_Ignition_1
+  set: `${value} (>L:ENGINE_Push_Ignition_1, Bool)`
+  with current 0
+
+    ok      read     L:ENGINE_Push_Ignition_1 — as float, Bool is ignored
+    ok      sampled  about 33 times a second
+    unknown sends    only while you are the pilot in control
+    ok      result   0 is sent to the other pilot
+
+──────────────────────────────────────────────────────────────────────────
+
+master: L:MasterSkp
+  with no current
+
+    ok      read     L:MasterSkp — as float, Number is ignored
+    ok      sampled  about 33 times a second
+    unknown sends    only while you are the pilot in control
+    skipped skp      L:SomeMirror is ignored — skp: does nothing in a master: entry
+    ok      result   the new value is sent to the other pilot
+
+──────────────────────────────────────────────────────────────────────────
+
+master: L:MasterSkp
+  with current 0
+
+    ok      read     L:MasterSkp — as float, Number is ignored
+    ok      sampled  about 33 times a second
+    unknown sends    only while you are the pilot in control
+    skipped skp      L:SomeMirror is ignored — skp: does nothing in a master: entry
+    ok      result   0 is sent to the other pilot
+
+══════════════════════════════════════════════════════════════════════════
+
+WHEN A VALUE ARRIVES — 29 distinct
+
+shared: A:LIGHT LANDING
+  with no current
+
+    ok      arrives  an update named A:LIGHT LANDING
+    ok      kind     implicit — no set:, so the value is written to A:LIGHT LANDING
+    ok      builds   1 (>A:LIGHT LANDING, Bool)
+    ok      echo     the next change of A:LIGHT LANDING is not sent back (2s)
+    ok      result   the calculator runs 1 (>A:LIGHT LANDING, Bool)
+
+──────────────────────────────────────────────────────────────────────────
+
+shared: A:GENERAL ENG STARTER:1
+  set: (>K:TOGGLE_STARTER1)
+  with no current
+
+    ok      arrives  an update named A:GENERAL ENG STARTER:1
+    ok      kind     prepended — starts with (, so the value goes in front
+    ok      builds   1 (>K:TOGGLE_STARTER1)
+    ok      guard    is on — value 1 and no current, so it runs
+    ok      echo     the next change of A:GENERAL ENG STARTER:1 is not sent back (2s)
+    ok      result   the calculator runs 1 (>K:TOGGLE_STARTER1)
+
+──────────────────────────────────────────────────────────────────────────
+
+shared: A:GENERAL ENG STARTER:1
+  set: (>K:TOGGLE_STARTER1)
+  with current 0
+
+    ok      arrives  an update named A:GENERAL ENG STARTER:1
+    ok      kind     prepended — starts with (, so the value goes in front
+    ok      builds   1 (>K:TOGGLE_STARTER1)
+    ok      guard    is on — value 1 ≠ current 0, so it runs
+    ok      echo     the next change of A:GENERAL ENG STARTER:1 is not sent back (2s)
+    ok      result   the calculator runs 1 (>K:TOGGLE_STARTER1)
+
+──────────────────────────────────────────────────────────────────────────
+
+shared: A:GENERAL ENG STARTER:1
+  set: (>K:TOGGLE_STARTER1)
+  with current 1
+
+    ok      arrives  an update named A:GENERAL ENG STARTER:1
+    ok      kind     prepended — starts with (, so the value goes in front
+    ok      builds   1 (>K:TOGGLE_STARTER1)
+    skipped guard    is on — value 1 = current 1, so it is skipped
+    skipped echo     the next change of A:GENERAL ENG STARTER:1 is not sent back (2s)
+    failed  result   nothing is applied — value already matches current
+
+──────────────────────────────────────────────────────────────────────────
+
+shared: L:ToggleBait
+  set: (L:ToggleGuard) 1 (>K:LANDING_LIGHTS_SET)
+  with no current
+
+    ok      arrives  an update named L:ToggleBait
+    ok      kind     prepended — starts with (, so the value goes in front
+    ok      builds   1 (L:ToggleGuard) 1 (>K:LANDING_LIGHTS_SET)
+    ok      guard    is on — value 1 and no current, so it runs
+    ok      echo     the next change of L:ToggleBait is not sent back (2s)
+    ok      result   the calculator runs 1 (L:ToggleGuard) 1 (>K:LANDING_LIGHTS_SET)
+
+──────────────────────────────────────────────────────────────────────────
+
+shared: L:ToggleBait
+  set: (L:ToggleGuard) 1 (>K:LANDING_LIGHTS_SET)
+  with current 0
+
+    ok      arrives  an update named L:ToggleBait
+    ok      kind     prepended — starts with (, so the value goes in front
+    ok      builds   1 (L:ToggleGuard) 1 (>K:LANDING_LIGHTS_SET)
+    ok      guard    is on — value 1 ≠ current 0, so it runs
+    ok      echo     the next change of L:ToggleBait is not sent back (2s)
+    ok      result   the calculator runs 1 (L:ToggleGuard) 1 (>K:LANDING_LIGHTS_SET)
+
+──────────────────────────────────────────────────────────────────────────
+
+shared: L:ToggleBait
+  set: (L:ToggleGuard) 1 (>K:LANDING_LIGHTS_SET)
+  with current 1
+
+    ok      arrives  an update named L:ToggleBait
+    ok      kind     prepended — starts with (, so the value goes in front
+    ok      builds   1 (L:ToggleGuard) 1 (>K:LANDING_LIGHTS_SET)
+    skipped guard    is on — value 1 = current 1, so it is skipped
+    skipped echo     the next change of L:ToggleBait is not sent back (2s)
+    failed  result   nothing is applied — value already matches current
+
+──────────────────────────────────────────────────────────────────────────
+
+shared: H:Piper_Yoke_Hide
+  set: (>H:Piper_Yoke_Hide)
+  with no current
+
+    ok      arrives  an update named H:Piper_Yoke_Hide
+    ok      kind     prepended — starts with (, so the value goes in front
+    ok      builds   1 (>H:Piper_Yoke_Hide)
+    ok      echo     the next change of H:Piper_Yoke_Hide is not sent back (2s)
+    ok      result   the calculator runs 1 (>H:Piper_Yoke_Hide)
+
+──────────────────────────────────────────────────────────────────────────
+
+shared: K:PARKING_BRAKES
+  with no current
+
+    ok      arrives  an update named K:PARKING_BRAKES
+    ok      kind     implicit — no set:, so the value is written to K:PARKING_BRAKES
+    ok      builds   1 (>K:PARKING_BRAKES)
+    ok      echo     the next change of K:PARKING_BRAKES is not sent back (2s)
+    ok      result   the calculator runs 1 (>K:PARKING_BRAKES)
+
+──────────────────────────────────────────────────────────────────────────
+
+shared: B:ELECTRICAL_Battery_1
+  with no current
+
+    ok      arrives  an update named B:ELECTRICAL_Battery_1
+    ok      kind     implicit — no set:, so the value is written to B:ELECTRICAL_Battery_1
+    ok      builds   1 (>B:ELECTRICAL_Battery_1, Number)
+    ok      echo     the next change of B:ELECTRICAL_Battery_1 is not sent back (2s)
+    ok      result   the calculator runs 1 (>B:ELECTRICAL_Battery_1, Number)
+
+──────────────────────────────────────────────────────────────────────────
+
+shared: LANDING_GEAR_POSITION
+  with no current
+
+    ok      arrives  an update named LANDING_GEAR_POSITION
+    ok      kind     implicit — no set:, so the value is written to LANDING_GEAR_POSITION
+    ok      builds   1 (>LANDING_GEAR_POSITION, Number)
+    ok      echo     the next change of LANDING_GEAR_POSITION is not sent back (2s)
+    failed  result   nothing is applied — LANDING_GEAR_POSITION has no X: prefix
+
+──────────────────────────────────────────────────────────────────────────
+
+shared: L:ENGINE_Lever_Condition_1
+  with no current
+
+    ok      arrives  an update named L:ENGINE_Lever_Condition_1
+    ok      kind     implicit — no set:, so the value is written to L:ENGINE_Lever_Condition_1
+    ok      builds   1 (>L:ENGINE_Lever_Condition_1, Number)
+    ok      echo     the next change of L:ENGINE_Lever_Condition_1 is not sent back (2s)
+    ok      result   the calculator runs 1 (>L:ENGINE_Lever_Condition_1, Number)
+
+──────────────────────────────────────────────────────────────────────────
+
+shared: L:HashRouted
+  set: 1 (>K:#LANDING_LIGHTS_SET)
+  with no current
+
+    ok      arrives  an update named L:HashRouted
+    ok      kind     literal — no ' ` ? { } and does not start with (, so it is sent exactly as written and the value is ignored
+    ok      builds   1 (>K:#LANDING_LIGHTS_SET)
+    ok      route    contains >K:# — parsed rather than run
+    ok      echo     the next change of L:HashRouted is not sent back (2s)
+    ok      fires    K:#LANDING_LIGHTS_SET with [0] 1
+    unknown fires    K:#LANDING_LIGHTS_SET again, from the calculator — the name matches two write routes and FS Copilot takes both
+    unknown result   K:#LANDING_LIGHTS_SET fires twice with [0] 1 — the same value both times
+
+──────────────────────────────────────────────────────────────────────────
+
+shared: L:ThrowsOnBuild
+  set: `${missingBinding.x}`
+  with no current
+
+    ok      arrives  an update named L:ThrowsOnBuild
+    ok      kind     javascript — contains one of ' ` ? { }, so it is evaluated first
+    failed  builds   nothing — missingBinding is not defined
+    ok      echo     the next change of L:ThrowsOnBuild is not sent back (2s)
+    failed  result   nothing is applied — the expression is empty
+
+──────────────────────────────────────────────────────────────────────────
+
+shared: L:BuildsNothing
+  set: `${value > 99 ? '1 (>L:BuildsNothing)' : ''}`
+  with no current
+
+    ok      arrives  an update named L:BuildsNothing
+    ok      kind     javascript — contains one of ' ` ? { }, so it is evaluated first
+    failed  builds   an empty string
+    ok      echo     the next change of L:BuildsNothing is not sent back (2s)
+    failed  result   nothing is applied — the expression is empty
+
+──────────────────────────────────────────────────────────────────────────
+
+shared: L:LiteralSetter
+  set: 1 (>L:LiteralSetter)
+  with no current
+
+    ok      arrives  an update named L:LiteralSetter
+    ok      kind     literal — no ' ` ? { } and does not start with (, so it is sent exactly as written and the value is ignored
+    ok      builds   1 (>L:LiteralSetter)
+    ok      echo     the next change of L:LiteralSetter is not sent back (2s)
+    ok      result   the calculator runs 1 (>L:LiteralSetter)
+
+──────────────────────────────────────────────────────────────────────────
+
+master: A:GENERAL ENG STARTER:1
+  set: (>K:TOGGLE_STARTER1)
+  with no current
+
+    ok      arrives  an update named A:GENERAL ENG STARTER:1
+    unknown applies  only while you are not the pilot in control
+    ok      kind     prepended — starts with (, so the value goes in front
+    ok      builds   1 (>K:TOGGLE_STARTER1)
+    ok      parses   the name and the numbers manually, because the entry is master:
+    ok      fires    K:TOGGLE_STARTER1 with [0] 1
+    unknown fires    K:TOGGLE_STARTER1 again, from the calculator — the name matches two write routes and FS Copilot takes both
+    unknown result   K:TOGGLE_STARTER1 fires twice — the toggle reverses itself
+
+──────────────────────────────────────────────────────────────────────────
+
+master: A:KOHLSMAN SETTING MB:1
+  set: `${value * 16} 1 (>K:2:KOHLSMAN_SET)`
+  with no current
+
+    ok      arrives  an update named A:KOHLSMAN SETTING MB:1
+    unknown applies  only while you are not the pilot in control
+    ok      kind     javascript — contains one of ' ` ? { }, so it is evaluated first
+    ok      builds   16 1 (>K:2:KOHLSMAN_SET)
+    ok      parses   the name and the numbers manually, because the entry is master:
+    ok      strips   K:2:KOHLSMAN_SET → K:KOHLSMAN_SET — the arity travels as event data, not in the name
+    ok      fires    K:KOHLSMAN_SET with [0] 1, [1] 16
+    unknown fires    K:KOHLSMAN_SET again, from the calculator — the name matches two write routes and FS Copilot takes both, rebuilt as 1 16 (>K:KOHLSMAN_SET)
+    unknown result   K:KOHLSMAN_SET fires twice with [0] 1, [1] 16 — the same value both times
+
+──────────────────────────────────────────────────────────────────────────
+
+master: A:AUTOPILOT ALTITUDE LOCK VAR:1
+  set: -1.5 (>K:AP_ALT_VAR_INC)
+  with no current
+
+    ok      arrives  an update named A:AUTOPILOT ALTITUDE LOCK VAR:1
+    unknown applies  only while you are not the pilot in control
+    ok      kind     literal — no ' ` ? { } and does not start with (, so it is sent exactly as written and the value is ignored
+    ok      builds   -1.5 (>K:AP_ALT_VAR_INC)
+    ok      parses   the name and the numbers manually, because the entry is master:
+    ok      rounds   [0] -1.5 — rounded to whole numbers; a negative wraps to a large uint
+    ok      fires    K:AP_ALT_VAR_INC with [0] 4294967294
+    unknown fires    K:AP_ALT_VAR_INC again, from the calculator — the name matches two write routes and FS Copilot takes both
+    unknown result   K:AP_ALT_VAR_INC fires twice — the value moves two steps
+
+──────────────────────────────────────────────────────────────────────────
+
+master: L:SixOperands
+  set: 1 2 3 4 5 6 (>K:ROTOR_BRAKE)
+  with no current
+
+    ok      arrives  an update named L:SixOperands
+    unknown applies  only while you are not the pilot in control
+    ok      kind     literal — no ' ` ? { } and does not start with (, so it is sent exactly as written and the value is ignored
+    ok      builds   1 2 3 4 5 6 (>K:ROTOR_BRAKE)
+    ok      parses   the name and the numbers manually, because the entry is master:
+    ok      fires    K:ROTOR_BRAKE with [0] 6, [1] 5, [2] 4, [3] 3, [4] 2
+    failed  drops    1 operand — an event carries five
+    unknown fires    K:ROTOR_BRAKE again, from the calculator — the name matches two write routes and FS Copilot takes both, rebuilt as 6 5 4 3 2 1 (>K:ROTOR_BRAKE)
+    unknown result   K:ROTOR_BRAKE fires twice with [0] 6, [1] 5, [2] 4, [3] 3, [4] 2
+
+──────────────────────────────────────────────────────────────────────────
+
+master: L:ZeroedOperand
+  set: (L:SomeVar) 2 (>K:ROTOR_BRAKE)
+  with no current
+
+    ok      arrives  an update named L:ZeroedOperand
+    unknown applies  only while you are not the pilot in control
+    ok      kind     prepended — starts with (, so the value goes in front
+    ok      builds   1 (L:SomeVar) 2 (>K:ROTOR_BRAKE)
+    ok      parses   the name and the numbers manually, because the entry is master:
+    ok      args     (L:SomeVar) is not a number, so [0] 2, [1] 0, [2] 1
+    ok      fires    K:ROTOR_BRAKE with [0] 2, [1] 0, [2] 1
+    unknown fires    K:ROTOR_BRAKE again, from the calculator — the name matches two write routes and FS Copilot takes both, rebuilt as 2 0 1 (>K:ROTOR_BRAKE)
+    unknown result   K:ROTOR_BRAKE fires twice with [0] 2, [1] 0, [2] 1
+
+──────────────────────────────────────────────────────────────────────────
+
+master: A:GENERAL ENG THROTTLE LEVER POSITION:1
+  set: K:THROTTLE1_SET
+  with no current
+
+    ok      arrives  an update named A:GENERAL ENG THROTTLE LEVER POSITION:1
+    unknown applies  only while you are not the pilot in control
+    ok      kind     literal — no ' ` ? { } and does not start with (, so it is sent exactly as written and the value is ignored
+    ok      builds   K:THROTTLE1_SET
+    ok      parses   the name and the numbers manually, because the entry is master:
+    failed  match    no (>…) at the end — this text is never used
+    failed  result   1 is written to A:GENERAL ENG THROTTLE LEVER POSITION:1, Percent, and K:THROTTLE1_SET never fires
+
+──────────────────────────────────────────────────────────────────────────
+
+master: A:GENERAL ENG THROTTLE LEVER POSITION:2
+  set: (>A:GENERAL ENG THROTTLE LEVER POSITION:2, Percent)
+  with no current
+
+    ok      arrives  an update named A:GENERAL ENG THROTTLE LEVER POSITION:2
+    unknown applies  only while you are not the pilot in control
+    ok      kind     prepended — starts with (, so the value goes in front
+    ok      builds   1 (>A:GENERAL ENG THROTTLE LEVER POSITION:2, Percent)
+    ok      parses   the name and the numbers manually, because the entry is master:
+    ok      writes   A:GENERAL ENG THROTTLE LEVER POSITION:2 = 1 in Percent — as int
+    unknown writes   A:GENERAL ENG THROTTLE LEVER POSITION:2 again, from the calculator — the name matches two write routes and FS Copilot takes both
+    unknown result   1 is written to A:GENERAL ENG THROTTLE LEVER POSITION:2, Percent — twice, with the same value
+
+──────────────────────────────────────────────────────────────────────────
+
+master: L:ENGINE_Push_Ignition_1
+  set: `${value} (>L:ENGINE_Push_Ignition_1, Bool)`
+  with no current
+
+    ok      arrives  an update named L:ENGINE_Push_Ignition_1
+    unknown applies  only while you are not the pilot in control
+    ok      kind     javascript — contains one of ' ` ? { }, so it is evaluated first
+    ok      builds   1 (>L:ENGINE_Push_Ignition_1, Bool)
+    ok      parses   the name and the numbers manually, because the entry is master:
+    ok      writes   L:ENGINE_Push_Ignition_1 = 1 — as float, Bool is ignored
+    unknown writes   L:ENGINE_Push_Ignition_1 again, from the calculator — the name matches two write routes and FS Copilot takes both
+    unknown result   1 is written to L:ENGINE_Push_Ignition_1 — twice, with the same value
+
+──────────────────────────────────────────────────────────────────────────
+
+master: L:BatteryMirror
+  set: (>B:ELECTRICAL_Battery_1_Set)
+  with no current
+
+    ok      arrives  an update named L:BatteryMirror
+    unknown applies  only while you are not the pilot in control
+    ok      kind     prepended — starts with (, so the value goes in front
+    ok      builds   1 (>B:ELECTRICAL_Battery_1_Set)
+    ok      parses   the name and the numbers manually, because the entry is master:
+    unknown result   the calculator runs 1 (>B:ELECTRICAL_Battery_1_Set)
+
+──────────────────────────────────────────────────────────────────────────
+
+master: L:NoBranch
+  set: (>NOPREFIX)
+  with no current
+
+    ok      arrives  an update named L:NoBranch
+    unknown applies  only while you are not the pilot in control
+    ok      kind     prepended — starts with (, so the value goes in front
+    ok      builds   1 (>NOPREFIX)
+    ok      parses   the name and the numbers manually, because the entry is master:
+    failed  result   nothing is applied — NOPREFIX matches no branch
+
+──────────────────────────────────────────────────────────────────────────
+
+master: L:MasterSkp
+  with no current
+
+    ok      arrives  an update named L:MasterSkp
+    unknown applies  only while you are not the pilot in control
+    ok      kind     implicit — no set:, so the value is written to L:MasterSkp
+    ok      builds   1 (>L:MasterSkp, Number)
+    ok      parses   the name and the numbers manually, because the entry is master:
+    ok      writes   L:MasterSkp = 1 — as float, Number is ignored
+    unknown writes   L:MasterSkp again, from the calculator — the name matches two write routes and FS Copilot takes both
+    unknown result   1 is written to L:MasterSkp — twice, with the same value
+
+──────────────────────────────────────────────────────────────────────────
+
+master: A:LIGHT LANDING
+  set: (>K:LANDING_LIGHTS_SET)
+  with no current
+
+    ok      arrives  an update named A:LIGHT LANDING
+    unknown applies  only while you are not the pilot in control
+    ok      kind     prepended — starts with (, so the value goes in front
+    ok      builds   1 (>K:LANDING_LIGHTS_SET)
+    ok      parses   the name and the numbers manually, because the entry is master:
+    ok      fires    K:LANDING_LIGHTS_SET with [0] 1
+    unknown fires    K:LANDING_LIGHTS_SET again, from the calculator — the name matches two write routes and FS Copilot takes both
+    unknown result   K:LANDING_LIGHTS_SET fires twice with [0] 1 — the same value both times
+
+──────────────────────────────────────────────────────────────────────────
+
+master: A:AUTOPILOT MASTER
+  set: (>K:AP_MASTER)
+  with no current
+
+    ok      arrives  an update named A:AUTOPILOT MASTER
+    unknown applies  only while you are not the pilot in control
+    ok      kind     prepended — starts with (, so the value goes in front
+    ok      builds   1 (>K:AP_MASTER)
+    ok      parses   the name and the numbers manually, because the entry is master:
+    ok      fires    K:AP_MASTER with [0] 1
+    unknown fires    K:AP_MASTER again, from the calculator — the name matches two write routes and FS Copilot takes both
+    unknown result   K:AP_MASTER fires twice with [0] 1

@@ -1,0 +1,1088 @@
+# Synaptic Simulations A220-300.
+# Authors: AlexdAviator, xip
+# Version: 0.0.1
+# Updated: 2026-09-09
+
+include:
+  - modules/payload.yaml
+  - modules/fuel.yaml
+  # Uncomment to sync GSX ground services (boarding, fuelling, pushback, doors).
+  # Both pilots need GSX installed. Harmless to leave off if only one of you runs it.
+  # - modules/FSDT_GSX.yaml
+
+pointer:
+  - DisplayUnits
+
+master:
+  # ═══ THRUST LEVERS ════════════════════════════════════════════════════════
+
+  - get: L:A22X Throttle L Raw
+    set: "`${Math.round(value * 16383)} (>K:THROTTLE1_SET)`"
+  - get: L:A22X Throttle R Raw
+    set: "`${Math.round(value * 16383)} (>K:THROTTLE2_SET)`"
+  - get: L:A22X Horizontal Stabilizer
+
+  - get: A:RUDDER TRIM PCT, Percent
+
+  # ── Sidestick and pedal animation ─────────────────────────────────────────
+  - get: L:A22X L Sidestick X
+  - get: L:A22X L Sidestick Y
+  - get: L:A22X R Sidestick X
+  - get: L:A22X R Sidestick Y
+
+  # ── Wheel braking ─────────────────────────────────────────────────────────
+  - get: A:BRAKE LEFT POSITION, Position
+  - get: A:BRAKE RIGHT POSITION, Position
+
+shared:
+  # ═══ GLARESHIELD ══════════════════════════════════════════════════════════
+
+  - get: L:A22X L Outboard Brightness
+  - get: L:A22X L Inboard Brightness
+  - get: L:A22X R Inboard Brightness
+  - get: L:A22X R Outboard Brightness
+
+  # ── Master Caution ────────────────────────────────────────────────────────
+  - get: L:A22X Master Caution Warning
+    set: "(>B:AIRLINER_FCU_MASTER_CAUTION_1_Set)"
+
+  # ── Chrono ────────────────────────────────────────────────────────────────
+  - get: L:A22X L Chrono, Number
+    set: (>B:AIRLINER_FCU_CHRONO_1_Set)
+  - get: L:A22X R Chrono, Number
+    set: (>B:AIRLINER_FCU_CHRONO_2_Set)
+
+  # ── Sidestick Priority ────────────────────────────────────────────────────
+  - get: B:AIRLINER_FCU_SIDESTICK_PRIORITY_1_COVER
+    set: (>B:AIRLINER_FCU_SIDESTICK_PRIORITY_1_COVER_Set)
+  - get: B:AIRLINER_FCU_SIDESTICK_PRIORITY_2_COVER
+    set: (>B:AIRLINER_FCU_SIDESTICK_PRIORITY_2_COVER_Set)
+  - get: L:A22X L Sidestick Priority
+  - get: L:A22X R Sidestick Priority
+
+  # ── CPDLC ─────────────────────────────────────────────────────────────────
+  - get: H:A220_FCU_CPDLC_ACPT
+    set: (>B:AIRLINER_FCU_CPDLC_ACPT_1_Set)
+  - get: H:A220_FCU_CPDLC_STBY
+    set: (>B:AIRLINER_FCU_CPDLC_STBY_1_Set)
+  - get: H:A220_FCU_CPDLC_RJCT
+    set: (>B:AIRLINER_FCU_CPDLC_RJCT_1_Set)
+  - get: H:A220_FCU_CPDLC_LOAD
+    set: (>B:AIRLINER_FCU_CPDLC_LOAD_1_Set)
+  - get: H:A220_FCU_CPDLC_REFRESH
+    set: (>B:AIRLINER_FCU_CPDLC_REFRESH_1_Set)
+
+  # ── RANGE ─────────────────────────────────────────────────────────────────
+
+  # JS-only state in DisplayUnits; the H: events are all there is.
+  - get: H:A220_CTP_RANGE_1_INC
+  - get: H:A220_CTP_RANGE_1_DEC
+  - get: H:A220_CTP_RANGE_2_INC
+  - get: H:A220_CTP_RANGE_2_DEC
+
+  - get: H:A220_CTP_WXR_1
+    set: (>B:AIRLINER_CTP_WX_1_Set)
+  - get: H:A220_CTP_WXR_2
+    set: (>B:AIRLINER_CTP_WX_2_Set)
+
+  # ── INDB DSPLY ────────────────────────────────────────────────────────────
+
+  - get: H:A220_CTP_INDB_L_1
+    set: (>B:AIRLINER_CTP_INDB_L_1_Set)
+  - get: H:A220_CTP_INDB_L_2
+    set: (>B:AIRLINER_CTP_INDB_L_2_Set)
+
+  - get: H:A220_CTP_INDB_R_1
+    set: (>B:AIRLINER_CTP_INDB_R_1_Set)
+  - get: H:A220_CTP_INDB_R_2
+    set: (>B:AIRLINER_CTP_INDB_R_2_Set)
+
+  # ── Buttons ───────────────────────────────────────────────────────────────
+
+  - get: H:A220_CTP_MAP_1
+    set: (>B:AIRLINER_CTP_MAP_1_Set)
+  - get: H:A220_CTP_MAP_2
+    set: (>B:AIRLINER_CTP_MAP_1_Set)
+
+  - get: H:A220_CTP_FMS_1
+    set: (>B:AIRLINER_CTP_FMS_1_Set)
+  - get: H:A220_CTP_FMS_2
+    set: (>B:AIRLINER_CTP_FMS_2_Set)
+
+  - get: H:A220_CTP_CNS_1
+    set: (>B:AIRLINER_CTP_CNS_1_Set)
+  - get: H:A220_CTP_CNS_2
+    set: (>B:AIRLINER_CTP_CNS_2_Set)
+
+  - get: H:A220_CTP_CHKL_1
+    set: (>B:AIRLINER_CTP_CHKL_1_Set)
+  - get: H:A220_CTP_CHKL_2
+    set: (>B:AIRLINER_CTP_CHKL_2_Set)
+
+  - get: H:A220_CTP_SYN_1
+    set: (>B:AIRLINER_CTP_SYN_1_Set)
+  - get: H:A220_CTP_SYN_2
+    set: (>B:AIRLINER_CTP_SYN_2_Set)
+
+  - get: H:A220_CTP_DATA_1
+    set: (>B:AIRLINER_CTP_DATA_1_Set)
+  - get: H:A220_CTP_DATA_2
+    set: (>B:AIRLINER_CTP_DATA_2_Set)
+
+  - get: H:A220_CTP_TERR_1
+    set: (>B:AIRLINER_CTP_TERR_1_Set)
+  - get: H:A220_CTP_TERR_2
+    set: (>B:AIRLINER_CTP_TERR_2_Set)
+
+  - get: H:A220_CTP_TFC_1
+    set: (>B:AIRLINER_CTP_TFC_1_Set)
+  - get: H:A220_CTP_TFC_2
+    set: (>B:AIRLINER_CTP_TFC_2_Set)
+
+  - get: H:A220_CTP_WX_1
+    set: (>B:AIRLINER_CTP_WX_1_Set)
+  - get: H:A220_CTP_WX_2
+    set: (>B:AIRLINER_CTP_WX_2_Set)
+
+  - get: L:A22X L Nav Source
+    set: (>B:AIRLINER_CTP_NAV_1_Set)
+  - get: L:A22X R Nav Source
+    set: (>B:AIRLINER_CTP_NAV_2_Set)
+
+  # ── Altimeters ────────────────────────────────────────────────────────────
+  # With v1.0.9, Synaptic started writing to the KOHLSMAN vars, but is still
+  # not reading from them.
+
+  - get: A:KOHLSMAN SETTING MB:1, Millibars
+    set: "`1 ${value * 16} (>K:2:KOHLSMAN_SET)`"
+  - get: A:KOHLSMAN SETTING STD:1, Bool
+    set: "value ? '1 (>K:BAROMETRIC_STD_PRESSURE)' : ''"
+
+  - get: A:KOHLSMAN SETTING MB:2, Millibars
+    set: "`2 ${value * 16} (>K:2:KOHLSMAN_SET)`"
+  - get: A:KOHLSMAN SETTING STD:2, Bool
+    set: "value ? '2 (>K:BAROMETRIC_STD_PRESSURE)' : ''"
+
+  - get: A:KOHLSMAN SETTING MB:3, Millibars
+    set: "`3 ${value * 16} (>K:2:KOHLSMAN_SET)`"
+  - get: A:KOHLSMAN SETTING STD:3, Bool
+    set: "value ? '3 (>K:BAROMETRIC_STD_PRESSURE)' : ''"
+
+  - get: L:A22X L Altimeter HPA, Number
+  - get: L:A22X R Altimeter HPA, Number
+
+  # ═══ CONTROL TUNING PANEL ═════════════════════════════════════════════════
+  # Minimums and CRS in the TUNE MENU not synced.
+
+  - get: L:A22X L CTP Brightness
+  - get: L:A22X R CTP Brightness
+
+  - get: H:A220_CTP_LSK1_1
+    set: (>B:AIRLINER_CTP_LSK1_1_Set)
+  - get: H:A220_CTP_LSK1_2
+    set: (>B:AIRLINER_CTP_LSK1_2_Set)
+  - get: H:A220_CTP_LSK2_1
+    set: (>B:AIRLINER_CTP_LSK2_1_Set)
+  - get: H:A220_CTP_LSK2_2
+    set: (>B:AIRLINER_CTP_LSK2_2_Set)
+  - get: H:A220_CTP_LSK3_1
+    set: (>B:AIRLINER_CTP_LSK3_1_Set)
+  - get: H:A220_CTP_LSK3_2
+    set: (>B:AIRLINER_CTP_LSK3_2_Set)
+  - get: H:A220_CTP_LSK4_1
+    set: (>B:AIRLINER_CTP_LSK4_1_Set)
+  - get: H:A220_CTP_LSK4_2
+    set: (>B:AIRLINER_CTP_LSK4_2_Set)
+
+  - get: H:A220_CTP_RSK1_1
+    set: (>B:AIRLINER_CTP_RSK1_1_Set)
+  - get: H:A220_CTP_RSK1_2
+    set: (>B:AIRLINER_CTP_RSK1_2_Set)
+  - get: H:A220_CTP_RSK2_1
+    set: (>B:AIRLINER_CTP_RSK2_1_Set)
+  - get: H:A220_CTP_RSK2_2
+    set: (>B:AIRLINER_CTP_RSK2_2_Set)
+  - get: H:A220_CTP_RSK3_1
+    set: (>B:AIRLINER_CTP_RSK3_1_Set)
+  - get: H:A220_CTP_RSK3_2
+    set: (>B:AIRLINER_CTP_RSK3_2_Set)
+
+  - get: H:A220_CTP_TUNE_1
+    set: (>B:AIRLINER_CTP_TUNE_1_Set)
+  - get: H:A220_CTP_TUNE_2
+    set: (>B:AIRLINER_CTP_TUNE_2_Set)
+
+  - get: L:A22X L CTP Crosstune, Number
+    set: (>B:AIRLINER_CTP_ACROSS_1_Set)
+  - get: L:A22X R CTP Crosstune, Number
+    set: (>B:AIRLINER_CTP_ACROSS_2_Set)
+
+  # ── Frequencies & Transponder ─────────────────────────────────────────────
+  - get: A:COM ACTIVE FREQUENCY:1, Hz
+    set: (>K:COM_RADIO_SET_HZ)
+  - get: A:COM STANDBY FREQUENCY:1, Hz
+    set: (>K:COM_STBY_RADIO_SET_HZ)
+  - get: A:COM ACTIVE FREQUENCY:2, Hz
+    set: (>K:COM2_RADIO_SET_HZ)
+  - get: A:COM STANDBY FREQUENCY:2, Hz
+    set: (>K:COM2_STBY_RADIO_SET_HZ)
+  - get: A:COM ACTIVE FREQUENCY:3, Hz
+    set: (>K:COM3_RADIO_SET_HZ)
+  - get: A:COM STANDBY FREQUENCY:3, Hz
+    set: (>K:COM3_STBY_RADIO_SET_HZ)
+  - get: A:NAV STANDBY FREQUENCY:1, Hz
+    set: (>K:NAV1_STBY_SET_HZ)
+  - get: A:NAV STANDBY FREQUENCY:2, Hz
+    set: (>K:NAV2_STBY_SET_HZ)
+
+  - get: A:TRANSPONDER CODE:1, BCO16
+    set: (>K:XPNDR_SET)
+  - get: A:TRANSPONDER IDENT:1, Bool
+    set: "value ? '1 (>K:XPNDR_IDENT_ON)' : '1 (>K:XPNDR_IDENT_OFF)'"
+
+  # ═══ FLIGHT CONTROL PANEL ═════════════════════════════════════════════════
+
+  - get: L:A22X FCP Brightness
+
+  - get: L:A22X L Flight Director
+    set: "`${!!value !== !!current ? '1 (>B:AIRLINER_FCU_FD_1_Set)' : ''}`"
+  - get: L:A22X R Flight Director
+    set: "`${!!value !== !!current ? '1 (>B:AIRLINER_FCU_FD_2_Set)' : ''}`"
+
+  - get: L:A22X AP Master
+    set: "value != current ? '(>B:AIRLINER_FCU_AP_Set)' : ''"
+  - get: L:A22X AT Master
+    set: "value != current ? '(>B:AIRLINER_FCU_AT_Set)' : ''"
+
+  - get: L:A22X FG Source
+    set: "value != current ? '1 (>L:A22X FG Source Transfer)' : ''"
+
+  - get: B:AIRLINER_FCU_EDM_COVER
+    set: (>B:AIRLINER_FCU_EDM_COVER_Set)
+  - get: L:A22X FG EDM
+    set: "value != current ? '1 (>B:AIRLINER_FCU_EDM_Set)' : ''"
+
+  # ── Speed ─────────────────────────────────────────────────────────────────
+  - get: L:A22X FG Speed Mode
+
+  - get: K:AP_SPD_VAR_INC
+  - get: K:AP_SPD_VAR_DEC
+  - get: K:AP_MANAGED_SPEED_IN_MACH_TOGGLE # TODO: Switch to non-toggle?
+
+  # ── Heading / Nav / Approach ──────────────────────────────────────────────
+
+  - get: L:A22X FG Heading
+    set: "value != current ? '(>B:AIRLINER_FCU_HDG_Set)' : ''"
+
+  # HEADING KNOB
+  # Not possible to implement a direct value sync. Not possible to repeat an inc/dec
+  # based on delta between peers either as Synaptic collapses the sequence into a
+  # single change. Falling back to syncing inc/dev events...
+  # - get: A:AUTOPILOT HEADING LOCK DIR, Degrees
+  #   set: >
+  #     (() => {
+  #       let delta = value - current;
+  #       if (delta > 180) delta -= 360;
+  #       if (delta < -180) delta += 360;
+  #       const steps = Math.round(delta);
+  #       if (steps === 0) return '';
+  #       const event = steps > 0 ? '(>K:HEADING_BUG_INC)' : '(>K:HEADING_BUG_DEC)';
+  #       return Array(Math.abs(steps)).fill(event).join(' ');
+  #     })()
+  - get: K:HEADING_BUG_INC
+  - get: K:HEADING_BUG_DEC
+  - get: K:HEADING_BUG_SET # PUSH SYNC
+
+  - get: L:A22X FG LNAV
+    set: "value != current ? '(>B:AIRLINER_FCU_NAV_Set)' : ''"
+
+  - get: L:A22X FG Approach
+    set: "value != current ? '(>B:AIRLINER_FCU_APPR_Set)' : ''"
+
+  - get: L:A22X FG Half Bank
+    set: (>B:AIRLINER_FCU_BANK_Set)
+
+  # ── Altitude ──────────────────────────────────────────────────────────────
+
+  - get: L:A22X FG Flight Level
+    set: "value != current ? '(>B:AIRLINER_FCU_FLC_Set)' : ''"
+
+  - get: L:A22X FG Altitude
+    set: "value != current ? '(>B:AIRLINER_FCU_ALT_Set)' : ''"
+
+  - get: L:A22X FG VNAV
+    set: "value != current ? '1 (>B:AIRLINER_FCU_VNAV_Set)' : ''"
+
+  - get: L:A22X FG Altitude Unit
+  - get: L:A22X FG Altitude Fine
+    set: "`${!!value !== !!current ? '1 (>B:AIRLINER_FCU_ALT_PUSH_PUSH_Set)' : ''}`"
+
+  - get: K:AP_ALT_VAR_INC
+  - get: K:AP_ALT_VAR_DEC
+
+  # ── Vertical Speed ────────────────────────────────────────────────────────
+
+  - get: L:A22X FG Vertical Speed
+    set: "value != current ? '(>B:AIRLINER_FCU_VS_Set)' : ''"
+
+  - get: L:A22X FG Flight Path Angle
+    set: "value != current ? '(>B:AIRLINER_FCU_FPA_Set)' : ''"
+
+  - get: K:AP_VS_VAR_INC
+  - get: K:AP_VS_VAR_DEC
+
+  # ═══ OVERHEAD ═════════════════════════════════════════════════════════════
+
+  - get: L:A22X Entrance Lights, Number
+  - get: L:A22X Dome Lights, Number
+
+  # ── AURAL WAWRN ───────────────────────────────────────────────────────────
+  - get: B:AIRLINER_OVH_AURAL_WARN_COVER
+    set: (>B:AIRLINER_OVH_AURAL_WARN_COVER_Set)
+  - get: L:A22X Aural Warn Inhibit, Number
+
+  # ── PROBE HEAT ────────────────────────────────────────────────────────────
+  - get: L:A22X Probe Heat, Number
+
+  # ── WINDOW HEAT ───────────────────────────────────────────────────────────
+  - get: L:A22X L Side Window Heat Off, Number
+  - get: L:A22X R Side Window Heat Off, Number
+  - get: L:A22X L Windshield Heat Off, Number
+  - get: L:A22X R Windshield Heat Off, Number
+
+  # ── PRIM FLT CTRL ─────────────────────────────────────────────────────────
+  - get: B:AIRLINER_OVH_PFCC_1_COVER
+    set: (>B:AIRLINER_OVH_PFCC_1_COVER_Set)
+  - get: B:AIRLINER_OVH_PFCC_2_COVER
+    set: (>B:AIRLINER_OVH_PFCC_2_COVER_Set)
+  - get: B:AIRLINER_OVH_PFCC_3_COVER
+    set: (>B:AIRLINER_OVH_PFCC_3_COVER_Set)
+  - get: L:A22X PFCC 1 Off, Number
+  - get: L:A22X PFCC 2 Off, Number
+  - get: L:A22X PFCC 3 Off, Number
+
+  # ── CVR ───────────────────────────────────────────────────────────────────
+  - get: L:A22X CVR Test, Number
+    set: (>B:AIRLINER_OVH_CVR_TEST_Set)
+  - get: L:A22X CVR Erase, Number
+    set: (>B:AIRLINER_OVH_CVR_ERASE_Set)
+
+  # ── SERV INT & MECH CALL ──────────────────────────────────────────────────
+  - get: L:A22X Mech Call, Number
+    set: (>B:AIRLINER_OVH_MECH_CALL_Set)
+  - get: L:A22X Service Intercom, Number
+
+  # ── Engine Fire & Bottles ─────────────────────────────────────────────────
+  - get: B:AIRLINER_OVH_FIRE_L_COVER
+    set: (>B:AIRLINER_OVH_FIRE_L_COVER_Set)
+  - get: B:AIRLINER_OVH_FIRE_APU_COVER
+    set: (>B:AIRLINER_OVH_FIRE_APU_COVER_Set)
+  - get: B:AIRLINER_OVH_FIRE_R_COVER
+    set: (>B:AIRLINER_OVH_FIRE_R_COVER_Set)
+
+  - get: L:A22X L Eng Fire, Number
+    set: (>B:AIRLINER_OVH_FIRE_L_Set)
+  - get: L:A22X APU Fire, Number
+  - get: L:A22X R Eng Fire, Number
+    set: (>B:AIRLINER_OVH_FIRE_R_Set)
+
+  - get: L:A22X L Eng Fire Bottle 1, Number
+  - get: L:A22X L Eng Fire Bottle 2, Number
+  - get: L:A22X APU Bottle 1, Number
+  - get: L:A22X R Eng Fire Bottle 1, Number
+  - get: L:A22X R Eng Fire Bottle 2, Number
+
+  # ── Hydraulic ─────────────────────────────────────────────────────────────
+  - get: B:AIRLINER_OVH_HYD_1_SOV_COVER
+    set: (>B:AIRLINER_OVH_HYD_1_SOV_COVER_Set)
+  - get: B:AIRLINER_OVH_HYD_2_SOV_COVER
+    set: (>B:AIRLINER_OVH_HYD_2_SOV_COVER_Set)
+  - get: L:A22X Hyd 1 SOV, Number
+  - get: L:A22X Hyd 2 SOV, Number
+  - get: L:A22X ACMP 3A, Number
+  - get: L:A22X ACMP 3B, Number
+  - get: L:A22X ACMP 2B, Number
+  - get: L:A22X PTU, Number
+
+  # ── Electrical ────────────────────────────────────────────────────────────
+  - get: L:A22X Bus Isolation Mode, Number
+
+  - get: B:AIRLINER_OVH_ELEC_CABIN_PWR_COVER
+    set: (>B:AIRLINER_OVH_ELEC_CABIN_PWR_COVER_Set)
+  - get: L:A22X Cabin Power Off, Number
+
+  - get: B:AIRLINER_OVH_ELEC_RAT_GEN_COVER
+    set: (>B:AIRLINER_OVH_ELEC_RAT_GEN_COVER_Set)
+  - get: L:A22X RAT Gen, Number
+
+  - get: A:ELECTRICAL MASTER BATTERY:1, Bool
+    set: (>K:BATTERY1_SET)
+  - get: A:ELECTRICAL MASTER BATTERY:2, Bool
+    set: (>K:BATTERY2_SET)
+
+  - get: L:A22X External Power In Use, Number
+    set: "!!value !== !!current ? '1 (>B:AIRLINER_OVH_EXT_PWR_Set)' : ''"
+
+  - get: L:A22X L Gen Off, Number
+  - get: L:A22X R Gen Off, Number
+  - get: L:A22X APU Gen Off, Number
+
+  - get: B:AIRLINER_OVH_L_DISC_COVER
+    set: (>B:AIRLINER_OVH_L_DISC_COVER_Set)
+  - get: B:AIRLINER_OVH_R_DISC_COVER
+    set: (>B:AIRLINER_OVH_R_DISC_COVER_Set)
+  - get: L:A22X L Gen Disc, Number
+  - get: L:A22X R Gen Disc, Number
+
+  # ── APU ───────────────────────────────────────────────────────────────────
+  - get: L:A22X APU Switch, Number
+
+  # ── TAWS ──────────────────────────────────────────────────────────────────
+  - get: B:AIRLINER_OVH_TAWS_GEAR_COVER
+    set: (>B:AIRLINER_OVH_TAWS_GEAR_COVER_Set)
+  - get: L:A22X TAWS Gear Inhibit, Number
+
+  - get: B:AIRLINER_OVH_TAWS_TERR_COVER
+    set: (>B:AIRLINER_OVH_TAWS_TERR_COVER_Set)
+  - get: L:A22X TAWS Terrain Inhibit, Number
+
+  - get: B:AIRLINER_OVH_TAWS_FLAP_COVER
+    set: (>B:AIRLINER_OVH_TAWS_FLAP_COVER_Set)
+  - get: L:A22X TAWS Flaps Inhibit, Number
+
+  - get: L:A22X TAWS GS Inhibit, Number
+
+  # ── Fuel ──────────────────────────────────────────────────────────────────
+  - get: L:A22X L Boost Pump, Number
+  - get: L:A22X R Boost Pump, Number
+  - get: L:A22X Manual Transfer, Number
+  - get: L:A22X Gravity Transfer, Number
+
+  # ── Air - Bleed & Packs ───────────────────────────────────────────────────
+  - get: L:A22X Cockpit Air, Number
+  - get: L:A22X Fwd Cabin Air, Number
+  - get: L:A22X Aft Cabin Air, Number
+
+  - get: L:A22X Manual Temperature, Number
+
+  - get: L:A22X Fwd Cargo Air, Number
+  - get: L:A22X Aft Cargo Air, Number
+
+  - get: L:A22X Trim Air Off, Number
+
+  - get: L:A22X Pack Flow, Number
+
+  - get: L:A22X Recirc Air Off, Number
+
+  - get: B:AIRLINER_OVH_AIR_RAM_COVER
+    set: (>B:AIRLINER_OVH_AIR_RAM_COVER_Set)
+  - get: L:A22X Ram Air, Number
+
+  - get: L:A22X L Pack Off, Number
+  - get: L:A22X R Pack Off, Number
+
+  - get: L:A22X L Bleed Off, Number
+  - get: L:A22X R Bleed Off, Number
+  - get: L:A22X APU Bleed Off, Number
+  - get: L:A22X Crossbleed, Number
+
+  # ── Anti-ice ──────────────────────────────────────────────────────────────
+  - get: L:A22X L Cowl Anti Ice, Number
+  - get: L:A22X R Cowl Anti Ice, Number
+  - get: L:A22X Wing Anti Ice, Number
+
+  # ── ELT ───────────────────────────────────────────────────────────────────
+  - get: L:A22X Emer Transmitter, Number
+
+  # ── Cargo Fire ────────────────────────────────────────────────────────────
+  - get: B:AIRLINER_OVH_FIRE_CARGO_FWD_COVER
+    set: (>B:AIRLINER_OVH_FIRE_CARGO_FWD_COVER_Set)
+  - get: L:A22X Cargo Fwd Fire, Number
+  - get: B:AIRLINER_OVH_FIRE_CARGO_AFT_COVER
+    set: (>B:AIRLINER_OVH_FIRE_CARGO_AFT_COVER_Set)
+  - get: L:A22X Cargo Aft Fire, Number
+  - get: L:A22X Cargo Fire Bottle, Number
+
+  # ── Equipment Cooling ─────────────────────────────────────────────────────
+  - get: L:A22X Cooling Inlet, Number
+  - get: L:A22X Cooling Exhaust, Number
+
+  # ── Pressurization ────────────────────────────────────────────────────────
+  - get: B:AIRLINER_OVH_EMER_PRESS_COVER
+    set: (>B:AIRLINER_OVH_EMER_PRESS_COVER_Set)
+  - get: L:A22X Emergency Depress, Number
+
+  - get: L:A22X Man Press, Number
+  - get: L:A22X Manual Rate, Number
+
+  - get: B:AIRLINER_OVH_DITCHING_COVER
+    set: (>B:AIRLINER_OVH_DITCHING_COVER_Set)
+  - get: L:A22X Ditching, Number
+
+  - get: B:AIRLINER_OVH_PAX_OXY_COVER
+    set: (>B:AIRLINER_OVH_PAX_OXY_COVER_Set)
+  - get: L:A22X Passenger Oxygen, Number
+
+  # ── EVAC ──────────────────────────────────────────────────────────────────
+  - get: B:AIRLINER_OVH_EVAC_CMD_COVER
+    set: (>B:AIRLINER_OVH_EVAC_CMD_COVER_Set)
+  - get: L:A22X Evac, Number
+
+  # ── Wipers ────────────────────────────────────────────────────────────────
+  - get: L:A22X_WIPER_L, Number
+  - get: L:A22X_WIPER_R, Number
+
+  # ── Exterior lights ───────────────────────────────────────────────────────
+  - get: L:A22X Nav Lights, Number
+  - get: L:A22X Beacon Lights, Number
+  - get: L:A22X Strobe Lights, Number
+  - get: L:A22X Logo Lights, Number
+  - get: L:A22X Wing Insp Lights, Number
+  - get: L:A22X Taxi Lights, Number
+  - get: L:A22X L Landing Lights, Number
+  - get: L:A22X R Landing Lights, Number
+  - get: L:A22X Nose Landing Lights, Number
+
+  # ── Signs ─────────────────────────────────────────────────────────────────
+  - get: L:A22X Seat Belt Lights, Number
+  - get: L:A22X No PED Lights, Number
+
+  # ── Interior lights ───────────────────────────────────────────────────────
+  - get: L:A22X L Reading Lights, Number
+  - get: L:A22X R Reading Lights, Number
+
+  - get: L:A22X Annun Lights, Number
+  - get: L:A22X Emergency Lights, Number
+
+  - get: L:A22X Overhead Integral Lights, Number
+  - get: L:A22X CB Integral Lights, Number
+  - get: L:A22X Compass Lights, Number
+    set: (>B:AIRLINER_OVH_COMPASS_LX_Set)
+
+  - get: L:A22X L Map Lights, Number
+  - get: L:A22X R Map Lights, Number
+
+  # ═══ GEAR & AUTOBRAKE ═════════════════════════════════════════════════════
+
+  # ── Gear ──────────────────────────────────────────────────────────────────
+  - get: A:GEAR HANDLE POSITION, Bool
+    set: (>K:GEAR_SET)
+
+  - get: B:AIRLINER_LDG_ALTN_GEAR_COVER
+    set: (>B:AIRLINER_LDG_ALTN_GEAR_COVER_Set)
+  - get: L:A22X Alternate Gear, Number
+
+  - get: B:AIRLINER_LDG_AURAL_COVER
+    set: (>B:AIRLINER_LDG_AURAL_COVER_Set)
+  - get: L:A22X Gear Aural, Number
+
+  - get: L:A22X Autobrake
+    set: (>K:SET_AUTOBRAKE_CONTROL)
+
+  - get: B:AIRLINER_ALTN_BRAKE_COVER
+    set: (>B:AIRLINER_ALTN_BRAKE_COVER_Set)
+  - get: L:A22X Alternate Brake
+
+  - get: L:A22X Nose Steer Off
+
+  # ═══ KEYBOARD PANEL ═══════════════════════════════════════════════════════
+
+  # MSG
+  - get: H:A220_KBD_MSG_1
+    set: (>B:AIRLINER_KBD_MSG_1_Set)
+  - get: H:A220_KBD_MSG_2
+    set: (>B:AIRLINER_KBD_MSG_2_Set)
+
+  # ROUTE
+  - get: H:A220_KBD_ROUTE_1
+    set: (>B:AIRLINER_KBD_ROUTE_1_Set)
+  - get: H:A220_KBD_ROUTE_2
+    set: (>B:AIRLINER_KBD_ROUTE_2_Set)
+
+  # DIRECT TO
+  - get: H:A220_KBD_DIR_1
+    set: (>B:AIRLINER_KBD_DIR_1_Set)
+  - get: H:A220_KBD_DIR_2
+    set: (>B:AIRLINER_KBD_DIR_2_Set)
+
+  # DEP / ARR
+  - get: H:A220_KBD_DEP_1
+    set: (>B:AIRLINER_KBD_DEP_1_Set)
+  - get: H:A220_KBD_DEP_2
+    set: (>B:AIRLINER_KBD_DEP_2_Set)
+
+  # CNCL, EXEC
+  - get: L:A22X Flight Plan Cancel, Number
+  - get: L:A22X Flight Plan Execute, Number
+  - get: L:A22X Flight Plan Modified, Number
+
+  # ── Letters ───────────────────────────────────────────────────────────────
+  - get: H:A220_KBD_A_1
+    set: (>B:AIRLINER_KBD_A_1_Set)
+  - get: H:A220_KBD_A_2
+    set: (>B:AIRLINER_KBD_A_2_Set)
+  - get: H:A220_KBD_B_1
+    set: (>B:AIRLINER_KBD_B_1_Set)
+  - get: H:A220_KBD_B_2
+    set: (>B:AIRLINER_KBD_B_2_Set)
+  - get: H:A220_KBD_C_1
+    set: (>B:AIRLINER_KBD_C_1_Set)
+  - get: H:A220_KBD_C_2
+    set: (>B:AIRLINER_KBD_C_2_Set)
+  - get: H:A220_KBD_D_1
+    set: (>B:AIRLINER_KBD_D_1_Set)
+  - get: H:A220_KBD_D_2
+    set: (>B:AIRLINER_KBD_D_2_Set)
+  - get: H:A220_KBD_E_1
+    set: (>B:AIRLINER_KBD_E_1_Set)
+  - get: H:A220_KBD_E_2
+    set: (>B:AIRLINER_KBD_E_2_Set)
+  - get: H:A220_KBD_F_1
+    set: (>B:AIRLINER_KBD_F_1_Set)
+  - get: H:A220_KBD_F_2
+    set: (>B:AIRLINER_KBD_F_2_Set)
+  - get: H:A220_KBD_G_1
+    set: (>B:AIRLINER_KBD_G_1_Set)
+  - get: H:A220_KBD_G_2
+    set: (>B:AIRLINER_KBD_G_2_Set)
+  - get: H:A220_KBD_H_1
+    set: (>B:AIRLINER_KBD_H_1_Set)
+  - get: H:A220_KBD_H_2
+    set: (>B:AIRLINER_KBD_H_2_Set)
+  - get: H:A220_KBD_I_1
+    set: (>B:AIRLINER_KBD_I_1_Set)
+  - get: H:A220_KBD_I_2
+    set: (>B:AIRLINER_KBD_I_2_Set)
+  - get: H:A220_KBD_J_1
+    set: (>B:AIRLINER_KBD_J_1_Set)
+  - get: H:A220_KBD_J_2
+    set: (>B:AIRLINER_KBD_J_2_Set)
+  - get: H:A220_KBD_K_1
+    set: (>B:AIRLINER_KBD_K_1_Set)
+  - get: H:A220_KBD_K_2
+    set: (>B:AIRLINER_KBD_K_2_Set)
+  - get: H:A220_KBD_L_1
+    set: (>B:AIRLINER_KBD_L_1_Set)
+  - get: H:A220_KBD_L_2
+    set: (>B:AIRLINER_KBD_L_2_Set)
+  - get: H:A220_KBD_M_1
+    set: (>B:AIRLINER_KBD_M_1_Set)
+  - get: H:A220_KBD_M_2
+    set: (>B:AIRLINER_KBD_M_2_Set)
+  - get: H:A220_KBD_N_1
+    set: (>B:AIRLINER_KBD_N_1_Set)
+  - get: H:A220_KBD_N_2
+    set: (>B:AIRLINER_KBD_N_2_Set)
+  - get: H:A220_KBD_O_1
+    set: (>B:AIRLINER_KBD_O_1_Set)
+  - get: H:A220_KBD_O_2
+    set: (>B:AIRLINER_KBD_O_2_Set)
+  - get: H:A220_KBD_P_1
+    set: (>B:AIRLINER_KBD_P_1_Set)
+  - get: H:A220_KBD_P_2
+    set: (>B:AIRLINER_KBD_P_2_Set)
+  - get: H:A220_KBD_Q_1
+    set: (>B:AIRLINER_KBD_Q_1_Set)
+  - get: H:A220_KBD_Q_2
+    set: (>B:AIRLINER_KBD_Q_2_Set)
+  - get: H:A220_KBD_R_1
+    set: (>B:AIRLINER_KBD_R_1_Set)
+  - get: H:A220_KBD_R_2
+    set: (>B:AIRLINER_KBD_R_2_Set)
+  - get: H:A220_KBD_S_1
+    set: (>B:AIRLINER_KBD_S_1_Set)
+  - get: H:A220_KBD_S_2
+    set: (>B:AIRLINER_KBD_S_2_Set)
+  - get: H:A220_KBD_T_1
+    set: (>B:AIRLINER_KBD_T_1_Set)
+  - get: H:A220_KBD_T_2
+    set: (>B:AIRLINER_KBD_T_2_Set)
+  - get: H:A220_KBD_U_1
+    set: (>B:AIRLINER_KBD_U_1_Set)
+  - get: H:A220_KBD_U_2
+    set: (>B:AIRLINER_KBD_U_2_Set)
+  - get: H:A220_KBD_V_1
+    set: (>B:AIRLINER_KBD_V_1_Set)
+  - get: H:A220_KBD_V_2
+    set: (>B:AIRLINER_KBD_V_2_Set)
+  - get: H:A220_KBD_W_1
+    set: (>B:AIRLINER_KBD_W_1_Set)
+  - get: H:A220_KBD_W_2
+    set: (>B:AIRLINER_KBD_W_2_Set)
+  - get: H:A220_KBD_X_1
+    set: (>B:AIRLINER_KBD_X_1_Set)
+  - get: H:A220_KBD_X_2
+    set: (>B:AIRLINER_KBD_X_2_Set)
+  - get: H:A220_KBD_Y_1
+    set: (>B:AIRLINER_KBD_Y_1_Set)
+  - get: H:A220_KBD_Y_2
+    set: (>B:AIRLINER_KBD_Y_2_Set)
+  - get: H:A220_KBD_Z_1
+    set: (>B:AIRLINER_KBD_Z_1_Set)
+  - get: H:A220_KBD_Z_2
+    set: (>B:AIRLINER_KBD_Z_2_Set)
+
+  # ── Digits ────────────────────────────────────────────────────────────────
+  - get: H:A220_KBD_0_1
+    set: (>B:AIRLINER_KBD_0_1_Set)
+  - get: H:A220_KBD_0_2
+    set: (>B:AIRLINER_KBD_0_2_Set)
+  - get: H:A220_KBD_1_1
+    set: (>B:AIRLINER_KBD_1_1_Set)
+  - get: H:A220_KBD_1_2
+    set: (>B:AIRLINER_KBD_1_2_Set)
+  - get: H:A220_KBD_2_1
+    set: (>B:AIRLINER_KBD_2_1_Set)
+  - get: H:A220_KBD_2_2
+    set: (>B:AIRLINER_KBD_2_2_Set)
+  - get: H:A220_KBD_3_1
+    set: (>B:AIRLINER_KBD_3_1_Set)
+  - get: H:A220_KBD_3_2
+    set: (>B:AIRLINER_KBD_3_2_Set)
+  - get: H:A220_KBD_4_1
+    set: (>B:AIRLINER_KBD_4_1_Set)
+  - get: H:A220_KBD_4_2
+    set: (>B:AIRLINER_KBD_4_2_Set)
+  - get: H:A220_KBD_5_1
+    set: (>B:AIRLINER_KBD_5_1_Set)
+  - get: H:A220_KBD_5_2
+    set: (>B:AIRLINER_KBD_5_2_Set)
+  - get: H:A220_KBD_6_1
+    set: (>B:AIRLINER_KBD_6_1_Set)
+  - get: H:A220_KBD_6_2
+    set: (>B:AIRLINER_KBD_6_2_Set)
+  - get: H:A220_KBD_7_1
+    set: (>B:AIRLINER_KBD_7_1_Set)
+  - get: H:A220_KBD_7_2
+    set: (>B:AIRLINER_KBD_7_2_Set)
+  - get: H:A220_KBD_8_1
+    set: (>B:AIRLINER_KBD_8_1_Set)
+  - get: H:A220_KBD_8_2
+    set: (>B:AIRLINER_KBD_8_2_Set)
+  - get: H:A220_KBD_9_1
+    set: (>B:AIRLINER_KBD_9_1_Set)
+  - get: H:A220_KBD_9_2
+    set: (>B:AIRLINER_KBD_9_2_Set)
+
+  # ── Punctuation ───────────────────────────────────────────────────────────
+  # Panel legends SP, /, . and +/-.
+  - get: H:A220_KBD_SPACE_1
+    set: (>B:AIRLINER_KBD_SPACE_1_Set)
+  - get: H:A220_KBD_SPACE_2
+    set: (>B:AIRLINER_KBD_SPACE_2_Set)
+  - get: H:A220_KBD_SLASH_1
+    set: (>B:AIRLINER_KBD_SLASH_1_Set)
+  - get: H:A220_KBD_SLASH_2
+    set: (>B:AIRLINER_KBD_SLASH_2_Set)
+  - get: H:A220_KBD_DOT_1
+    set: (>B:AIRLINER_KBD_DOT_1_Set)
+  - get: H:A220_KBD_DOT_2
+    set: (>B:AIRLINER_KBD_DOT_2_Set)
+  - get: H:A220_KBD_PLUS_MINUS_1
+    set: (>B:AIRLINER_KBD_PLUS_MINUS_1_Set)
+  - get: H:A220_KBD_PLUS_MINUS_2
+    set: (>B:AIRLINER_KBD_PLUS_MINUS_2_Set)
+
+  # ── Clear and enter ───────────────────────────────────────────────────────
+  # CLR/DEL is the only held key on the panel: the mouse writes 1 on press and 0 on
+  # release, but the input event's _Set only ever writes the 1. A relayed press is
+  # therefore always a tap on the receiving side -- a long hold does not carry across.
+  - get: H:A220_KBD_CLEAR_1
+    set: (>B:AIRLINER_KBD_CLEAR_1_Set)
+  - get: H:A220_KBD_CLEAR_2
+    set: (>B:AIRLINER_KBD_CLEAR_2_Set)
+  - get: H:A220_KBD_ENTER_1
+    set: (>B:AIRLINER_KBD_ENTER_1_Set)
+  - get: H:A220_KBD_ENTER_2
+    set: (>B:AIRLINER_KBD_ENTER_2_Set)
+
+  # ── Page and mode keys ────────────────────────────────────────────────────
+  - get: H:A220_KBD_MAP_1
+    set: (>B:AIRLINER_KBD_MAP_1_Set)
+  - get: H:A220_KBD_MAP_2
+    set: (>B:AIRLINER_KBD_MAP_2_Set)
+  - get: H:A220_KBD_FMS_1
+    set: (>B:AIRLINER_KBD_FMS_1_Set)
+  - get: H:A220_KBD_FMS_2
+    set: (>B:AIRLINER_KBD_FMS_2_Set)
+  - get: H:A220_KBD_CNS_1
+    set: (>B:AIRLINER_KBD_CNS_1_Set)
+  - get: H:A220_KBD_CNS_2
+    set: (>B:AIRLINER_KBD_CNS_2_Set)
+  - get: H:A220_KBD_CHKL_1
+    set: (>B:AIRLINER_KBD_CHKL_1_Set)
+  - get: H:A220_KBD_CHKL_2
+    set: (>B:AIRLINER_KBD_CHKL_2_Set)
+  - get: H:A220_KBD_SYN_1
+    set: (>B:AIRLINER_KBD_SYN_1_Set)
+  - get: H:A220_KBD_SYN_2
+    set: (>B:AIRLINER_KBD_SYN_2_Set)
+  - get: H:A220_KBD_DATA_1
+    set: (>B:AIRLINER_KBD_DATA_1_Set)
+  - get: H:A220_KBD_DATA_2
+    set: (>B:AIRLINER_KBD_DATA_2_Set)
+
+  # ── Arrows, paging, and CAS ───────────────────────────────────────────────
+  - get: H:A220_KBD_LEFT_1
+    set: (>B:AIRLINER_KBD_LEFT_1_Set)
+  - get: H:A220_KBD_LEFT_2
+    set: (>B:AIRLINER_KBD_LEFT_2_Set)
+  - get: H:A220_KBD_RIGHT_1
+    set: (>B:AIRLINER_KBD_RIGHT_1_Set)
+  - get: H:A220_KBD_RIGHT_2
+    set: (>B:AIRLINER_KBD_RIGHT_2_Set)
+  - get: H:A220_KBD_UP_1
+    set: (>B:AIRLINER_KBD_UP_1_Set)
+  - get: H:A220_KBD_UP_2
+    set: (>B:AIRLINER_KBD_UP_2_Set)
+  - get: H:A220_KBD_DOWN_1
+    set: (>B:AIRLINER_KBD_DOWN_1_Set)
+  - get: H:A220_KBD_DOWN_2
+    set: (>B:AIRLINER_KBD_DOWN_2_Set)
+  - get: H:A220_KBD_PREV_1
+    set: (>B:AIRLINER_KBD_PREV_1_Set)
+  - get: H:A220_KBD_PREV_2
+    set: (>B:AIRLINER_KBD_PREV_2_Set)
+  - get: H:A220_KBD_NEXT_1
+    set: (>B:AIRLINER_KBD_NEXT_1_Set)
+  - get: H:A220_KBD_NEXT_2
+    set: (>B:AIRLINER_KBD_NEXT_2_Set)
+  - get: H:A220_KBD_CAS_1
+    set: (>B:AIRLINER_KBD_CAS_1_Set)
+  - get: H:A220_KBD_CAS_2
+    set: (>B:AIRLINER_KBD_CAS_2_Set)
+
+  # ═══ PEDESTAL ═════════════════════════════════════════════════════════════
+
+  # ── Cursor Control Panel ──────────────────────────────────────────────────
+
+  - get: H:A220_DSK_LARGE_1_DEC
+    set: (>B:AIRLINER_DSK_KNOB_LARGE_1_Set)
+  - get: H:A220_DSK_LARGE_2_DEC
+    set: (>B:AIRLINER_DSK_KNOB_LARGE_2_Set)
+  - get: H:A220_DSK_SMALL_1_DEC
+    set: (>B:AIRLINER_DSK_KNOB_SMALL_1_Set)
+  - get: H:A220_DSK_SMALL_2_DEC
+    set: (>B:AIRLINER_DSK_KNOB_SMALL_2_Set)
+
+  - get: H:A220_CCP_DSPL_UPR_1
+    set: (>B:AIRLINER_CCP_DSPL_UPR_1_Set)
+  - get: H:A220_CCP_DSPL_UPR_2
+    set: (>B:AIRLINER_CCP_DSPL_UPR_2_Set)
+  - get: H:A220_CCP_DSPL_LWR_1
+    set: (>B:AIRLINER_CCP_DSPL_LWR_1_Set)
+  - get: H:A220_CCP_DSPL_LWR_2
+    set: (>B:AIRLINER_CCP_DSPL_LWR_2_Set)
+
+  - get: H:A220_CCP_MENU_1
+    set: (>B:AIRLINER_CCP_MENU_1_Set)
+  - get: H:A220_CCP_MENU_2
+    set: (>B:AIRLINER_CCP_MENU_2_Set)
+
+  # ── Audio Control Panel ───────────────────────────────────────────────────
+
+  - get: L:A22X Tx Channel, Number
+    set: |
+      switch (value) {
+          case 0: return '0 (>B:AIRLINER_ACP_PUSH_VHF1_1_Set) 0 (>B:AIRLINER_ACP_PUSH_VHF2_1_Set) 0 (>B:AIRLINER_ACP_PUSH_VHF3_1_Set)'
+          case 1: return '1 (>B:AIRLINER_ACP_PUSH_VHF1_1_Set)'
+          case 2: return '1 (>B:AIRLINER_ACP_PUSH_VHF2_1_Set)'
+          case 3: return '1 (>B:AIRLINER_ACP_PUSH_VHF3_1_Set)'
+          default: return ''
+      }
+
+  - get: L:A22X ACP VHF1 Volume
+  - get: L:A22X ACP VHF2 Volume
+  - get: L:A22X ACP VHF3 Volume
+
+  # ── Reversion ─────────────────────────────────────────────────────────────
+
+  - get: L:A22X Reversion Mode
+
+  - get: H:A220_RSP_INHIB_L
+    set: (>B:AIRLINER_RSP_INHIB_L_Set)
+  - get: H:A220_RSP_INHIB_R
+    set: (>B:AIRLINER_RSP_INHIB_R_Set)
+
+  - get: L:A22X Display Tune Inhibited, Number
+    set: "!!value !== !!current ? '1 (>B:AIRLINER_RSP_INHIB_Set)' : ''"
+
+  - get: H:A220_RSP_ALTN # TODO: HTML event's existence unconfirmed.
+    set: (>B:AIRLINER_RSP_ALTN_Set)
+
+  - get: L:A22X L ADS Reversion, Number
+    set: (>B:AIRLINER_RSP_L_PFD_ADS_Set)
+  - get: L:A22X R ADS Reversion
+    set: (>B:AIRLINER_RSP_R_PFD_ADS_Set)
+
+  - get: L:A22X L IRS Reversion
+    set: (>B:AIRLINER_RSP_L_PFD_IRS_Set)
+  - get: L:A22X R IRS Reversion
+    set: (>B:AIRLINER_RSP_R_PFD_IRS_Set)
+
+  - get: L:A22X ISI ADS Reversion, Number
+    set: (>B:AIRLINER_RSP_ISI_ADS_Set)
+
+  # ── Parking Brake + ALTN FLAP ─────────────────────────────────────────────
+
+  - get: L:A22X Parking Brake
+
+  - get: B:AIRLINER_ALT_FLAP_TOGGLE_COVER
+    set: (>B:AIRLINER_ALT_FLAP_TOGGLE_COVER_Set)
+  - get: L:A22X Alternate Flap
+
+  # ── Engine ────────────────────────────────────────────────────────────────
+
+  - get: L:A22X Engine 1 Master
+    set: (>K:ENGINE_MASTER_1_SET)
+
+  - get: L:A22X Engine 2 Master
+    set: (>K:ENGINE_MASTER_2_SET)
+
+  - get: L:A22X Eng Start Mode
+  - get: L:A22X Continuous Ignition
+  - get: L:A22X Pilot Event
+
+  # ── Spoilers & Flaps ──────────────────────────────────────────────────────
+
+  - get: L:A22X Spoiler Lever
+    set: "`${Math.round(value * 32766 - 16383)} (>K:AXIS_SPOILER_SET)`"
+
+  - get: A:FLAPS HANDLE PERCENT
+    set: "`${Math.round(value * 32766 - 16383)} (>K:AXIS_FLAPS_SET)`"
+
+  # ── Lights & Brightness ───────────────────────────────────────────────────
+
+  - get: L:A22X Lower Brightness
+  - get: L:A22X ISI Brightness
+
+  - get: L:A22X Pedestal Integral Lights
+  - get: L:A22X Glareshield Integral Lights
+
+  - get: L:A22X Flood Lights
+
+  - get: L:A22X DU1 Backlight
+  - get: L:A22X DU2 Backlight
+  - get: L:A22X DU3 Backlight
+  - get: L:A22X DU4 Backlight
+  - get: L:A22X DU5 Backlight
+  - get: L:A22X L MKP Brightness
+  - get: L:A22X R MKP Brightness
+  - get: L:A22X L CTP Backlight
+  - get: L:A22X R CTP Backlight
+  - get: L:A22X FCP Backlight
+  - get: L:A22X Annun Brightness
+
+  # ── Cockpit Door ──────────────────────────────────────────────────────────
+
+  - get: L:A22X Cockpit Door Unlock
+    set: "`${!!value !== !!current ? '(>B:AIRLINER_COCKPIT_DOOR_UNLOCK_Set)' : ''}`"
+  - get: L:A22X Cockpit Door Open
+  - get: L:A22X Aural Cockpit Door
+
+  - get: L:A22X Emer Access
+    set: "`${!!value !== !!current ? '(>B:AIRLINER_EMER_ACCESS_Set)' : ''}`"
+
+  # ═══ CIRCUIT BREAKERS ═════════════════════════════════════════════════════
+
+  - get: L:A22X Circuit Breaker L A1
+  - get: L:A22X Circuit Breaker L A2
+  - get: L:A22X Circuit Breaker L A3
+  - get: L:A22X Circuit Breaker L A4
+  - get: L:A22X Circuit Breaker L A5
+  - get: L:A22X Circuit Breaker L B1
+  - get: L:A22X Circuit Breaker L B2
+  - get: L:A22X Circuit Breaker L B3
+  - get: L:A22X Circuit Breaker L B4
+  - get: L:A22X Circuit Breaker L B5
+  - get: L:A22X Circuit Breaker L C1
+  - get: L:A22X Circuit Breaker L C2
+  - get: L:A22X Circuit Breaker L C3
+  - get: L:A22X Circuit Breaker L C4
+  - get: L:A22X Circuit Breaker L D1
+  - get: L:A22X Circuit Breaker L D2
+  - get: L:A22X Circuit Breaker L D3
+  - get: L:A22X Circuit Breaker L D4
+  - get: L:A22X Circuit Breaker L D5
+  - get: L:A22X Circuit Breaker L E1
+  - get: L:A22X Circuit Breaker L E2
+  - get: L:A22X Circuit Breaker L E3
+  - get: L:A22X Circuit Breaker L E4
+  - get: L:A22X Circuit Breaker L E5
+  - get: L:A22X Circuit Breaker L F1
+  - get: L:A22X Circuit Breaker L F2
+  - get: L:A22X Circuit Breaker L F3
+  - get: L:A22X Circuit Breaker L F4
+  - get: L:A22X Circuit Breaker L F5
+  - get: L:A22X Circuit Breaker L G1
+  - get: L:A22X Circuit Breaker L G2
+  - get: L:A22X Circuit Breaker L H1
+  - get: L:A22X Circuit Breaker L H2
+  - get: L:A22X Circuit Breaker L H3
+  - get: L:A22X Circuit Breaker L H4
+  - get: L:A22X Circuit Breaker L I4
+  - get: L:A22X Circuit Breaker R A1
+  - get: L:A22X Circuit Breaker R A2
+  - get: L:A22X Circuit Breaker R A3
+  - get: L:A22X Circuit Breaker R A4
+  - get: L:A22X Circuit Breaker R A5
+  - get: L:A22X Circuit Breaker R B1
+  - get: L:A22X Circuit Breaker R B2
+  - get: L:A22X Circuit Breaker R B3
+  - get: L:A22X Circuit Breaker R B4
+  - get: L:A22X Circuit Breaker R B5
+  - get: L:A22X Circuit Breaker R C1
+  - get: L:A22X Circuit Breaker R C2
+  - get: L:A22X Circuit Breaker R C3
+  - get: L:A22X Circuit Breaker R C4
+  - get: L:A22X Circuit Breaker R D1
+  - get: L:A22X Circuit Breaker R D2
+  - get: L:A22X Circuit Breaker R D3
+  - get: L:A22X Circuit Breaker R D4
+  - get: L:A22X Circuit Breaker R D5
+  - get: L:A22X Circuit Breaker R E1
+  - get: L:A22X Circuit Breaker R E2
+  - get: L:A22X Circuit Breaker R E3
+  - get: L:A22X Circuit Breaker R E4
+  - get: L:A22X Circuit Breaker R E5
+  - get: L:A22X Circuit Breaker R F1
+  - get: L:A22X Circuit Breaker R F2
+  - get: L:A22X Circuit Breaker R F3
+  - get: L:A22X Circuit Breaker R F4
+  - get: L:A22X Circuit Breaker R F5
+  - get: L:A22X Circuit Breaker R G1
+  - get: L:A22X Circuit Breaker R G2
+  - get: L:A22X Circuit Breaker R H1
+  - get: L:A22X Circuit Breaker R H2
+  - get: L:A22X Circuit Breaker R H3
+  - get: L:A22X Circuit Breaker R H4
+
+  # ═══ INTERIOR ═════════════════════════════════════════════════════════════
+
+  - get: L:A22X L Console Lights, Number
+  - get: L:A22X R Console Lights, Number
+  - get: L:A22X L Bag Lights
+  - get: L:A22X R Bag Lights
+  - get: L:A22X L Foot Lights
+  - get: L:A22X R Foot Lights
+
+  - get: L:A22X L Tiller
+
+  - get: L:INI_OXYTEST_CPT_N, Number
+  - get: L:INI_OXYTEST_FO_N, Number
+  - get: L:INI_OXYTEST_EMER_CPT, Number
+  - get: L:INI_OXYTEST_EMER_FO, Number
+  - get: L:INI_OXYTEST_BLINKER_CPT, Number
+  - get: L:INI_OXYTEST_BLINKER_FO, Number
+
+  - get: L:A22X Maint Mode
+  - get: L:A22X Maint Channel
+  - get: L:A22X Maint Batt Power
+
+  - get: L:A22X Cabin Curtain 1
+  - get: L:A22X Cabin Curtain 2
+
+  # ═══ SETTINGS ═════════════════════════════════════════════════════════════
+
+  - get: L:INI_PAUSE_AT_TOD_ENABLED
+  - get: L:INI_PAUSE_AT_TOD_DISTANCE

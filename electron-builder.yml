@@ -1,0 +1,103 @@
+appId: com.fsceditor.app
+productName: FSC Editor
+
+directories:
+  output: dist
+  buildResources: build
+
+# The renderer is fully bundled by vite and main bundles everything it can, so
+# node_modules is excluded wholesale and then re-admitted one closure at a time.
+#
+# node-simconnect is the single exception, and it is not bundled for a concrete
+# reason: it reaches the registry through `regedit`, which runs `.vbs` scripts
+# that must exist as real files at a path derived from `__dirname`. Bundling it
+# would break that lookup, and excluding it would leave main importing a module
+# that is not there.
+#
+# The list below is node-simconnect's full runtime closure, and has to be
+# regenerated after upgrading it. To recompute: walk `dependencies` transitively
+# from node-simconnect through node_modules and list each package once.
+#
+# Getting this wrong no longer breaks the app — the client loads the module
+# lazily and degrades to "Sim offline" — which is precisely why it has to be
+# checked rather than trusted to announce itself.
+files:
+  - out/**
+  - package.json
+  - "!node_modules/**"
+  - node_modules/core-util-is/**
+  - node_modules/debug/**
+  - node_modules/if-async/**
+  - node_modules/inherits/**
+  - node_modules/ini/**
+  - node_modules/isarray/**
+  - node_modules/ms/**
+  - node_modules/node-simconnect/**
+  - node_modules/process-nextick-args/**
+  - node_modules/readable-stream/**
+  - node_modules/regedit/**
+  - node_modules/safe-buffer/**
+  - node_modules/stream-slicer/**
+  - node_modules/string_decoder/**
+  - node_modules/through2/**
+  - node_modules/util-deprecate/**
+  - node_modules/xtend/**
+
+asar: true
+
+# `cscript` cannot run a script from inside app.asar, and regedit resolves its
+# scripts through `path.join(__dirname, 'vbs')`. Left packed, the registry read
+# fails and node-simconnect falls back to port 2048 — which is not an error
+# anyone would see, just a connection that never happens on machines where the
+# named pipe is absent.
+asarUnpack:
+  - node_modules/regedit/vbs/**
+
+# The Link module, carried as a folder the app can copy rather than as bundled
+# code it can run. `src/main/sim/install.ts` looks for it here first and falls
+# back to `link/Packages/` for a checkout, so the same code path serves both.
+#
+# It has to be a real folder outside the asar: installing means copying it into
+# somebody's Community folder, and MSFS reads the result — an archive it cannot
+# open is no use to it.
+#
+# `link/Packages/` is committed for this. The module cannot be built on a hosted
+# runner — the SDK has no unattended install and `fspackagetool` drives the game
+# executable — so what a maintainer built is the only package there will ever
+# be. See `link/README.md`.
+extraResources:
+  - from: link/Packages/fsc-editor-link
+    to: link/fsc-editor-link
+
+npmRebuild: false
+
+# Where a built release goes, and — more importantly — where an *installed* copy
+# looks for the next one. This block does two things: it uploads the installer,
+# its blockmap and `latest.yml` to the GitHub Release, and it bakes
+# `app-update.yml` into `resources/` so the app knows the feed without being
+# configured at runtime.
+#
+# It works without a token on the client because the repository is public. A
+# private one would need the feed to move — see docs/pipeline/09-open-questions.md.
+publish:
+  provider: github
+  owner: xiprox
+  repo: fsc-editor
+
+win:
+  target:
+    - target: nsis
+      arch: x64
+    - target: portable
+      arch: x64
+
+nsis:
+  artifactName: FSC-Editor-${version}-setup.${ext}
+  oneClick: false
+  perMachine: false
+  allowToChangeInstallationDirectory: true
+  createDesktopShortcut: true
+  createStartMenuShortcut: true
+
+portable:
+  artifactName: FSC-Editor-${version}-portable.${ext}

@@ -1,0 +1,30 @@
+name = "fsce-relay"
+main = "src/index.ts"
+compatibility_date = "2026-08-01"
+
+# One instance per invite code, addressed by `idFromName(code)`.
+[[durable_objects.bindings]]
+name = "SESSIONS"
+class_name = "Session"
+
+# `new_sqlite_classes` rather than `new_classes`: the SQLite backend is the one
+# available on the Workers Free plan, and since July 2026 it is the only backend
+# a new namespace may use anyway.
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["Session"]
+
+# Brute-force protection for join attempts, checked in the Worker before any
+# Durable Object is touched — so a sweep costs one cheap request rather than one
+# object instantiation, and cannot chew through the daily free-tier budget.
+#
+# `period` accepts only 10 or 60. The limit counts per Cloudflare location
+# rather than globally, which is the wrong shape for billing accuracy and the
+# right shape for this: an attacker sweeping codes hits one location hard.
+[[ratelimits]]
+name = "JOIN_LIMIT"
+namespace_id = "1001"
+
+  [ratelimits.simple]
+  limit = 20
+  period = 60

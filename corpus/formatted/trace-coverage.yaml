@@ -1,0 +1,121 @@
+# Every shape the Trace panel can draw — one profile.
+#
+# SYNTHETIC. Unlike the captures beside it this is test data somebody wrote,
+# and it says so. It is not evidence of anything a simulator did; it is a set
+# of entries chosen so that between them they reach every branch of
+# `src/shared/trace.ts`. See fixtures/README.md.
+#
+# The aircraft names are real ones out of the corpus wherever a real one fits,
+# because an entry that could not appear in somebody's profile is a poor test
+# of a panel that reads somebody's profile.
+#
+# Open it in the app and walk the caret down it: every row, state and tooltip
+# the panel has should appear in order. `trace-coverage.test.ts` walks the
+# same file and fails if a branch stops being reachable from it.
+
+name: Trace coverage
+updated: 2026-09-20
+
+shared:
+  # implicit — no set:, the majority of the corpus. Also the plain `A:` read.
+  - get: A:LIGHT LANDING, Bool
+
+  # the toggle guard, on a real line. Drives all three guard states from the
+  # binding matrix: no current, differs, matches.
+  - get: A:GENERAL ENG STARTER:1, Bool
+    set: (>K:TOGGLE_STARTER1)
+
+  # the guard trips on TEXT, not on meaning — `ToggleGuard` is a variable name
+  # and `LANDING_LIGHTS_SET` is not a toggle, yet both substrings are present.
+  - get: L:ToggleBait, Number
+    set: (L:ToggleGuard) 1 (>K:LANDING_LIGHTS_SET)
+
+  # `H:` — the 500 ms outbound delay, and the HTML-event read.
+  - get: H:Piper_Yoke_Hide
+    set: (>H:Piper_Yoke_Hide)
+
+  # `K:` as the watched name — the key-event read branch.
+  - get: K:PARKING_BRAKES
+
+  # `B:` as the watched name — read through the calculator.
+  - get: B:ELECTRICAL_Battery_1
+
+  # no `X:` prefix — never read, and nothing is applied either.
+  - get: LANDING_GEAR_POSITION
+
+  # `skp:` on a shared entry, where it does something.
+  - get: L:ENGINE_Lever_Condition_1, Number
+    skp: L:ENGINE_Lever_Condition_2
+
+  # `>K:#` — the undocumented escape hatch that routes a shared entry the
+  # master way, guard skipped and echo kept.
+  - get: L:HashRouted, Number
+    set: "1 (>K:#LANDING_LIGHTS_SET)"
+
+  # a javascript setter that throws: ApplyTo carries on with an empty string.
+  - get: L:ThrowsOnBuild, Number
+    set: "`${missingBinding.x}`"
+
+  # a javascript setter that builds nothing at all.
+  - get: L:BuildsNothing, Number
+    set: "`${value > 99 ? '1 (>L:BuildsNothing)' : ''}`"
+
+  # literal — sent exactly as written, and the incoming value is ignored.
+  - get: L:LiteralSetter, Number
+    set: 1 (>L:LiteralSetter)
+
+master:
+  # the double fire, on a shipping line: SWS_Pilatus_PC12_5B.yaml:55.
+  - get: A:GENERAL ENG STARTER:1, Bool
+    set: (>K:TOGGLE_STARTER1)
+
+  # arity stripped AND operands reordered — the only shape where the twin says
+  # `rebuilt as`. This is the broken corpus line, thirteen times over.
+  - get: A:KOHLSMAN SETTING MB:1, Millibars
+    set: "`${value * 16} 1 (>K:2:KOHLSMAN_SET)`"
+
+  # a relative step event, with a fraction and a negative to coerce.
+  - get: A:AUTOPILOT ALTITUDE LOCK VAR:1, Feet
+    set: -1.5 (>K:AP_ALT_VAR_INC)
+
+  # six operands — an event carries five.
+  - get: L:SixOperands, Number
+    set: 1 2 3 4 5 6 (>K:ROTOR_BRAKE)
+
+  # an operand ParseParam cannot read as a number, so it travels as 0.
+  - get: L:ZeroedOperand, Number
+    set: (L:SomeVar) 2 (>K:ROTOR_BRAKE)
+
+  # dead-set: no `(>…)` at the end, so the fallback writes the get: name and
+  # the event named here never fires.
+  - get: A:GENERAL ENG THROTTLE LEVER POSITION:1, Percent
+    set: K:THROTTLE1_SET
+
+  # an `A:` write with units, and the CLR type tooltip.
+  - get: A:GENERAL ENG THROTTLE LEVER POSITION:2, Percent
+    set: (>A:GENERAL ENG THROTTLE LEVER POSITION:2, Percent)
+
+  # an `L:` write whose declared units are ignored — SWS PC-12 line 58.
+  - get: L:ENGINE_Push_Ignition_1, Bool
+    set: "`${value} (>L:ENGINE_Push_Ignition_1, Bool)`"
+
+  # a `B:` write — the catch-all is the only route, so no twin row.
+  - get: L:BatteryMirror, Number
+    set: (>B:ELECTRICAL_Battery_1_Set)
+
+  # a name matching none of the four branches — nothing is written.
+  - get: L:NoBranch, Number
+    set: (>NOPREFIX)
+
+  # `skp:` in a master entry, where the !master guard makes it do nothing.
+  - get: L:MasterSkp, Number
+    skp: L:SomeMirror
+
+  # an absolute event: fired twice, it lands the same value both times.
+  - get: A:LIGHT LANDING, Bool
+    set: (>K:LANDING_LIGHTS_SET)
+
+  # an event whose name carries no op at all — really a toggle, and the app
+  # cannot know, so the ending states the count and claims nothing.
+  - get: A:AUTOPILOT MASTER, Bool
+    set: (>K:AP_MASTER)

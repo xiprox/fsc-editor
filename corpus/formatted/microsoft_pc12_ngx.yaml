@@ -1,0 +1,6 @@
+# microsoft_pc12_ngx
+# Updated: 2026-08-25
+
+shared:
+  # Example entry
+  - get: A:AMBIENT TEMPERATURE, Celsius

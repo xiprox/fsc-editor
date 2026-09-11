@@ -1,0 +1,82 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  The Link module, built by MSBuild through the MSFS2024 platform toolset.
+
+  There are no compile or link flags here on purpose. Three earlier attempts
+  drove the SDK's clang and wasm-ld from a shell script, and all three produced
+  a module the simulator rejected — none of them failing at build time. The
+  toolset's own `.targets` carries the right flags, including the allocator
+  exports MSFS calls into, and keeps carrying them across SDK upgrades.
+
+  So this file names a source file and an output path. Everything else is
+  inherited, and should stay that way.
+
+  Output goes straight into `PackageSources/Modules/`, which is where
+  fspackagetool looks for it.
+-->
+<Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup Label="ProjectConfigurations">
+    <ProjectConfiguration Include="Release|MSFS">
+      <Configuration>Release</Configuration>
+      <Platform>MSFS</Platform>
+    </ProjectConfiguration>
+  </ItemGroup>
+
+  <PropertyGroup Label="Globals">
+    <VCProjectVersion>16.0</VCProjectVersion>
+    <ProjectGuid>{6F5C1A20-7C3E-4B84-9E2D-1A7C4D9E0B11}</ProjectGuid>
+    <RootNamespace>FscEditorLink</RootNamespace>
+    <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
+  </PropertyGroup>
+
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
+
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|MSFS'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <UseDebugLibraries>false</UseDebugLibraries>
+    <PlatformToolset>MSFS2024</PlatformToolset>
+    <CharacterSet>MultiByte</CharacterSet>
+  </PropertyGroup>
+
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|MSFS'">
+    <TargetExt>.wasm</TargetExt>
+    <TargetName>fsc-editor-link</TargetName>
+    <GenerateManifest />
+    <LinkIncremental />
+    <!-- Set by the toolset: wasi-sysroot, WASM/include and the SimConnect SDK. -->
+    <IncludePath>$(MSFS_IncludePath)</IncludePath>
+    <OutDir>$(ProjectDir)PackageSources\Modules\</OutDir>
+    <IntDir>$(ProjectDir)build\obj\</IntDir>
+  </PropertyGroup>
+
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|MSFS'">
+    <ClCompile>
+      <WarningLevel>Level3</WarningLevel>
+      <Optimization>MaxSpeed</Optimization>
+      <FunctionLevelLinking>true</FunctionLevelLinking>
+      <IntrinsicFunctions>true</IntrinsicFunctions>
+      <ConformanceMode>true</ConformanceMode>
+      <BufferSecurityCheck>false</BufferSecurityCheck>
+      <ExceptionHandling>false</ExceptionHandling>
+      <DebugInformationFormat>false</DebugInformationFormat>
+      <LanguageStandard>stdcpp14</LanguageStandard>
+      <!-- The wasi/libc++ shims a wasm module is compiled against. -->
+      <PreprocessorDefinitions>__wasi__;_STRING_H_CPLUSPLUS_98_CONFORMANCE_;_WCHAR_H_CPLUSPLUS_98_CONFORMANCE_;_LIBCPP_HAS_NO_THREADS;_WINDLL;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+    </ClCompile>
+    <Link>
+      <!-- A module is not a program: MSFS calls module_init, nothing calls _start. -->
+      <NoEntryPoint>true</NoEntryPoint>
+      <OutputFile>$(OutDir)$(TargetName)$(TargetExt)</OutputFile>
+      <GenerateDebugInformation>false</GenerateDebugInformation>
+      <AdditionalLibraryDirectories>$(OutDir)</AdditionalLibraryDirectories>
+    </Link>
+  </ItemDefinitionGroup>
+
+  <ItemGroup>
+    <ClCompile Include="src\module.cpp" />
+  </ItemGroup>
+
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+</Project>
