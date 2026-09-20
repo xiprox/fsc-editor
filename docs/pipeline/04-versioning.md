@@ -85,18 +85,30 @@ which is not a statement this project is ready to make.
 `package.json` said `0.0.1`, which was a placeholder rather than a version. It
 now says `0.1.0`.
 
-`.release-please-manifest.json` deliberately starts **below** that, at `0.0.0`
-for both components, so that release-please has somewhere to bump *from*. Which
-version the first release PR proposes then depends on what commits happen to
-have landed — a `fix:` alone would produce `0.0.1`, which is not the intended
-first release. So the first release is pinned explicitly, with a footer on any
-commit to `main`:
+`.release-please-manifest.json` starts at `0.0.0` for both components, and that
+is not a version either — it is the value release-please reads as *never
+released*. `manifest.ts` backfills a prior release from the manifest only when
+the entry is something other than `0.0.0`, and with no tags in the repository
+there is nothing else to find one from. So on a first release the bump rules
+above do not run at all; `initialReleaseVersion()` in `strategies/base.ts`
+decides, and its default is `1.0.0`.
 
-```
-Release-As: 0.1.0
+That is what the first release PR proposed. The three `feat:` commits behind it
+are incidental — a lone `fix:` would have proposed `1.0.0` just the same.
+
+So the first version of each component is pinned declaratively:
+
+```json
+"initial-version": "0.1.0"
 ```
 
-After that the ordinary rules take over and nothing needs pinning again.
+A `Release-As: 0.1.0` footer on a commit to `main` does the same job, and is
+what release-please's own docs reach for. It was rejected here because it has
+to be remembered exactly once, by whoever writes that commit, with no check
+that would catch its absence — and `relay` has not had its first release yet,
+so the trap is still armed. The config option is read on every run and needs
+nobody to remember anything. Once a component has a release the option is inert
+and the ordinary rules take over.
 
 **Semver here is a one-way door.** electron-updater compares versions and will
 not offer an older one, so once a build is in somebody's hands the version line

@@ -7,6 +7,7 @@
     ".": {
       "release-type": "node",
       "component": "fsc-editor",
+      "initial-version": "0.1.0",
       "changelog-path": "CHANGELOG.md",
       "exclude-paths": ["relay"],
       "include-component-in-tag": false
@@ -14,6 +15,7 @@
     "relay": {
       "release-type": "node",
       "component": "relay",
+      "initial-version": "0.1.0",
       "changelog-path": "CHANGELOG.md",
       "include-component-in-tag": true
     }
