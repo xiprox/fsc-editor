@@ -169,7 +169,9 @@ voice above. Surfaces still owed a holistic pass, in order:
    "bus" is gone, and the sync partner is *the other pilot* everywhere in
    these surfaces. What is left here is the setter templates, which are long
    and were not written to this voice. Empty states elsewhere still say "this
-   folder" where the table now says *workspace* — not yet swept.
+   folder" where the table now says *workspace* — the Profiles and editor pair
+   were rewritten when the empty workspace landed, and two are left:
+   `remote-connect/profile-picker.tsx` and `variables/index.tsx`.
 4. **Time units** — the `2s` rule above is written but not applied. Four
    places spell it otherwise today: `components/activity/index.tsx` (`}ms`,
    already closed up), `components/log/index.tsx` and
