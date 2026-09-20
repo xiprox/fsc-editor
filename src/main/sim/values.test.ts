@@ -89,6 +89,24 @@ async function replay(
   return batches
 }
 
+/**
+ * What a case that replays is allowed to take.
+ *
+ * Every test in this file that calls `replay` drives a minute or more of
+ * simulated time through the real store, and vitest's five-second default is
+ * a budget for a test that computes something — it has no relationship to the
+ * work here. Two blocks below already said so per case; the blocks that did
+ * not are the ones that went red on CI, where the same replay that costs
+ * 628 ms on a developer's machine ran out of a runner's five seconds. The
+ * first case in a block pays for the module import and the cold run on top,
+ * which is why it was always that one.
+ *
+ * Generous rather than fitted. A timeout is there to catch a test that has
+ * hung, and one sized to how fast the machine that wrote it happened to be
+ * catches a slow runner instead.
+ */
+const SLOW = 30_000
+
 describe("the A: fixture", () => {
   it("is well formed and contains simvar events", () => {
     const events = readCapture(A_VARS)
@@ -143,7 +161,7 @@ describe("the L: fixture", () => {
   })
 })
 
-describe("replay drives A: values", () => {
+describe("replay drives A: values", { timeout: SLOW }, () => {
   it("keeps sending, rather than emitting one set and stopping", async () => {
     const batches = await replay(A_VARS, [
       { name: "A:KOHLSMAN SETTING MB:1", units: "Millibars" },
@@ -187,7 +205,7 @@ describe("replay drives A: values", () => {
   })
 })
 
-describe("replay drives L: values", () => {
+describe("replay drives L: values", { timeout: SLOW }, () => {
   /** Three real `pa24-250.yaml` names, which the fixture is generated from. */
   const watched: SimVarWatch[] = [
     { name: "L:BreakerAutopilot", units: "" },
@@ -298,11 +316,9 @@ describe("replay drives L: values from a real session", () => {
    * it.
    */
   let shared: SimValue[][] | null = null
+  /** Whichever case runs first pays for it, so every case here is `SLOW`. */
   const run = async (): Promise<SimValue[][]> =>
     (shared ??= await replay(REAL_L_VARS, watched, 20_000))
-
-  /** The first case to run pays for the replay. See `run`. */
-  const SLOW = 30_000
 
   it(
     "keeps delivering for as long as the aircraft runs",
@@ -405,8 +421,6 @@ describe("B: values", () => {
   let shared: SimValue[][] | null = null
   const run = async (watch: string): Promise<SimValue[][]> =>
     (shared ??= await replay(BEACON, [{ name: watch, units: "" }], 6_000))
-
-  const SLOW = 30_000
 
   it(
     "delivers an input event's value to the renderer",
