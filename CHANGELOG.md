@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.1](https://github.com/xiprox/fsc-editor/compare/v0.1.0...v0.1.1) (2026-09-20)
+
+
+### Bug Fixes
+
+* **sim:** upadte sim module pitch ([4afcca3](https://github.com/xiprox/fsc-editor/commit/4afcca377a9f261cf8fa8e3343e9b4623c784643))
+
 ## 0.1.0 (2026-09-20)
 
 
