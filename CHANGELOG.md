@@ -1,0 +1,10 @@
+# Changelog
+
+## 0.1.0 (2026-09-20)
+
+
+### Features
+
+* **profiles:** add New profile, and write new profiles immediately ([8af4840](https://github.com/xiprox/fsc-editor/commit/8af4840c51a20499267747b7651dff0ce78406db))
+* **profile:** teach the format in the starter profile ([0fdb9a5](https://github.com/xiprox/fsc-editor/commit/0fdb9a5dd774861ba679b0d8414a63af81b9e351))
+* **workspace:** accept an empty folder at setup ([44f7274](https://github.com/xiprox/fsc-editor/commit/44f72744346e8e1e751ce0b29078eaea8ce91a10))
