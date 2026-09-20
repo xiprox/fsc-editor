@@ -1,6 +1,6 @@
 # FSC Editor
 
-> [!NOTE]
+> [!WARNING]
 > Alpha software. Expect bugs, and expect things to change between versions.
 
 An editor for [FS Copilot](https://github.com/yury-sch/FsCopilot) aircraft profiles, built on the same editor that powers VS Code. It understands the profile format, knows what FS Copilot will do with what you write, and connects to the running sim.
