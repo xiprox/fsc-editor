@@ -918,3 +918,226 @@ fact, em dash, future tense.
 with no button, which is correct where a check has no answer to give. The other
 five lines are unseen — they need a build that can update.
 **Status** pending
+
+## Empty workspace — 2026-09-20
+
+Choosing a folder with nothing in it used to be refused at setup, so the app
+had no from-scratch path at all: no FS Copilot, nobody sent you a profile, no
+way past the first screen. The strings below are what that path now says, from
+the refusal that no longer fires to the file it eventually writes.
+
+**The reader, once.** Somebody who has just pointed the app at an empty folder.
+They may never have seen a profile. The simulator is very often *not* running —
+that is the ordinary state of a profile editor — so nothing here may lean on
+the aircraft being known.
+
+### Profiles — the empty panel
+
+**Where** `components/file-tree.tsx`, `NoProfiles`
+**Venue** the Profiles sidebar, ~212px of usable width, centred vertically in
+the list area: an `Empty` with an icon tile, a 13px title, an 11.5px
+description over three wrapped lines, and one `outline` button
+**Seen when** the workspace holds no `.yaml` files anywhere under it
+**Goal** say the list is empty because there is nothing, not because something
+failed; offer the one way out; and land the naming rule before the field asks
+for a name
+**Constraints** the title must match the editor's state, which is on screen at
+the same time. The description deliberately does *not* — that one is about the
+workspace and what to do with it, this one is the one fact a first profile gets
+wrong, and repeating a sentence eight inches away is not what "say the same
+words" asks for.
+**Draft**
+
+> No profiles yet
+>
+> FS Copilot needs a profile to have the same name as the aircraft's folder in
+> the sim.
+>
+> *button* New profile
+
+**Notes** Replaces `No profiles in this folder.` — a bare `<p>` with no action
+on it, and *folder* where the vocabulary table says *workspace*. "yet" is
+carrying the whole tone: the old line read as a verdict on the folder. The
+description is the naming rule this registry previously flagged as homeless
+under *The name field*; the placeholder is now the reminder rather than the
+only statement of it. A first draft ended *— that name is how FS Copilot finds
+it* and was cut: it is the same fact told backwards, and the em dash made two
+clauses out of one.
+
+*Folder* is the right word and is worth defending in review: the key comes from
+the `AircraftLoaded` path — `SimObjects\AIRPLANES\pa24-250\…\aircraft.CFG` —
+and `folderFromPath` in `main/sim/session.ts` takes the segment after
+`Airplanes`. **The open question is whether a reader knows that.** It is
+`bksq-aircraft-baronpropress`, not *Baron G58*, and nothing in this sentence
+stops somebody typing the name the sim's aircraft list shows. A disambiguating
+tail (*not its title*) was drafted and not taken — it costs a fourth wrapped
+line in a 212px column.
+**Seen** rendered (2026-09-20), against an empty scratch workspace, centred,
+`--muted-foreground` like every other description.
+**Status** pending
+
+### The editor with nothing to open
+
+**Where** `components/editor-empty.tsx`, `NoProfiles`
+**Venue** the middle of the window, full editor width, at panel metrics — 13px
+title over 11.5px description, then at most two buttons
+**Seen when** same condition, with no file open
+**Goal** what the workspace is, and the two things that change it
+**Constraints** two actions at most; must not mention the aircraft, because the
+second half of the sentence has to hold when the sim is off
+**Draft**
+
+> No profiles yet
+>
+> There is nothing in the workspace to edit — start one here, or drop a
+> profile into the folder.
+>
+> *buttons* Create profile for &lt;aircraft&gt; · Rescan
+> *or, with no sim* New profile · Rescan
+
+**Notes** Was *No profiles in this folder* / *Nothing here to edit yet. Add a
+profile to the folder and rescan, or start one for the aircraft in the sim.* —
+whose second clause pointed at a sim that is usually not running, from the one
+state where it was the only offer being made. The em dash is doing
+fact-then-way-out.
+
+It no longer ends *and rescan*, though a Rescan button sits under it: the
+workspace is watched, so a profile dropped into the folder appears on its own,
+and the sentence was teaching the opposite. The button stays as the recovery
+path for a dead watcher — unnarrated, which is the normal case for a control.
+**Seen** rendered (2026-09-20), the aircraft form. The no-sim form is unseen —
+it needs the simulator closed.
+**Status** pending
+
+### The name field
+
+**Where** `components/file-tree.tsx`, `NamingRow` via `NameField`
+**Venue** a 20px input in the top row of the Profiles list, behind the file
+icon, at the top level's indent. A refusal wraps underneath it in 11px muted
+text with a warning glyph.
+**Seen when** *New profile* is pressed, from the panel header or either empty
+state
+**Goal** say what to type without a visible label
+**Constraints** the accessible name carries what the placeholder cannot; the
+placeholder has ~200px and must survive truncation
+**Draft**
+
+> *aria-label* Name of the new profile
+> *placeholder* Aircraft name
+
+**Notes** *Aircraft name* over *Name* because the name is load-bearing: FS
+Copilot loads the aircraft's own folder name plus `.yaml` and nothing else, so
+a free-text name is the one thing a first profile gets wrong. The empty state
+directly above states the rule; this is the reminder while typing.
+**Seen** rendered (2026-09-20), focused, with a refusal under it.
+**Status** pending
+
+### Naming refusals
+
+**Where** `shared/profile/aircraft.ts` `profileFilename`, and `store.ts`
+`createNamedProfile`
+**Venue** under the name field, wrapped, muted; the field keeps the name and
+takes the `aria-invalid` ring
+**Seen when** Enter or blur on a name that cannot be used, or on a write that
+did not happen
+**Goal** say what is wrong with the name in front of them
+**Constraints** plain text, no markdown; the character list must wrap rather
+than truncate, since the characters that fall off the end are the ones needed
+**Draft**
+
+> A profile needs a name.
+>
+> A profile name cannot contain &lt; &gt; : " / \ | ? *
+>
+> &lt;name&gt;.yaml already exists.
+>
+> &lt;name&gt;.yaml is already open.
+
+**Notes** The first two came from `main/files.ts` unchanged, where only rename
+could reach them; they are now the new-profile field's too. The last two are
+new and are deliberately different sentences — *exists* is a file on disk,
+*open* is a profile started a minute ago and not saved yet, and telling them
+apart is the difference between "pick another name" and "you already did this".
+
+Since the named flow writes the file on Enter, `saveRefused`'s sentences from
+`main/files.ts` — the locked-file and full-disk ones, written for the save
+error bar — can now surface **in this field** instead. They were not written
+for a 212px column under an input, and they name FS Copilot as the likely
+culprit, which is odd phrasing for a file that does not exist yet. Worth a look
+in the same pass.
+**Seen** rendered (2026-09-20), the illegal-character one. The disk failures
+are unchecked.
+**Status** pending
+
+### The refused folder
+
+**Where** `components/setup.tsx` `browse`, and
+`components/settings/groups/workspace.tsx` `browse`
+**Venue** a bordered error block under the folder list on the setup screen, and
+under the path box in Settings
+**Seen when** a chosen folder holds files and none of them is a profile — the
+only refusal left, now that an empty folder is accepted
+**Goal** say this folder is not it, and name the thing they were about to try
+next
+**Constraints** one line; the path is data and is not quoted
+**Draft**
+
+> There is nothing to edit in C:\… — an empty folder works too, if you are
+> starting a profile from scratch.
+
+**Notes** Was *— no Definitions folder, and no profile files*, which described
+the old rule and would now read as a refusal of the exact thing somebody came
+here to do. Both surfaces say it identically on purpose.
+**Seen** unchecked — needs a folder of non-profile files.
+**Status** pending
+
+### The setup footer, and the folder dialog
+
+**Where** `components/setup.tsx` footer; `main/workspace.ts` `chooseWorkspace`
+**Venue** 12px muted prose at the foot of the setup screen; the Windows folder
+picker's title bar
+**Seen when** every first run
+**Goal** say that FS Copilot is not required, and now that a folder with
+nothing in it is a real answer
+**Constraints** the footer is already two sentences and should not become four
+**Draft**
+
+> You don't need FS Copilot to use this app — any folder of *.yaml profiles
+> works, and an empty one works too if you are starting a profile from
+> scratch. Choosing the FSC folder also lets you launch, restart and stop it
+> from the title bar.
+>
+> *dialog title* Choose a folder for your profiles
+
+**Notes** The dialog was *Choose your FSC folder*, which asks somebody starting
+from scratch for a thing they do not have.
+**Seen** the footer rendered (2026-09-20); the dialog title unchecked.
+**Status** pending
+
+### The starter profile
+
+**Where** `shared/profile/aircraft.ts` `newProfile`
+**Venue** a file, in the editor, in the editor's own syntax colours — comments
+italic and dim, the one live entry at full strength with its sim value beside
+it. About 50 lines. It is the longest single piece of copy in the app and the
+only one the reader can edit.
+**Seen when** *New profile*, or *Create profile for &lt;aircraft&gt;*
+**Goal** teach the format to somebody who has never seen one, from a workspace
+with no other profile to read
+**Constraints** wrapped to the same 78 columns the formatter pads headings to;
+everything but the one read-only entry is commented out, so the file cannot do
+anything; must survive `formatProfile` unchanged, which is asserted in
+`aircraft.test.ts`
+**Draft** see the function — a header, an `EXAMPLE` section, three subsections
+(*Watching a variable*, *Applying what arrives*, *Holding back a second send*),
+and a closing paragraph naming `master:`, `include:`, `ignore:` and `pointer:`.
+**Notes** Replaces a five-line stub whose whole teaching content was
+`# Example entry`. The explanations are lifted in substance from
+`lib/key-docs.ts`, which is the same material the key hovers show — they should
+be read against each other in a pass, since a reader meets both. Known
+weaknesses: the prose is long, and it repeats in comments what a hover would
+say on demand; and the live entry draws a `not-settable` info squiggle, which
+predates this file and is discussed in the notes on `newProfile`.
+**Seen** rendered (2026-09-20), the whole file, highlighted, with a live value
+on the entry.
+**Status** pending
