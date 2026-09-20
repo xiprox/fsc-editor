@@ -2,6 +2,7 @@ import { constants as fsConstants } from "node:fs"
 import fs from "node:fs/promises"
 import path from "node:path"
 
+import { profileFilename } from "@shared/profile"
 import type { FileContent, ProfileFile } from "@shared/types"
 
 import { isYaml, resolveEntryInside, resolveInside, toRelPath } from "./paths"
@@ -68,12 +69,13 @@ export function compareProfiles(
 }
 
 /**
- * The characters Windows will not have in a filename, named so that typing one
- * gets a sentence rather than an `EINVAL`. Not the whole rule — reserved names
- * and trailing dots are still the filesystem's to refuse, and it does, into
- * the same log.
+ * What a name somebody typed means as a filename lives in
+ * `@shared/profile` — see `profileFilename`. It moved there when naming a
+ * *new* profile arrived, because that one never reaches a disk: the tab is a
+ * buffer until it is saved, so the renderer has to be able to turn down
+ * `A320?` on its own. Two copies of the rule would be two spellings of the
+ * sentence it refuses with, on two surfaces a minute apart.
  */
-const ILLEGAL_NAME = /[<>:"/\\|?*]/
 
 /** A profile's own row in the list, built the way `listFiles` builds one. */
 async function describe(root: string, full: string): Promise<ProfileFile> {
@@ -120,9 +122,9 @@ async function exists(full: string): Promise<boolean> {
  * a profile between folders, because a profile's folder is what says whether
  * FS Copilot loads it as an aircraft or includes it as a module.
  *
- * The extension is added rather than demanded. `A320neo` is what people type,
- * and a name that lost its `.yaml` would stop being a profile without ever
- * looking wrong in the sidebar.
+ * What the typed name means, including the `.yaml` it gains when nobody typed
+ * one, is `profileFilename`'s. Only the part that needs a disk is here: whether
+ * the name is already taken.
  */
 export async function renameFile(
   root: string,
@@ -130,14 +132,12 @@ export async function renameFile(
   name: string
 ): Promise<ProfileFile> {
   const from = resolveInside(root, relPath)
-  const trimmed = name.trim()
 
-  if (!trimmed) throw new Error("A profile needs a name.")
-  if (ILLEGAL_NAME.test(trimmed))
-    throw new Error(`A profile name cannot contain < > : " / \\ | ? *`)
+  const checked = profileFilename(name)
+  if (!checked.ok) throw new Error(checked.reason)
 
   const dir = path.dirname(relPath)
-  const filename = isYaml(trimmed) ? trimmed : `${trimmed}.yaml`
+  const filename = checked.filename
   const to = resolveInside(
     root,
     dir === "." || dir === "" ? filename : `${dir}/${filename}`
