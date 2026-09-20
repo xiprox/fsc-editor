@@ -13,10 +13,13 @@ import { useStore } from "@/store"
  * be two answers to a question with one answer.
  *
  * At most one file can match, so this finds rather than picks — the exact-match
- * rule paying for itself, see `profileKey`. Tabs are searched too because a
- * profile created here is unsaved until the user says otherwise: there is no
- * file yet, but there is very much a profile, and offering to create a second
- * one would be absurd.
+ * rule paying for itself, see `profileKey`.
+ *
+ * Tabs are searched as well as files, for the two cases where a profile exists
+ * without being listed: the frame between `createProfile` writing the file and
+ * the rescan reporting it, and the fallback it takes when that write is
+ * refused, which leaves a real profile in a tab with no file under it. Offering
+ * to create a second one in either case would be absurd.
  */
 export function useAircraftProfile(): {
   aircraft: string | null

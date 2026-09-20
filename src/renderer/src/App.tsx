@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react"
 
-import { RefreshCw, Settings } from "lucide-react"
+import { FilePlus2, Settings } from "lucide-react"
 
 import { EditorGrid } from "@/components/editor-grid"
 import { FileTree } from "@/components/file-tree"
@@ -143,8 +143,7 @@ export function App() {
 }
 
 function Workbench() {
-  const refresh = useStore((state) => state.refresh)
-  const busy = useStore((state) => state.busy)
+  const startNamingProfile = useStore((state) => state.startNamingProfile)
 
   const panel = useStore((state) => state.panel)
   const bottom = useStore((state) => state.bottom)
@@ -204,16 +203,32 @@ function Workbench() {
           className="flex shrink-0 flex-col bg-sidebar text-sidebar-foreground"
           style={{ width: sidebar.width }}
         >
-          {/* Rescanning is an action on this list, so it lives on this list. */}
+          {/*
+            Starting a profile is also offered by the two empty states, and it
+            has to be here as well: those only exist while the list is empty,
+            and the second profile somebody writes is no more findable than the
+            first was.
+
+            **There is no rescan here**, and the list does not need one: the
+            workspace is watched recursively and every change rebuilds it. What
+            a rescan additionally does is rebuild the *variable index*, which
+            `applyFiles` deliberately skips on each watcher tick — and that is a
+            Variables concern, offered by the Variables panel under the same
+            label. Two buttons spelled `Rescan profiles` in one window, one of
+            them on a list that keeps itself current, taught that the sidebar
+            needed nudging. It does not. `watch.ts` names this button as its
+            recovery path if `fs.watch` dies silently; the Variables one and the
+            empty editor's both still serve that.
+          */}
           <PanelHeader title="Profiles">
             <Button
+              className="-me-2"
               variant="ghost"
               size="icon-sm"
-              aria-label="Rescan profiles"
-              disabled={busy}
-              onClick={() => void refresh()}
+              aria-label="New profile"
+              onClick={startNamingProfile}
             >
-              <RefreshCw className={cn(busy && "animate-spin")} />
+              <FilePlus2 />
             </Button>
           </PanelHeader>
           <div className="scrollbar-overlay min-h-0 flex-1 overflow-y-auto">

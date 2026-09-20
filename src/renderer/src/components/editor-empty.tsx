@@ -1,4 +1,10 @@
-import { FileCode2, FolderSearch, Plane, RefreshCw } from "lucide-react"
+import {
+  FileCode2,
+  FilePlus2,
+  FolderSearch,
+  Plane,
+  RefreshCw,
+} from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import {
@@ -25,9 +31,19 @@ import { useStore } from "@/store"
  * **At most two actions, and neither is a menu item in disguise.** Profiles are
  * opened by clicking them and there is no keystroke to teach, so a row of
  * buttons repeating the sidebar would be furniture. What is offered instead is
- * the aircraft — the one thing the app knows that the list does not say, and
- * the only way to make a profile at all — and, when the folder is empty, the
- * rescan that a list nobody is looking at is currently hiding.
+ * the aircraft — the one thing the app knows that the list does not say — and,
+ * when the folder is empty, a profile to start and the rescan that a list
+ * nobody is looking at is currently hiding.
+ *
+ * **Starting a profile and starting the aircraft's profile are one slot**, and
+ * that is what keeps the count at two. They are the same act; the aircraft
+ * version merely arrives with the name already filled in, which is strictly
+ * better whenever there is an aircraft to name it after. Offering both would be
+ * offering the worse one beside the better one. When there is no aircraft —
+ * the sim is not running, which is the ordinary state of a profile editor — the
+ * generic one takes the slot, and that case used to have nothing in it at all:
+ * the folder was empty, the sim was off, and the state's own advice was to go
+ * and load an aeroplane.
  *
  * **Panel metrics, not the component's defaults.** The shadcn sizes are page
  * sizes; every empty state in this app says what it says at 13 px over 11.5,
@@ -60,7 +76,7 @@ function NothingOpen() {
   )
 }
 
-/** The folder itself is empty, which is a different sentence. */
+/** The workspace itself is empty, which is a different sentence. */
 function NoProfiles() {
   return (
     <Empty className="h-full gap-3 p-4">
@@ -68,12 +84,21 @@ function NoProfiles() {
         <EmptyMedia variant="icon">
           <FolderSearch />
         </EmptyMedia>
-        <EmptyTitle className="text-[13px]">
-          No profiles in this folder
-        </EmptyTitle>
+        {/* The same title the Profiles panel shows, because on a blank
+            workspace both are on screen answering the same question. */}
+        <EmptyTitle className="text-[13px]">No profiles yet</EmptyTitle>
+        {/*
+          No "and rescan" on the end of that second clause, though there is a
+          Rescan button under it. The workspace is watched, so a profile
+          dropped into the folder appears on its own — instructing a rescan
+          would teach that it does not, which is the same thing the Profiles
+          header's own rescan button was teaching before it came out. The
+          button stays as the recovery path for a watcher that died; a control
+          the copy does not narrate is the normal case here.
+        */}
         <EmptyDescription className="text-[11.5px]/relaxed">
-          Nothing here to edit yet. Add a profile to the folder and rescan, or
-          start one for the aircraft in the sim.
+          There is nothing in the workspace to edit — start one here, or drop a
+          profile into the folder.
         </EmptyDescription>
       </EmptyHeader>
 
@@ -94,12 +119,19 @@ function NoProfiles() {
  * the nag the aircraft row under Profiles is careful not to be. When there is
  * nothing to press at all the block goes with it, so the state does not end in
  * six pixels of empty gap.
+ *
+ * `rescan` marks the empty-workspace state, and it is the flag for both of the
+ * things that state adds: the rescan itself, and the fall back to naming a
+ * profile by hand when there is no aircraft to name one after. In the ordinary
+ * state — a list, nothing opened from it yet — neither belongs. The profiles
+ * are right there, so there is nothing to start and nothing to rescan for.
  */
 function Actions({ rescan }: { rescan?: boolean }) {
   const busy = useStore((state) => state.busy)
   const refresh = useStore((state) => state.refresh)
   const openLocal = useStore((state) => state.openLocal)
   const createProfile = useStore((state) => state.createProfile)
+  const startNamingProfile = useStore((state) => state.startNamingProfile)
 
   const { aircraft, relPath } = useAircraftProfile()
 
@@ -107,7 +139,7 @@ function Actions({ rescan }: { rescan?: boolean }) {
 
   return (
     <EmptyContent>
-      {aircraft && (
+      {aircraft ? (
         <Button
           tone="sim"
           variant="outline"
@@ -127,6 +159,16 @@ function Actions({ rescan }: { rescan?: boolean }) {
           <span className="max-w-64 truncate" title={aircraft}>
             {aircraft}
           </span>
+        </Button>
+      ) : (
+        /*
+          The field it opens is in the Profiles panel, not here. A name belongs
+          beside the list it is about to appear in, and this pane is about to
+          fill with the file rather than with the question.
+        */
+        <Button variant="outline" size="sm" onClick={startNamingProfile}>
+          <FilePlus2 data-icon="inline-start" />
+          New profile
         </Button>
       )}
 
