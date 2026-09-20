@@ -35,7 +35,19 @@ function report(path: string, problems: Problem[]): string[] {
   )
 }
 
-describe("corpus", () => {
+/**
+ * What a case that walks the whole corpus is allowed to take.
+ *
+ * A hundred and thirty-odd real profiles parsed, formatted and compared is
+ * seconds of honest work, and vitest's five-second default is a budget for a
+ * test that computes something — it was never chosen for this. The setters
+ * case below has carried its own number since it was written; the rest of
+ * the walks were getting away with the default only because the machines
+ * running them were fast. A CI runner is not.
+ */
+const SLOW = 30_000
+
+describe("corpus", { timeout: SLOW }, () => {
   it("has profiles in it", () => {
     // Guards against the silent version of every test below passing: an empty
     // corpus makes all of them vacuous.
@@ -86,20 +98,16 @@ describe("corpus", () => {
   // evaluates it, and doing that four times over every entry in the corpus
   // costs twelve seconds to re-prove the same property. The script still tries
   // all four, because deciding whether an entry is *refused* needs them.
-  it(
-    "resolves every setter without throwing",
-    () => {
-      const failures = files.flatMap((file) =>
-        report(file.path, checkSetters(file.path, file.text, { values: [0] }))
-      )
+  it("resolves every setter without throwing", () => {
+    const failures = files.flatMap((file) =>
+      report(file.path, checkSetters(file.path, file.text, { values: [0] }))
+    )
 
-      expect(failures).toEqual([])
-    },
-    30_000
-  )
+    expect(failures).toEqual([])
+  })
 })
 
-describe("corpus golden output", () => {
+describe("corpus golden output", { timeout: SLOW }, () => {
   it("matches what the formatter produces now", () => {
     const missing: string[] = []
     const differing: string[] = []
