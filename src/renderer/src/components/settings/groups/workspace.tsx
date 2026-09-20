@@ -31,9 +31,10 @@ export function WorkspaceGroup() {
     const pick = await chooseWorkspace()
     setBusy(false)
 
+    // The same sentence setup shows for the same refusal — see `browse` there.
     if (!pick.ok && pick.reason === "no-profiles")
       setError(
-        `There is nothing to edit in ${pick.path} — no Definitions folder, and no profile files.`
+        `There is nothing to edit in ${pick.path} — an empty folder works too, if you are starting a profile from scratch.`
       )
   }
 

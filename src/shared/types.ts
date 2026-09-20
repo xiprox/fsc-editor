@@ -183,6 +183,11 @@ export interface About {
 export type WorkspacePick =
   | { ok: true; workspace: Workspace }
   | { ok: false; reason: "canceled" }
+  /**
+   * The folder holds files, and none of them is a profile — which is now the
+   * only way a chosen folder is turned down. An *empty* folder is accepted, as
+   * a workspace with nothing in it yet; see `resolveChosenFolder`.
+   */
   | { ok: false; reason: "no-profiles"; path: string }
 
 export interface ProfileFile {

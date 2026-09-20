@@ -176,8 +176,12 @@ export function Setup() {
 
     if (pick.ok || pick.reason === "canceled") return
 
+    // Only reachable now for a folder that holds files and none of them is a
+    // profile — an empty one is accepted. So the sentence has to say that,
+    // otherwise somebody who came here to start from scratch reads a refusal
+    // for the thing they were about to try next.
     setError(
-      `There is nothing to edit in ${pick.path} — no Definitions folder, and no profile files.`
+      `There is nothing to edit in ${pick.path} — an empty folder works too, if you are starting a profile from scratch.`
     )
   }
 
@@ -318,9 +322,10 @@ export function Setup() {
           */}
           <div className="space-y-1.5 text-xs leading-normal text-pretty text-muted-foreground/70">
             You don&rsquo;t need FS Copilot to use this app — any folder of
-            <span className="font-mono"> *.yaml</span> profiles works. Choosing
-            the FSC folder also lets you launch, restart and stop it from
-            the title bar.
+            <span className="font-mono"> *.yaml</span> profiles works, and an
+            empty one works too if you are starting a profile from scratch.
+            Choosing the FSC folder also lets you launch, restart and stop it
+            from the title bar.
           </div>
         </div>
       </div>
