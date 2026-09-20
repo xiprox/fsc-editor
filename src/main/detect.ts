@@ -112,6 +112,63 @@ export async function resolveFolder(dir: string): Promise<Resolved | null> {
 }
 
 /**
+ * Whether a directory has no files of its own.
+ *
+ * Subfolders do not count. A `Definitions` whose profiles were all moved into
+ * `modules/` is a workspace someone is in the middle of reorganising, not a
+ * folder they pointed at by mistake, and the file that decides between those
+ * two readings is a *file*.
+ *
+ * The three names Windows and macOS leave behind are ignored, because a folder
+ * made thirty seconds ago in Explorer can already hold a `desktop.ini` and the
+ * user has no idea it is there. Refusing their new folder over a file they
+ * cannot see is the worst possible answer.
+ */
+async function hasNoFiles(dir: string): Promise<boolean> {
+  const junk = new Set(["desktop.ini", "thumbs.db", ".ds_store"])
+
+  try {
+    const entries = await fs.readdir(dir, { withFileTypes: true })
+    return !entries.some(
+      (entry) => entry.isFile() && !junk.has(entry.name.toLowerCase())
+    )
+  } catch {
+    // Missing, or unreadable. Either way it is not an empty folder we can use.
+    return false
+  }
+}
+
+/**
+ * What a folder somebody pointed at **on purpose** is — the native picker, an
+ * `FSCE_WORKSPACE`, or the folder they settled on last time.
+ *
+ * `resolveFolder` above is detection's gate, and it has to stay strict: it is
+ * asked about every directory a folder walk reaches, and a rule that accepted
+ * blank folders there would offer the user a list of every empty directory on
+ * the machine. Nothing about that reasoning applies to a folder a person
+ * navigated to and pressed *Use this folder* on.
+ *
+ * So this adds exactly one case: a folder with no files in it is accepted, as
+ * a workspace with nothing in it yet. That is the whole of starting a profile
+ * from scratch — make a folder, choose it, name a profile — and it used to be
+ * the one thing setup would not let you do, which left somebody who does not
+ * own FS Copilot and has not been sent a profile with no way past the first
+ * screen.
+ *
+ * A folder full of *something else* is still refused, and that is the line: the
+ * check exists to catch `C:\Windows` chosen by accident, and a directory with
+ * files in it that are not profiles is the only shape that has ever been.
+ */
+export async function resolveChosenFolder(
+  dir: string
+): Promise<Resolved | null> {
+  const resolved = await resolveFolder(dir)
+  if (resolved) return resolved
+
+  return (await hasNoFiles(dir)) ? { root: dir, installRoot: null } : null
+}
+
+/**
  * Absolute Windows paths mentioned anywhere in a blob of text.
  *
  * `reg.exe` output and shortcut targets both arrive as lines with a path

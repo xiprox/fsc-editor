@@ -5,6 +5,7 @@ import path from "node:path"
 import { afterEach, beforeEach, describe, expect, test } from "vitest"
 
 import {
+  resolveChosenFolder,
   resolveFolder,
   walkFolders,
   walkRoots,
@@ -110,6 +111,73 @@ describe("resolveFolder", () => {
 
   test("a folder that does not exist is refused", async () => {
     expect(await resolveFolder(at("nope"))).toBeNull()
+  })
+
+  // The strictness that `resolveChosenFolder` relaxes has to stay here, because
+  // this is the rule detection is held to: a walk that accepted blank folders
+  // would offer setup a list of every empty directory on the machine.
+  test("an empty folder is refused, because detection reaches thousands", async () => {
+    await tree({ "blank/": "" })
+
+    expect(await resolveFolder(at("blank"))).toBeNull()
+  })
+})
+
+describe("resolveChosenFolder", () => {
+  // The case the whole relaxation exists for: no FS Copilot, nobody sent you a
+  // profile, so you make a folder and start one.
+  test("an empty folder is accepted, as a workspace with nothing in it yet", async () => {
+    await tree({ "blank/": "" })
+
+    expect(await resolveChosenFolder(at("blank"))).toEqual({
+      root: at("blank"),
+      installRoot: null,
+    })
+  })
+
+  test("a folder holding only subfolders is still empty enough", async () => {
+    await tree({ "blank/modules/": "" })
+
+    expect(await resolveChosenFolder(at("blank"))).toEqual({
+      root: at("blank"),
+      installRoot: null,
+    })
+  })
+
+  // A folder made a moment ago in Explorer can already hold one of these, and
+  // the user has no idea it is there.
+  test("Windows' own leftovers do not make a folder non-empty", async () => {
+    await tree({ "blank/desktop.ini": "[.ShellClassInfo]", "blank/Thumbs.db": "" })
+
+    expect(await resolveChosenFolder(at("blank"))).toEqual({
+      root: at("blank"),
+      installRoot: null,
+    })
+  })
+
+  // Where the line is: the check exists to catch a folder chosen by accident,
+  // and a folder with files in it that are not profiles is the only shape that
+  // has ever been.
+  test("a folder full of something else is still refused", async () => {
+    await tree({ "notes/readme.txt": "" })
+
+    expect(await resolveChosenFolder(at("notes"))).toBeNull()
+  })
+
+  test("a folder that does not exist is refused", async () => {
+    expect(await resolveChosenFolder(at("nope"))).toBeNull()
+  })
+
+  test("an install still resolves the way it always did", async () => {
+    await tree({
+      "FsCopilot/FsCopilot.exe": "",
+      "FsCopilot/Definitions/A350.yaml": "shared:\n",
+    })
+
+    expect(await resolveChosenFolder(at("FsCopilot"))).toEqual({
+      root: at("FsCopilot", "Definitions"),
+      installRoot: at("FsCopilot"),
+    })
   })
 })
 

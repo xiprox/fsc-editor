@@ -13,6 +13,7 @@ import type {
 
 import {
   detectWorkspaces,
+  resolveChosenFolder,
   resolveFolder,
   type DetectDeps,
 } from "./detect"
@@ -126,6 +127,12 @@ export function stopDetect(): void {
  * folder was — and spawning PowerShell before the window can decide what to
  * draw is a hitch on a path that should have none. Finding a folder is setup's
  * job, and setup is the one screen that can afford to wait.
+ *
+ * Both attempts go through `resolveChosenFolder` rather than `resolveFolder`,
+ * because both *are* chosen folders — one typed into an environment variable,
+ * one accepted on this screen already. The strict rule here would send someone
+ * who adopted a blank folder yesterday, and has not saved a profile into it
+ * yet, back to setup on every launch until they did.
  */
 export async function locateWorkspace(): Promise<Workspace | null> {
   const attempts: Array<[WorkspaceSource, string | undefined]> = [
@@ -136,7 +143,7 @@ export async function locateWorkspace(): Promise<Workspace | null> {
   for (const [source, candidate] of attempts) {
     if (!candidate) continue
 
-    const resolved = await resolveFolder(candidate)
+    const resolved = await resolveChosenFolder(candidate)
     if (!resolved) continue
 
     current = { ...resolved, source }
@@ -153,9 +160,19 @@ export async function locateWorkspace(): Promise<Workspace | null> {
  * renderer, which got it from a detection that may be minutes old by the time
  * anybody clicked the button, and a folder that has since moved should fail
  * like a bad folder rather than become the workspace.
+ *
+ * `chosen` says which of the two rules to re-resolve under. A row in setup's
+ * list is detection's own offer and is held to detection's rule; a folder from
+ * the native picker was navigated to by hand, and an empty one is somebody
+ * starting a profile from scratch. See `resolveChosenFolder`.
  */
-export async function adoptWorkspace(dir: string): Promise<Workspace | null> {
-  const resolved = await resolveFolder(dir)
+export async function adoptWorkspace(
+  dir: string,
+  chosen = false
+): Promise<Workspace | null> {
+  const resolved = chosen
+    ? await resolveChosenFolder(dir)
+    : await resolveFolder(dir)
   if (!resolved) return null
 
   current = { ...resolved, source: "manual" }
@@ -167,16 +184,21 @@ export async function chooseWorkspace(
   window: BrowserWindow
 ): Promise<WorkspacePick> {
   const result = await dialog.showOpenDialog(window, {
-    title: "Choose your FSC folder",
+    // Not "your FSC folder" any more: a new, empty folder is a valid answer
+    // now, and somebody starting from scratch does not have an FSC folder to
+    // be asked for. `createDirectory` is macOS-only and free here — Windows'
+    // own folder picker already has *New folder* in it, which is the button
+    // that makes the blank-workspace case work at all.
+    title: "Choose a folder for your profiles",
     buttonLabel: "Use this folder",
-    properties: ["openDirectory"],
+    properties: ["openDirectory", "createDirectory"],
     defaultPath: current?.installRoot ?? current?.root,
   })
 
   const picked = result.filePaths[0]
   if (result.canceled || !picked) return { ok: false, reason: "canceled" }
 
-  const workspace = await adoptWorkspace(picked)
+  const workspace = await adoptWorkspace(picked, true)
 
   // Rejection travels back as a value. The screen that asked for this folder is
   // already explaining what one looks like, and a native alert on top of that
