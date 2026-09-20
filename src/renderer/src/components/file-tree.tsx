@@ -6,6 +6,7 @@ import {
   ClipboardCopy,
   Copy,
   FileCode2,
+  FilePlus2,
   Folder,
   FolderOpen,
   Hash,
@@ -18,6 +19,7 @@ import {
 import { nodesAtLine, type OutlineNode } from "@shared/profile"
 import type { ProfileFile } from "@shared/types"
 
+import { Button } from "@/components/ui/button"
 import {
   ContextMenu,
   ContextMenuContent,
@@ -26,6 +28,14 @@ import {
   ContextMenuShortcut,
   ContextMenuTrigger,
 } from "@/components/ui/context-menu"
+import {
+  Empty,
+  EmptyContent,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyMedia,
+  EmptyTitle,
+} from "@/components/ui/empty"
 import { Input } from "@/components/ui/input"
 import { cn } from "@/lib/utils"
 import { revealLine } from "@/lib/editor-bridge"
@@ -35,13 +45,20 @@ import { useStore } from "@/store"
 const EXPANDED_KEY = "expanded-folders"
 const INDENT = 12
 const BASE_PADDING = 8
+/** A row glyph — `size-3.5` — and the row's `gap-1`, in px. */
+const GLYPH = 14
+const GAP = 4
+
 /**
  * How far into a row the name itself starts: the spacer and the icon in front
  * of it, plus the two `gap-1`s. Anything that belongs to the *name* rather than
  * to the row — the field's refusal, so far — lines up here rather than under the
  * icons, which are about the file.
  */
-const NAME_INSET = 36
+const NAME_INSET = GLYPH + GAP + GLYPH + GAP
+
+/** The same for a row that reserves no chevron column — see `NamingRow`. */
+const NAME_INSET_FLUSH = GLYPH + GAP
 
 type TreeNode =
   | { type: "file"; name: string; path: string }
@@ -179,33 +196,46 @@ async function copy(text: string): Promise<void> {
 /**
  * The row, while it is a name being typed rather than a file being pointed at.
  *
+ * Both namings use it: renaming a profile, and naming one that does not exist
+ * yet. They are the same interaction — a field where a row is, at the row's
+ * indent, behind the row's icon — and the only thing that differs is what it
+ * starts with and who answers the commit. Two components would have been two
+ * chances to disagree about Esc, about blur, or about what a refusal does.
+ *
  * Committing on blur rather than reverting, the way Explorer does: clicking
  * away from a name you have finished typing means you finished typing it. Esc
  * is the way out, and it is the only way out, so `settled` stops the blur that
  * follows either ending from arriving as a second answer.
  *
- * **A refused name keeps the field.** Windows turns down two kinds of name —
- * one already taken, one with characters a filename cannot hold — and both of
- * those leave you with a name that is still yours to fix. So `onCommit` is a
- * question rather than a goodbye: it answers, and *still being mounted when it
- * answers* is what says the rename did not land. That is what reopens `settled`,
- * and it is the only thing that can — keying the reset off the `error` prop
- * would deadlock the field the second time the same name is refused, since an
- * unchanged string is a render React is entitled to skip.
+ * **A refused name keeps the field.** There are three kinds of refusal — a name
+ * already taken, one with characters a filename cannot hold, one that is
+ * nothing at all — and every one of them leaves you with a name that is still
+ * yours to fix. So `onCommit` is a question rather than a goodbye: it answers,
+ * and *still being mounted when it answers* is what says the name did not land.
+ * That is what reopens `settled`, and it is the only thing that can — keying
+ * the reset off the `error` prop would deadlock the field the second time the
+ * same name is refused, since an unchanged string is a render React is entitled
+ * to skip.
  *
- * It is also why blur no longer always ends this. Only the rename landing does,
+ * It is also why blur no longer always ends this. Only the name landing does,
  * and the row it lands on is rebuilt by the rescan that follows.
  */
-function RenameField({
+function NameField({
   name,
+  label,
+  placeholder,
   error,
   onCommit,
   onCancel,
 }: {
+  /** The name to start from — empty when the profile does not exist yet. */
   name: string
-  /** Why the last attempt was refused, from `renameProfile`. */
+  /** What the field is for, since there is no visible label beside it. */
+  label: string
+  placeholder?: string
+  /** Why the last attempt was refused, from the store. */
   error: string | null
-  /** Resolves when the rename has been answered — see the note above. */
+  /** Resolves when the attempt has been answered — see the note above. */
   onCommit: (name: string) => Promise<void>
   onCancel: () => void
 }) {
@@ -250,7 +280,8 @@ function RenameField({
     <Input
       ref={field}
       value={value}
-      aria-label={`Rename ${name}`}
+      aria-label={label}
+      placeholder={placeholder}
       aria-invalid={!!error}
       onChange={(event) => setValue(event.target.value)}
       onBlur={() => settle(true)}
@@ -268,39 +299,61 @@ function RenameField({
 }
 
 /**
- * The row while a new name is being typed, and the one place a refusal appears.
+ * The row while a name is being typed, and the one place a refusal appears.
  *
  * Its own component so the refusal lives exactly as long as the field does —
  * held in `Row`, it would be one more thing to remember to clear, and it would
  * outlive the field on any path that closed it without going through here.
  *
- * The commit no longer closes the row. It asks, and closes on `null`: a rename
- * Windows refused has left the user with a name that is still theirs to fix, and
+ * The commit does not close the row. It asks, and closes on `null`: a name that
+ * was turned down has left the user with one that is still theirs to fix, and
  * taking the field away would take the name with it. What closes this on success
  * is `onDone`; what closes it on a rescan is the list being rebuilt underneath.
+ *
+ * `commit` is the only thing that differs between renaming a profile and naming
+ * a new one, which is why this takes it rather than knowing which it is.
  */
-function RenamingRow({
-  node,
+function NamingRow({
+  name,
+  label,
+  placeholder,
   padding,
+  aligned = true,
+  commit,
   onDone,
 }: {
-  node: TreeNode & { type: "file" }
+  name: string
+  label: string
+  placeholder?: string
   padding: React.CSSProperties
+  /**
+   * Whether to reserve the chevron's column in front of the icon.
+   *
+   * A rename is a row of the list wearing a field, and it has to stay lined up
+   * with the rows above and below it. Naming a *new* profile is a prompt above
+   * the list rather than a row in it — and in the case it exists for, an empty
+   * workspace, there is nothing underneath to line up with at all, so the
+   * reserved column is just a gap in front of the icon with no explanation.
+   */
+  aligned?: boolean
+  /** The refusal, or null when the name landed. */
+  commit: (name: string) => Promise<string | null>
   onDone: () => void
 }) {
-  const renameProfile = useStore((store) => store.renameProfile)
   const [error, setError] = useState<string | null>(null)
 
   return (
     <div style={padding} className="flex w-full flex-col py-1 pr-2">
       <div className="flex w-full items-center gap-1">
-        <span className="size-3.5 shrink-0" />
+        {aligned && <span className="size-3.5 shrink-0" />}
         <FileCode2 className="size-3.5 shrink-0 text-muted-foreground" />
-        <RenameField
-          name={node.name}
+        <NameField
+          name={name}
+          label={label}
+          placeholder={placeholder}
           error={error}
-          onCommit={(name) =>
-            renameProfile(node.path, name).then((refused) => {
+          onCommit={(typed) =>
+            commit(typed).then((refused) => {
               setError(refused)
               if (!refused) onDone()
             })
@@ -321,7 +374,7 @@ function RenamingRow({
       */}
       {error && (
         <p
-          style={{ paddingLeft: NAME_INSET }}
+          style={{ paddingLeft: aligned ? NAME_INSET : NAME_INSET_FLUSH }}
           className="flex items-start gap-1.5 pt-1 text-[11px] text-muted-foreground"
         >
           <TriangleAlert className="mt-px size-3 shrink-0" />
@@ -377,6 +430,7 @@ function Row({
   const root = useStore((store) => store.workspace?.root ?? "")
   const duplicateProfile = useStore((store) => store.duplicateProfile)
   const deleteProfile = useStore((store) => store.deleteProfile)
+  const renameProfile = useStore((store) => store.renameProfile)
   /** Whether the menu closing is the rename item passing focus to the field. */
   const handingOff = useRef(false)
   /**
@@ -475,9 +529,11 @@ function Row({
   // the middle of naming, and none of them is what the question is about.
   if (state.renaming === node.path)
     return (
-      <RenamingRow
-        node={node}
+      <NamingRow
+        name={node.name}
+        label={`Rename ${node.name}`}
         padding={padding}
+        commit={(name) => renameProfile(node.path, name)}
         onDone={() => state.onRenaming(null)}
       />
     )
@@ -637,6 +693,9 @@ function Row({
 export function FileTree() {
   const files = useStore((state) => state.files)
   const activePath = useStore((state) => state.activePath)
+  const namingProfile = useStore((state) => state.namingProfile)
+  const createNamedProfile = useStore((state) => state.createNamedProfile)
+  const cancelNamingProfile = useStore((state) => state.cancelNamingProfile)
   const tree = useMemo(() => buildTree(files), [files])
   const list = useRef<HTMLDivElement>(null)
   /**
@@ -697,15 +756,46 @@ export function FileTree() {
     })
   }
 
+  /*
+   * The field sits at the top of the list rather than at the bottom, and at the
+   * top level's own indent, because the top level is the only place it can
+   * create anything: a name with a separator in it is refused, since a
+   * profile's folder decides whether FS Copilot loads it as an aircraft or
+   * includes it as a module. So the row is where the file will be.
+   */
+  const naming = namingProfile && (
+    <NamingRow
+      name=""
+      label="Name of the new profile"
+      placeholder="Aircraft name"
+      padding={{ paddingLeft: BASE_PADDING }}
+      aligned={false}
+      commit={createNamedProfile}
+      onDone={cancelNamingProfile}
+    />
+  )
+
+  /*
+   * The empty state stands down while a name is being typed. It exists to say
+   * there is nothing here and offer the one way out of that, and both halves
+   * are answered the moment somebody takes the offer — leaving it under the
+   * field would have the panel still asking a question the user is in the
+   * middle of answering.
+   */
+  // `h-full` so the empty state can centre itself in the panel rather than
+  // sitting at the top of a column it does not fill. The scroll container it
+  // lives in is a plain block, so without a height to resolve against, the
+  // component's own `justify-center` has nothing to do.
   if (!files.length)
     return (
-      <p className="px-3 py-2 text-xs text-muted-foreground">
-        No profiles in this folder.
-      </p>
+      <div ref={list} className="h-full">
+        {naming || <NoProfiles />}
+      </div>
     )
 
   return (
     <div ref={list}>
+      {naming}
       {tree.map((node) => (
         <Row
           key={node.path}
@@ -715,5 +805,48 @@ export function FileTree() {
         />
       ))}
     </div>
+  )
+}
+
+/**
+ * Nothing on disk — a folder chosen empty at setup, or one whose profiles have
+ * all been moved away.
+ *
+ * The title is the one the empty editor uses, because on a blank workspace both
+ * are on screen at once and they are answering the same question. The sentence
+ * under it is deliberately *not* the editor's. That one is about the workspace
+ * and what to do with it; this one is the naming rule, which is the single fact
+ * a first profile gets wrong and which until now lived nowhere but a
+ * placeholder. Two panels saying the same words about one state is the rule;
+ * saying the same sentence twice, eight inches apart, is not what it asks for.
+ *
+ * It states the mechanism and stops. The first draft added *— that name is how
+ * FS Copilot finds it*, which is the same fact told backwards: once the
+ * sentence says what FS Copilot loads, "so call it that" is not a second thing
+ * the reader needs told. `docs/copy.md` — name the mechanism, not the advice.
+ */
+function NoProfiles() {
+  const startNamingProfile = useStore((state) => state.startNamingProfile)
+
+  return (
+    <Empty className="h-full gap-3 p-4">
+      <EmptyHeader className="gap-1.5">
+        <EmptyMedia variant="icon">
+          <FileCode2 />
+        </EmptyMedia>
+        <EmptyTitle className="text-[13px]">No profiles yet</EmptyTitle>
+        <EmptyDescription className="text-[11.5px]/relaxed">
+          FS Copilot needs a profile to have the same name as the aircraft&rsquo;s folder
+          in the sim.
+        </EmptyDescription>
+      </EmptyHeader>
+
+      <EmptyContent>
+        <Button variant="outline" size="sm" onClick={startNamingProfile}>
+          <FilePlus2 data-icon="inline-start" />
+          New profile
+        </Button>
+      </EmptyContent>
+    </Empty>
   )
 }
