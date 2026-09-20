@@ -8,7 +8,10 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
-import { Mono, SimModuleGroup } from "@/components/settings/groups/sim-module"
+import {
+  SimModuleGroup,
+  SimModulePitch,
+} from "@/components/settings/groups/sim-module"
 
 /**
  * The install flow, focused.
@@ -36,17 +39,7 @@ export function SimInstallDialog({
         <DialogHeader>
           <DialogTitle>Install the sim module</DialogTitle>
           <DialogDescription>
-            {/*
-              Concrete rather than abstract, which 04 asks for by name. "Live
-              values" means nothing on its own; the 84% of a profile written
-              against `L:` variables is the actual offer, and it is the reason
-              the module exists at all.
-            */}
-            FSC Editor reads <Mono>A:</Mono> and <Mono>B:</Mono> from MSFS on
-            its own. The Link package adds <Mono>L:</Mono> variables — live
-            values in the editor, the full list for the aircraft you have
-            loaded, and completions that know what the simulator actually has
-            rather than only what somebody has already written.
+            <SimModulePitch />
           </DialogDescription>
         </DialogHeader>
 

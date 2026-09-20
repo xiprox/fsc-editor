@@ -1141,3 +1141,64 @@ predates this file and is discussed in the notes on `newProfile`.
 **Seen** rendered (2026-09-20), the whole file, highlighted, with a live value
 on the entry.
 **Status** pending
+
+## Sim module — 2026-09-20
+
+The pitch that explains why an editor wants to write a package into somebody's
+game install. It predates the help overhaul and had never been through here.
+
+**The reader, once.** Somebody who has just been told, by the footer chip or by
+Settings, that they are missing something. They may not know what an `L:`
+variable is. The simulator may or may not be running.
+
+### The sim module pitch
+
+**Where** `components/settings/groups/sim-module.tsx`, `SimModulePitch`
+**Venue** two surfaces, one component. In the chip's focused dialog it is the
+`DialogDescription` under *Install the sim module*, at dialog width; in Settings
+it is a muted `p` at the top of the Simulator section. Both wrap to about four
+lines.
+**Seen when** the footer chip is used while the module is absent, or Settings
+opens on Simulator
+**Goal** say what installing buys, concretely enough to decide on; and say what
+still works without it, so the choice does not read as a threat
+**Constraints** the vocabulary table — **sim module**, never *Link package*;
+**the app** in body copy, never *FSC Editor*; **the aircraft in the sim**, never
+*the aircraft you have loaded*. `A:` and `L:` render through `Mono`. It must
+stay true to what the module actually gates and claim nothing more.
+**Draft**
+
+> `L:` variables live inside the aircraft, where the app cannot reach them on
+> its own — so without the sim module you write a name and hope it is right.
+> With it you stop guessing: the aircraft tells you what it has, the values move
+> while you fly, and a setter either lands or it doesn't. The rest of the
+> connection works either way.
+
+**Notes** Replaces a string that broke the vocabulary table three times in two
+sentences and existed as two copies, one per file, free to drift — the dialog's
+title said *sim module* while its own body said *Link package*. One component
+now, rendered as a fragment because one container is a `DialogDescription` and
+the other a `p`.
+
+A draft in between was thrown out for being a list: *adds `L:` variables — the
+full list the aircraft has, their values live in the editor, completions built
+from what exists, and setters you can run*. Every clause of it was true and
+nobody would have read past the second comma. 04's *concrete rather than
+abstract* is not a licence to enumerate — the concrete thing is the difference
+the module makes, and the capabilities carry further as evidence for a claim
+than as inventory.
+
+The claims are checked, not asserted. *Tells you what it has* is enumeration,
+which FS Copilot's own module provably cannot do
+([03-link](../sim-vars/03-link.md) — "It is a watcher, not an enumerator");
+*the values move while you fly* is the module's tick; *a setter either lands or
+it doesn't* is `runnableNow` in `run-setter/widget.tsx`, which refuses to run
+one without the module. **Running setters was absent from the original copy**,
+which sold the module as read-only.
+
+*The rest of the connection works either way* stands in for a sentence naming
+`A:` variables, input events and the aircraft in the sim. That was accurate and
+was a third list in a paragraph that had already had two; what the reader
+actually needs is that nothing they have is being taken away.
+**Seen** unchecked — not yet watched rendering in the app.
+**Status** pending

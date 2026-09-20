@@ -12,6 +12,19 @@ import { Button } from "@/components/ui/button"
 import { useStore } from "@/store"
 
 /**
+ * What the module buys you, in one breath.
+ */
+export function SimModulePitch() {
+  return (
+    <>
+      The sim module unlocks current aircraft detection, real-time variable 
+      values, code completion with verified names, various diagnostics based 
+      on sim data, the ability to run setter functions in the sim, and more.
+    </>
+  )
+}
+
+/**
  * The install flow's body — everything between a container's header and its
  * close affordance. Two containers render it: the sim chip's focused dialog
  * (`sim/install-dialog.tsx`), which keeps the pitch in its header, and the
@@ -103,14 +116,7 @@ export function SimModuleGroup({ showPitch = false }: { showPitch?: boolean }) {
     <div className="flex flex-col gap-3">
       {showPitch && (
         <p className="text-muted-foreground">
-          {/* Concrete rather than abstract, which 04 asks for by name. "Live
-              values" means nothing on its own; the 84% of a profile written
-              against `L:` variables is the actual offer. */}
-          FSC Editor reads <Mono>A:</Mono> and <Mono>B:</Mono> from MSFS on its
-          own. The Link package adds <Mono>L:</Mono> variables — live values in
-          the editor, the full list for the aircraft you have loaded, and
-          completions that know what the simulator actually has rather than
-          only what somebody has already written.
+          <SimModulePitch />
         </p>
       )}
 
@@ -134,7 +140,7 @@ export function SimModuleGroup({ showPitch = false }: { showPitch?: boolean }) {
 
           {shipped === null && (
             <Problem>
-              This build does not carry the Link package. Run{" "}
+              This build does not carry the sim module. Run{" "}
               <Mono>npm run link:build</Mono> in a checkout, or use a release
               build.
             </Problem>
