@@ -83,6 +83,21 @@ publish:
   provider: github
   owner: xiprox
   repo: fsc-editor
+  # Not decoration, and not the default. electron-builder publishes to a *draft*
+  # release unless told otherwise, and a draft publisher refuses to touch a
+  # release that is already published: it matches the tag, logs "GitHub release
+  # not created" as a warning, and returns null. Warning, not error — so the job
+  # goes green and the release has no installer in it. That is how v0.1.0
+  # shipped empty.
+  #
+  # Here release-please always creates the release first, and creates it
+  # published. So the publisher has to be willing to upload into one.
+  #
+  # The same method has a second guard behind this one: it also declines a
+  # release published more than two hours ago, unless EP_GH_IGNORE_TIME is set.
+  # It never fires on a normal run, where the release is minutes old — but it is
+  # what will bite a re-run of a publish that failed overnight.
+  releaseType: release
 
 win:
   target:
