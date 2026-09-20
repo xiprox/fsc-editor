@@ -126,7 +126,12 @@ export function SimModuleGroup({ showPitch = false }: { showPitch?: boolean }) {
         <Written result={result} sim={sim} />
       ) : (
         <>
-          <Target folder={target} onBrowse={() => void browse()} />
+          <Target
+            folder={target}
+            busy={busy}
+            onBrowse={() => void browse()}
+            onUninstall={offerUninstall ? () => void uninstall() : null}
+          />
 
           {installed && (
             <Status
@@ -146,37 +151,16 @@ export function SimModuleGroup({ showPitch = false }: { showPitch?: boolean }) {
             </Problem>
           )}
 
-          {(offerInstall || offerUninstall) && (
+          {offerInstall && (
             <div className="flex items-center gap-2">
-              {offerInstall && (
-                <Button
-                  size="sm"
-                  disabled={busy || !target || shipped === null}
-                  onClick={() => void install()}
-                >
-                  {busy && <Loader2 className="animate-spin" />}
-                  {installed ? "Repair" : "Install"}
-                </Button>
-              )}
-
-              {/*
-                Uninstall sits apart from the primary action and is never the
-                emphasised one. It is offered because we wrote into somebody's
-                game install — 04 asks for it in as many words — not because it
-                is a thing anyone is being encouraged to do.
-              */}
-              {offerUninstall && (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="ml-auto"
-                  disabled={busy}
-                  onClick={() => void uninstall()}
-                >
-                  <Trash2 />
-                  Uninstall
-                </Button>
-              )}
+              <Button
+                size="sm"
+                disabled={busy || !target || shipped === null}
+                onClick={() => void install()}
+              >
+                {busy && <Loader2 className="animate-spin" />}
+                {installed ? "Repair" : "Install"}
+              </Button>
             </div>
           )}
         </>
@@ -204,13 +188,23 @@ function Problem({ children }: { children: React.ReactNode }) {
  * One line, because on a normal machine there is one right answer and the user
  * gains nothing by being walked through how it was reached. `Change` is the
  * whole of the override, and it opens next to what was proposed.
+ *
+ * `Uninstall` sits with it rather than beside the primary action, because both
+ * of these act on the folder named underneath them and neither belongs to the
+ * flow that button drives. It is offered at all because we wrote into
+ * somebody's game install — 04 asks for it in as many words — not because it
+ * is a thing anyone is being encouraged to do.
  */
 function Target({
   folder,
+  busy,
   onBrowse,
+  onUninstall,
 }: {
   folder: CommunityFolder | null
+  busy: boolean
   onBrowse: () => void
+  onUninstall: (() => void) | null
 }) {
   return (
     <div className="flex flex-col gap-1.5">
@@ -218,10 +212,23 @@ function Target({
         <span className="font-medium">
           {folder?.installed ? "Installed in" : "Install to"}
         </span>
-        <Button variant="ghost" size="xs" onClick={onBrowse}>
-          <FolderOpen />
-          Change
-        </Button>
+        <div className="flex items-center gap-1">
+          <Button variant="ghost" size="xs" onClick={onBrowse}>
+            <FolderOpen />
+            Change
+          </Button>
+          {onUninstall && (
+            <Button
+              variant="ghost"
+              size="xs"
+              disabled={busy}
+              onClick={onUninstall}
+            >
+              <Trash2 />
+              Uninstall
+            </Button>
+          )}
+        </div>
       </div>
 
       {folder ? (
