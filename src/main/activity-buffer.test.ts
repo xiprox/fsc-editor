@@ -101,9 +101,19 @@ describe("when it wraps", () => {
     expect(events[0]!.t).toBe(1_000)
     expect(events.at(-1)!.t).toBe(CAPACITY + 999)
 
-    for (let n = 1; n < events.length; n += 1) {
-      expect(events[n]!.t).toBeGreaterThan(events[n - 1]!.t)
-    }
+    /*
+     * Walked in plain JS and asserted once, rather than 180,000 `expect`s.
+     *
+     * The same fill in the case below costs 15 ms; this one was costing a
+     * second and a half, and all of it was the assertions. It bought nothing
+     * either: a failure reported two timestamps and left working out *where*
+     * in the ring they came from as an exercise, which is the one thing worth
+     * knowing about a seam.
+     */
+    const backwards = events.findIndex(
+      (event, n) => n > 0 && event.t <= events[n - 1]!.t
+    )
+    expect(backwards, "the record at this index went backwards").toBe(-1)
   })
 
   it("still decodes names correctly after wrapping", () => {
