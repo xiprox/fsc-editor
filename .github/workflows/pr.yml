@@ -31,12 +31,53 @@ jobs:
         with:
           fetch-depth: 0
 
+      # A pull request that only edits prose has nothing here to find, and
+      # spends several minutes of Windows runner proving it.
+      #
+      # The steps are gated rather than the job, and `npm ci` with them. A
+      # skipped job reports `skipped`, which a required status check reads as
+      # never satisfied — every docs pull request would sit unmergeable. A job
+      # whose steps no-op reports `success`.
+      #
+      # The list names what runs the checks rather than what skips them, so it
+      # has to stay complete: a path nobody adds is a path that skips every
+      # check in silence. The module guard hashes `link/`, the corpus tests
+      # live under `scripts/`, and a dependency bump touches only
+      # `package.json`.
+      - name: Changed paths
+        id: scope
+        shell: bash
+        run: |
+          changed=$(git diff --name-only "origin/${{ github.base_ref }}...HEAD")
+          echo "Changed files:"
+          echo "$changed" | sed 's/^/  /'
+
+          if [ -z "$changed" ]; then
+            code=true
+          else
+            code=false
+            while IFS= read -r file; do
+              case "$file" in
+                src/* | relay/* | link/* | scripts/* | corpus/*) code=true ;;
+                package.json | package-lock.json) code=true ;;
+                tsconfig*.json) code=true ;;
+                vitest.config.ts | electron.vite.config.ts) code=true ;;
+                .github/workflows/pr.yml) code=true ;;
+              esac
+            done <<< "$changed"
+          fi
+
+          echo "code=$code" >> "$GITHUB_OUTPUT"
+          echo "Runs the code checks: $code"
+
       - uses: actions/setup-node@v4
+        if: steps.scope.outputs.code == 'true'
         with:
           node-version: 22
           cache: npm
 
       - run: npm ci
+        if: steps.scope.outputs.code == 'true'
 
       # `npm run lint` and `npm run format:check` are deliberately NOT here.
       # The tree does not pass either one today — 123 eslint errors, 484 files
@@ -55,20 +96,24 @@ jobs:
       # docs/pipeline/08-module.md — a failure here means somebody with MSFS
       # and the SDK has to run `npm run link:build`, and there is no other fix.
       - name: Module guards
+        if: steps.scope.outputs.code == 'true'
         run: npm run check:module
 
       - name: Tests
+        if: steps.scope.outputs.code == 'true'
         run: npm test
 
       # The relay compiles against the app's own src/shared/remote-connect.ts.
       # This step is what makes editor/relay parity structural rather than
       # something anybody maintains.
       - name: Relay typecheck
+        if: steps.scope.outputs.code == 'true'
         run: npm run relay:check
 
       # Bundles main, preload and renderer, and runs `tsc -b` on the way in.
       # electron-builder is not run here — packaging is a release concern.
       - name: Build
+        if: steps.scope.outputs.code == 'true'
         run: npm run build
 
       # Not blocking, deliberately. It reports a real visual difference, but a
@@ -76,5 +121,6 @@ jobs:
       # there is no way to acknowledge one yet. Red and ignorable beats red and
       # unmergeable until there is. See docs/pipeline/09-open-questions.md.
       - name: Cascade
+        if: steps.scope.outputs.code == 'true'
         continue-on-error: true
         run: npm run check:cascade -- origin/${{ github.base_ref }}
