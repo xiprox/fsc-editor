@@ -92,7 +92,7 @@ Disable rather than remove, so a row never reflows as things become available.
 ### Panel actions are icon buttons
 
 `<Button variant="ghost" size="icon-sm" aria-label="…"><Icon /></Button>`,
-matching the Profiles panel's rescan button. A `variant="link"` text button is
+matching the Profiles panel's *New profile* button. A `variant="link"` text button is
 unfinished scaffolding and should not survive into a panel.
 
 ## Adding a component

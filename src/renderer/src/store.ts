@@ -3,6 +3,7 @@ import { create } from "zustand"
 import {
   newProfile,
   parseOutline,
+  profileFilename,
   profileKey,
   type OutlineNode,
 } from "@shared/profile"
@@ -20,6 +21,7 @@ import { messageOf } from "@/lib/errors"
 import { setWatchResolution } from "@/lib/watch-resolution"
 import type { SimState } from "@shared/sim"
 import type {
+  FileContent,
   FscState,
   ProfileFile,
   RestoredDraft,
@@ -361,13 +363,39 @@ interface State {
    */
   openFile: (relPath: string, options?: { group?: string }) => Promise<void>
   /**
-   * Opens a starter profile for an aircraft that has none, unsaved.
+   * Writes a starter profile for an aircraft that has none, and opens it.
    *
    * Named for the aircraft rather than taking a path, because the name *is* the
    * path — that 1:1 rule is what lets a button offer this without asking where
    * to put anything. See `profileKey`.
+   *
+   * No refusal comes back: the offer is a button with nowhere to show one, so a
+   * write that fails falls back to an unsaved buffer and the log. See the
+   * implementation.
    */
   createProfile: (aircraft: string) => Promise<void>
+  /**
+   * Whether Profiles is currently asking for a new profile's name.
+   *
+   * In the store rather than in `FileTree` because the field is in one panel
+   * and three things open it — the Profiles header, the Profiles empty state,
+   * and the empty editor in the middle of the window. A workspace with nothing
+   * in it shows two of those at once, and neither is inside the other.
+   */
+  namingProfile: boolean
+  /** Opens the name field in Profiles, from wherever the offer was made. */
+  startNamingProfile: () => void
+  /** Closes it, having created nothing. */
+  cancelNamingProfile: () => void
+  /**
+   * Writes a starter profile under a name somebody typed, opens it, and answers
+   * whether it happened.
+   *
+   * The refusal comes back rather than only going to the log, for the reason
+   * `renameProfile`'s does: the thing that asked is a field with the name still
+   * in it, and a name that cannot be used is a question still open.
+   */
+  createNamedProfile: (name: string) => Promise<string | null>
   /**
    * Renames a profile on disk and moves its tab across with it.
    *
@@ -785,6 +813,8 @@ async function enter(
     open: {},
     outlines: {},
     comparing: {},
+    // A half-typed name belongs to the folder it was going to be created in.
+    namingProfile: false,
   })
 
   // Drafts belong to a folder. Whatever the last one had outstanding is not
@@ -807,6 +837,69 @@ async function enter(
   }
 
   if (get().workspace === workspace) saveTabs(workspace.root, sessionOf(get()))
+}
+
+/**
+ * Puts the starter template in a tab of the focused group.
+ *
+ * `saved` is what is on disk, which is the whole of the difference between the
+ * two ways this is reached: the written text when the file exists, and `""`
+ * when it does not. That one field decides everything downstream — a buffer
+ * whose `saved` is `""` is dirty from its first frame, so the dot shows,
+ * closing routes through `confirmDiscard`, `save` writes it and records a real
+ * mtime, and `applyFiles` knows to keep it because its file is not on disk.
+ */
+function openScaffold(
+  set: SetState,
+  relPath: string,
+  content: string,
+  saved: string,
+  mtimeMs: number
+): void {
+  set((state) => ({
+    ...commit(
+      withTab(state.groups, state.focusedGroup, relPath),
+      state.focusedGroup
+    ),
+    open: { ...state.open, [relPath]: { saved, draft: content, mtimeMs } },
+    outlines: { ...state.outlines, [relPath]: parseOutline(content) },
+    // Whichever way a profile just appeared, the field asking for a name is
+    // asking about a question that has been answered.
+    namingProfile: false,
+  }))
+}
+
+/**
+ * Writes a new profile, lists it, and opens it clean. The refusal, or null.
+ *
+ * Both ways of making one go through here, so they cannot drift on the order
+ * of those three steps — and the order is the point. The listing happens
+ * *before* the tab, the way `duplicateProfile` does it, so the file is a row in
+ * the sidebar by the time its tab appears rather than a tab for a file the list
+ * denies. The watcher reports the same write a moment later and finds nothing
+ * left to change.
+ *
+ * `content` is the caller's so that a failure can reuse it without building a
+ * second copy that might carry a different date across midnight.
+ */
+async function startProfile(
+  set: SetState,
+  get: () => State,
+  relPath: string,
+  content: string
+): Promise<string | null> {
+  let written: FileContent
+  try {
+    written = await window.api.writeFile(relPath, content)
+  } catch (error) {
+    logFailure("create", error)
+    return messageOf(error)
+  }
+
+  await get().applyFiles(await window.api.listFiles())
+  openScaffold(set, relPath, written.content, written.content, written.mtimeMs)
+
+  return null
 }
 
 /**
@@ -987,6 +1080,7 @@ export const useStore = create<State>((set, get) => ({
   workspace: null,
   initialized: false,
   files: [],
+  namingProfile: false,
   vars: null,
   ...blankGroups(),
   orientation: "row",
@@ -1428,17 +1522,22 @@ export const useStore = create<State>((set, get) => ({
   },
 
   /*
-   * Nothing is written. The scaffold is seeded straight into a tab as a buffer
-   * with no file behind it, so the offer is "here is what one looks like"
-   * rather than a folder that quietly grew a file: saving it creates the file,
-   * closing it asks, and discarding leaves the workspace exactly as it was.
+   * The file is written, the same as `createNamedProfile` — a button that says
+   * *Create profile* and leaves nothing behind in the sidebar is reporting a
+   * failure it did not have.
    *
-   * `saved: ""` is what makes that work. It is the file's content on disk —
-   * which is nothing, because there is no file — so the tab is dirty from its
-   * first frame and every existing path treats it correctly: the dot shows,
-   * closing routes through `confirmDiscard`, `save` writes it and records a
-   * real mtime, and `applyFiles` leaves it alone because a buffer whose file is
-   * not on disk is one it already knows to keep.
+   * This used to write nothing on purpose: the scaffold went straight into a
+   * tab as a buffer with no file behind it, so the offer read as "here is what
+   * one looks like" rather than a folder that quietly grew a file. The argument
+   * did not survive contact with the word *Create*. Nobody presses it to be
+   * shown a sample, and nobody then thinks to save the file they just asked for
+   * — they look at the list, and the list is empty.
+   *
+   * The unsaved buffer survives as the **fallback**, which is what `refused`
+   * below is for. A write can fail for reasons the aircraft is innocent of, and
+   * this offer comes from a button with nowhere to put a sentence; handing over
+   * the buffer anyway keeps the click worth something, and the next Ctrl+S
+   * routes the same failure to the save error bar, which exists to explain it.
    */
   async createProfile(aircraft) {
     const key = aircraft.toLowerCase()
@@ -1460,16 +1559,57 @@ export const useStore = create<State>((set, get) => ({
       return
     }
 
-    const draft = newProfile(aircraft)
+    const content = newProfile(aircraft)
+    if (await startProfile(set, get, relPath, content))
+      openScaffold(set, relPath, content, "", 0)
+  },
 
-    set((state) => ({
-      ...commit(
-        withTab(state.groups, state.focusedGroup, relPath),
-        state.focusedGroup
-      ),
-      open: { ...state.open, [relPath]: { saved: "", draft, mtimeMs: 0 } },
-      outlines: { ...state.outlines, [relPath]: parseOutline(draft) },
-    }))
+  startNamingProfile: () => set({ namingProfile: true }),
+  cancelNamingProfile: () => set({ namingProfile: false }),
+
+  /*
+   * The same starter template `createProfile` writes, under a name somebody
+   * typed instead of one the simulator supplied.
+   *
+   * A separate action rather than `createProfile` with an argument, because the
+   * two differ on what a taken name means. Here it is a refusal; there it opens
+   * the existing profile, which is right when the aircraft is the subject and
+   * the button really means "get me to this aircraft's profile", and wrong when
+   * the subject is a name being typed — silently opening somebody else's file
+   * is not what typing a new name asked for.
+   */
+  async createNamedProfile(name) {
+    const checked = profileFilename(name)
+    if (!checked.ok) return checked.reason
+
+    const relPath = checked.filename
+    const taken = relPath.toLowerCase()
+
+    /*
+     * Asked before the write rather than left to it. `writeFile` would happily
+     * overwrite, and the two things it would overwrite are somebody's profile
+     * and somebody's unsaved buffer — so this is the check that makes Enter
+     * safe, not a courtesy ahead of one the disk would repeat.
+     */
+    if (get().files.some((file) => file.relPath.toLowerCase() === taken))
+      return `${relPath} already exists.`
+
+    if (get().tabs.some((tab) => tab.toLowerCase() === taken))
+      return `${relPath} is already open.`
+
+    /*
+     * The refusal goes back to the field rather than falling back to a buffer
+     * the way `createProfile` does. The field is still on screen with the name
+     * in it, so there is somewhere for a sentence to land — and a folder that
+     * refuses writes is worth saying out loud before the user types a second
+     * name into it.
+     */
+    return startProfile(
+      set,
+      get,
+      relPath,
+      newProfile(relPath.replace(/\.ya?ml$/i, ""))
+    )
   },
 
   /*
