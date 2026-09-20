@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.2](https://github.com/xiprox/fsc-editor/compare/v0.1.1...v0.1.2) (2026-09-20)
+
+
+### Bug Fixes
+
+* **sim:** put Uninstall with the folder it acts on ([13e161a](https://github.com/xiprox/fsc-editor/commit/13e161a64217cfc151804facec612c8fe22e26dc))
+
 ## [0.1.1](https://github.com/xiprox/fsc-editor/compare/v0.1.0...v0.1.1) (2026-09-20)
 
 
