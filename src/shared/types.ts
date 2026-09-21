@@ -19,7 +19,7 @@ import type {
 } from "./setter.ts"
 import type { SimState, SimValue, SimVarWatch } from "./sim.ts"
 import type { WatchedRef } from "./link.ts"
-import type { Finding, HotkeyAction } from "./activity.ts"
+import type { CaptureMode, Finding, HotkeyAction } from "./activity.ts"
 import type { PanelEvent, PanelScan } from "./panels.ts"
 import type {
   CommunityFolder,
@@ -686,8 +686,8 @@ export interface Api {
    * what is shown — a renderer-side flag left the list growing behind it and
    * released the backlog on re-arming.
    */
-  activityArmed(): Promise<boolean>
-  armActivity(armed: boolean): Promise<void>
+  captureMode(): Promise<CaptureMode>
+  setCaptureMode(mode: CaptureMode): Promise<void>
   /**
    * Empties the list: anchors and marks, not the values behind them.
    *

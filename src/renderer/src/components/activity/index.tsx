@@ -1,8 +1,12 @@
 import { useCallback, useEffect, useState } from "react"
 
-import { Circle, ClipboardCopy, Crosshair, Eraser } from "lucide-react"
+import { Circle, ClipboardCopy, Eraser } from "lucide-react"
 
-import { MARK_BEFORE_MS, type Finding } from "@shared/activity"
+import {
+  MARK_BEFORE_MS,
+  type CaptureMode,
+  type Finding,
+} from "@shared/activity"
 import type { Hotkeys } from "@shared/types"
 
 import { ToggleRailButton } from "@/components/rail"
@@ -14,7 +18,7 @@ import {
   ContextMenuItem,
   ContextMenuTrigger,
 } from "@/components/ui/context-menu"
-import { Toggle } from "@/components/ui/toggle"
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group"
 import {
   Tooltip,
   TooltipContent,
@@ -80,7 +84,7 @@ export function ActivityPanel() {
    * what exists.
    */
   const [pinned, setPinned] = useState<number | null>(null)
-  const [armed, setArmed] = useState(true)
+  const [mode, setMode] = useState<CaptureMode>("once")
 
   const detail = usePanelWidth("radar.detail", {
     side: "bottom",
@@ -90,13 +94,13 @@ export function ActivityPanel() {
   })
 
   const refresh = useCallback(async () => {
-    const [next, isArmed] = await Promise.all([
+    const [next, inEffect] = await Promise.all([
       window.api.activityFindings(),
-      window.api.activityArmed(),
+      window.api.captureMode(),
     ])
 
     setFindings(next)
-    setArmed(isArmed)
+    setMode(inEffect)
   }, [])
 
   useEffect(() => {
@@ -131,9 +135,10 @@ export function ActivityPanel() {
         Two rows, where every other panel header is one.
 
         Radar's header was laid out for the bottom slot, which had the editor's
-        width to spend. In the side column it is 336px by default and 264 at the
+        width to spend. In the side column it is 336px by default and 304 at the
         narrowest, and the row measured about 372 — so the Capture button was
-        clipped by the rail and the capture count wrapped under the title.
+        clipped by the rail and the capture count wrapped under the title. The
+        304 is this second row's: the three Auto-capture segments made it 301.
 
         The controls moved to a row of their own rather than shedding a label.
         Auto-capture being as legible as Capture is a decision with a reason
@@ -196,50 +201,70 @@ export function ActivityPanel() {
           </div>
         </div>
 
-        <div className="flex items-center justify-end gap-2 px-3 pb-2">
+        <div className="flex items-center gap-2 px-3 pb-2">
           {/*
-            The two that do the work sit at the edge, where a hand goes for them
-            without reading. Everything above and to their left is housekeeping.
+            The two that do the work, and nothing else on the row. Auto-capture
+            holds the left edge and Capture the right, so a wider panel puts its
+            space between them rather than in front of both. Everything above is
+            housekeeping.
 
             Auto-capture is as prominent as Capture because it is a *mode*: the
             others do a thing and it is over, this changes what the panel does
             next, and a mode nobody notices is one that makes the panel look
-            broken when the list stops moving. Armed, it wears the feature's own
-            green — outlined and faintly tinted, the same way remote-connect
-            wears its violet. Disarmed it is a plain grey outline,
-            because the green is what *armed* means and spending it on both
-            states would leave the panel unable to say which one it is in.
+            broken when the list stops moving.
 
-            The rules that used to be spelled out here — keep the colour under
-            the pointer, and never let the lit state move the label — are
-            `Toggle`'s now, and every mode in the app gets them. The ring this
-            button used to grow is gone with them: every toggle carries its
-            border in every state, so being armed recolours a line that was
-            already there and nothing is drawn outside the box.
+            Three segments rather than a toggle, because noise is a property of
+            the aircraft. A PA-24 reports an input event only when a hand moves,
+            so Always lists exactly what you worked; the A220 reports
+            AIRLINER_ALT_FLAP_TOGGLE at 4 Hz untouched, so only Once is usable
+            there. Main remembers the choice per aircraft. Once drops to Off by
+            itself when it fires, which is how the panel says it did.
+
+            Once and Always light in the feature's green, as the toggle did when
+            armed. Off is lit in neutral: one segment is always the answer, but
+            green is what *capturing* means.
           */}
-          <Tooltip>
-            <TooltipTrigger
-              render={
-                <Toggle
-                  size="xs"
-                  tone="radar"
-                  className="ml-1"
-                  disabled={block !== null}
-                  pressed={armed}
-                  onPressedChange={(next) => void window.api.armActivity(next)}
-                >
-                  <Crosshair
-                    className={cn(!armed && "text-muted-foreground")}
+          <div className="flex items-center gap-2">
+            <span
+              className={cn(
+                "text-[10px] font-medium text-muted-foreground",
+                block !== null && "opacity-50"
+              )}
+            >
+              Auto-capture
+            </span>
+            <ToggleGroup
+              size="xs"
+              tone="radar"
+              aria-label="Auto-capture"
+              disabled={block !== null}
+              value={[mode]}
+              onValueChange={(next) => {
+                // Pressing the lit segment asks to unpress it, which a choice
+                // of one has no meaning for. The empty value is dropped.
+                const [picked] = next as CaptureMode[]
+                if (picked) void window.api.setCaptureMode(picked)
+              }}
+            >
+              {MODES.map(({ value, label, hint }) => (
+                <Tooltip key={value}>
+                  <TooltipTrigger
+                    render={
+                      <ToggleGroupItem
+                        value={value}
+                        tone={value === "off" ? "neutral" : undefined}
+                      >
+                        {label}
+                      </ToggleGroupItem>
+                    }
                   />
-                  Auto-capture
-                </Toggle>
-              }
-            />
-            <TooltipContent side="top" align="end" className="max-w-64">
-              Attempt to auto-capture an interaction event (e.g. switch flip or
-              button press).
-            </TooltipContent>
-          </Tooltip>
+                  <TooltipContent side="top" align="start" className="max-w-64">
+                    {hint}
+                  </TooltipContent>
+                </Tooltip>
+              ))}
+            </ToggleGroup>
+          </div>
 
           <Tooltip>
             <TooltipTrigger
@@ -247,6 +272,7 @@ export function ActivityPanel() {
                 <Button
                   variant="outline"
                   size="xs"
+                  className="ml-auto"
                   disabled={block !== null}
                   onClick={() => void window.api.addMark()}
                 >
@@ -272,15 +298,15 @@ export function ActivityPanel() {
         Radar is for.
       */}
       {rows.length === 0 ? (
-        <div className="scrollbar-overlay min-h-0 flex-1 overflow-y-auto border-t border-border">
+        <div className="scrollbar-overlay min-h-0 flex-1 overflow-y-auto">
           <RadarEmpty
             block={block}
-            armed={armed}
+            mode={mode}
             hotkey={hotkeys?.capture.accelerator}
           />
         </div>
       ) : (
-        <div className="flex min-h-0 flex-1 flex-col border-t border-border">
+        <div className="flex min-h-0 flex-1 flex-col pt-1">
           {/*
             `min-h-11` is one capture row. Radar can be dragged shorter than its
             two halves want, and without a floor here the list was the half that
@@ -339,7 +365,11 @@ export function ActivityPanel() {
             ))}
           </ul>
 
-          <Splitter orientation="horizontal" handlers={detail.handlers} />
+          <Splitter
+            className="mx-2"
+            orientation="horizontal"
+            handlers={detail.handlers}
+          />
 
           {/*
             Keeps its height whether or not anything is selected.
@@ -457,6 +487,25 @@ function flatten(candidates: Finding["candidates"]) {
     })),
   ])
 }
+
+/** The auto-capture segments, in order, with what each will do. */
+const MODES: { value: CaptureMode; label: string; hint: string }[] = [
+  {
+    value: "off",
+    label: "Off",
+    hint: "Nothing will be captured until you press Capture.",
+  },
+  {
+    value: "once",
+    label: "Once",
+    hint: "The next control you work in the sim will be captured, then auto-capture will turn off.",
+  },
+  {
+    value: "always",
+    label: "Always",
+    hint: "Every control you work in the sim will be captured.",
+  },
+]
 
 /**
  * What an anchor is called on screen.

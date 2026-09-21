@@ -20,12 +20,14 @@ import type { CapturedEvent } from "@shared/sim"
 import { findingsFor } from "./activity"
 import { observeActivity, resetActivity } from "./activity-buffer"
 import {
+  armFromHotkey,
+  captureMode,
   captures,
-  isArmed,
+  clearCaptures,
   noteInteraction,
   noteMark,
   resetActivityHistory,
-  setArmed,
+  setCaptureMode,
   watchAircraft,
 } from "./activity-history"
 import { closeDatabase, initDatabase, type Database } from "./db"
@@ -230,7 +232,7 @@ describe("what becomes a capture", () => {
     observeActivity(change(40_040, "L:BeaconLightSwitch", 1))
     noteInteraction("SWITCH_BEACON", 40_000)
 
-    expect(isArmed()).toBe(false)
+    expect(captureMode()).toBe("off")
 
     closeWindow()
     expect(captures()).toHaveLength(1)
@@ -258,13 +260,13 @@ describe("what becomes a capture", () => {
     expect(captures()).toHaveLength(1)
 
     // And arming again does not release the backlog, because there is none.
-    setArmed(true)
+    setCaptureMode("once")
     expect(captures()).toHaveLength(1)
   })
 
   /** Those flips are still teaching, which is the whole reason they run. */
   it("learns from the interactions it did not capture", () => {
-    setArmed(false)
+    setCaptureMode("off")
 
     observeActivity(input(40_000, "SWITCH_BEACON"))
     observeActivity(change(40_040, "L:BeaconLightSwitch", 1))
@@ -279,7 +281,7 @@ describe("what becomes a capture", () => {
 
   /** The hotkey and the button are a request, so they capture either way. */
   it("captures a mark even when disarmed", () => {
-    setArmed(false)
+    setCaptureMode("off")
     observeActivity(change(40_040, "L:Mystery", 1))
 
     // Both halves, as the real path does it: the ring drops `mark` events, so a
@@ -300,12 +302,12 @@ describe("what becomes a capture", () => {
    */
   it("returns the arm when its interaction turned out not to be one", () => {
     noteInteraction("SWITCH_NOT_IN_THE_BUFFER", 40_000)
-    expect(isArmed()).toBe(false)
+    expect(captureMode()).toBe("off")
 
     closeWindow()
 
     expect(captures()).toHaveLength(0)
-    expect(isArmed()).toBe(true)
+    expect(captureMode()).toBe("once")
   })
 
   /** A capture outlives the ring it was computed from. */
@@ -323,5 +325,144 @@ describe("what becomes a capture", () => {
 
     expect(captures()).toHaveLength(1)
     expect(captures()[0]!.candidates.map((one) => one.name)).toEqual(before)
+  })
+})
+
+describe("the capture mode", () => {
+  const closeWindow = () => vi.advanceTimersByTime(1_000)
+
+  /** One interaction as the sim reports it, with the variable it moved. */
+  function flip(at: number, control: string, variable: string, value = 1) {
+    observeActivity(input(at, control))
+    observeActivity(change(at + 40, variable, value))
+    noteInteraction(control, at)
+  }
+
+  beforeEach(() => {
+    watchAircraft("pa24-250")
+    for (let t = 0; t < 40_000; t += 500) observeActivity(change(t, "L:Idle", t))
+  })
+
+  it("captures every interaction on always", () => {
+    setCaptureMode("always")
+
+    flip(40_000, "SWITCH_BEACON", "L:BeaconLightSwitch")
+    closeWindow()
+    flip(42_000, "SWITCH_NAV", "L:NavLightSwitch")
+    closeWindow()
+
+    expect(captures().map((one) => one.anchor.name)).toEqual([
+      "SWITCH_BEACON",
+      "SWITCH_NAV",
+    ])
+    expect(captureMode()).toBe("always")
+  })
+
+  /**
+   * The case a single in-flight slot got wrong: the second switch arrives while
+   * the first capture's window is still open.
+   */
+  it("keeps two controls worked half a second apart", () => {
+    setCaptureMode("always")
+
+    flip(40_000, "SWITCH_BEACON", "L:BeaconLightSwitch")
+    flip(40_500, "SWITCH_NAV", "L:NavLightSwitch")
+
+    // Both show while their windows are still open, oldest first.
+    expect(captures().map((one) => one.anchor.name)).toEqual([
+      "SWITCH_BEACON",
+      "SWITCH_NAV",
+    ])
+
+    closeWindow()
+    expect(captures()).toHaveLength(2)
+  })
+
+  /** The sim reports each interaction twice; that is one row. */
+  it("folds a control's own repeats into one capture", () => {
+    setCaptureMode("always")
+
+    flip(40_000, "SWITCH_BEACON", "L:BeaconLightSwitch")
+    observeActivity(input(40_020, "SWITCH_BEACON"))
+    noteInteraction("SWITCH_BEACON", 40_020)
+    closeWindow()
+
+    expect(captures()).toHaveLength(1)
+  })
+
+  it("captures nothing on off", () => {
+    setCaptureMode("off")
+
+    flip(40_000, "SWITCH_BEACON", "L:BeaconLightSwitch")
+    closeWindow()
+
+    expect(captures()).toHaveLength(0)
+  })
+
+  /** Noise is a property of the aircraft, so the choice is kept with it. */
+  it("remembers the mode per aircraft", () => {
+    setCaptureMode("always")
+
+    watchAircraft("a220")
+    expect(captureMode()).toBe("once")
+
+    setCaptureMode("off")
+    watchAircraft("pa24-250")
+    expect(captureMode()).toBe("always")
+
+    watchAircraft("a220")
+    expect(captureMode()).toBe("off")
+  })
+
+  /**
+   * The sim sends the same aircraft several times per change. Reading the mode
+   * again on each would re-arm a `once` that had just been spent.
+   */
+  it("does not re-arm when the same aircraft is reported again", () => {
+    flip(40_000, "SWITCH_BEACON", "L:BeaconLightSwitch")
+    expect(captureMode()).toBe("off")
+
+    watchAircraft("pa24-250")
+    expect(captureMode()).toBe("off")
+  })
+
+  it("arms from the hotkey only when off", () => {
+    setCaptureMode("off")
+    armFromHotkey()
+    expect(captureMode()).toBe("once")
+
+    setCaptureMode("always")
+    armFromHotkey()
+    expect(captureMode()).toBe("always")
+  })
+
+  it("re-arms a spent once on clear, and leaves a chosen off alone", () => {
+    flip(40_000, "SWITCH_BEACON", "L:BeaconLightSwitch")
+    closeWindow()
+    expect(captureMode()).toBe("off")
+
+    clearCaptures()
+    expect(captureMode()).toBe("once")
+
+    setCaptureMode("off")
+    clearCaptures()
+    expect(captureMode()).toBe("off")
+  })
+
+  /**
+   * A mark next to a switch anchors to the switch's finding. On `always` both
+   * are open at once, and they must finish as one row, not two copies of it.
+   */
+  it("does not duplicate a row when a mark lands on a captured control", () => {
+    setCaptureMode("always")
+
+    flip(40_000, "SWITCH_BEACON", "L:BeaconLightSwitch")
+    markAt(40_100)
+    noteMark(40_100)
+
+    expect(captures()).toHaveLength(1)
+
+    vi.advanceTimersByTime(MARK_AFTER_MS + 1_000)
+    expect(captures().map((one) => one.anchor.name)).toEqual(["SWITCH_BEACON"])
   })
 })

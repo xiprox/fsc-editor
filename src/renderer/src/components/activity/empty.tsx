@@ -9,7 +9,7 @@ import {
   Unplug,
 } from "lucide-react"
 
-import { MARK_BEFORE_MS } from "@shared/activity"
+import { MARK_BEFORE_MS, type CaptureMode } from "@shared/activity"
 
 import type { RadarBlock } from "./blocked"
 import { Keys } from "./hotkeys"
@@ -48,11 +48,11 @@ import { cn } from "@/lib/utils"
  */
 export function RadarEmpty({
   block,
-  armed,
+  mode,
   hotkey,
 }: {
   block: RadarBlock
-  armed: boolean
+  mode: CaptureMode
   /** The Capture binding, so the state that teaches it cannot misquote it. */
   hotkey?: string
 }) {
@@ -107,7 +107,7 @@ export function RadarEmpty({
     )
   }
 
-  return <ReadyEmpty armed={armed} hotkey={hotkey} />
+  return <ReadyEmpty mode={mode} hotkey={hotkey} />
 }
 
 /**
@@ -147,7 +147,7 @@ export function RadarEmpty({
  * connected and the sidebar already says which aircraft, and an empty state
  * that has to justify itself reads as one that is not sure.
  */
-function ReadyEmpty({ armed, hotkey }: { armed: boolean; hotkey?: string }) {
+function ReadyEmpty({ mode, hotkey }: { mode: CaptureMode; hotkey?: string }) {
   return (
     /*
       `flex` and not just `relative`, and the Shell below takes `flex-1`. A
@@ -161,10 +161,8 @@ function ReadyEmpty({ armed, hotkey }: { armed: boolean; hotkey?: string }) {
         not lose a drag or a scroll to it.
       */}
       <div className="pointer-events-none absolute top-0 right-0 hidden w-56 flex-col gap-3 p-4 @min-[60rem]:flex">
-        <Hint icon={<Crosshair />} name="Auto-capture" lit={armed}>
-          {armed
-            ? "Armed. The first control movement in the sim (e.g. a switch, a knob) will be captured automatically."
-            : "Arm to automatically capture control movement in the sim (e.g. a switch, a knob)."}
+        <Hint icon={<Crosshair />} name="Auto-capture" lit={mode !== "off"}>
+          {AUTO_CAPTURE_HINT[mode]}
         </Hint>
         <Hint icon={<Circle />} name="Capture">
           For controls the simulator doesn't report. Work it, then press{" "}
@@ -182,6 +180,13 @@ function ReadyEmpty({ armed, hotkey }: { armed: boolean; hotkey?: string }) {
       />
     </div>
   )
+}
+
+const AUTO_CAPTURE_HINT: Record<CaptureMode, string> = {
+  off: "Choose Once or Always to capture control movement in the sim (e.g. a switch, a knob) automatically.",
+  once: "The next control you move in the sim (e.g. a switch, a knob) will be captured automatically.",
+  always:
+    "Every control you move in the sim (e.g. a switch, a knob) will be captured automatically.",
 }
 
 /**

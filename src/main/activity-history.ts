@@ -9,8 +9,8 @@
  * is looking at.
  *
  * A **capture** is different: it exists because somebody asked for one, by
- * arming auto-capture, pressing the button, or pressing the hotkey. It is a row
- * in the panel.
+ * setting auto-capture to `once` or `always`, pressing the button, or pressing
+ * the hotkey. It is a row in the panel.
  *
  * Conflating those two produced the worst bug in the feature. Arming began life
  * in the renderer as a filter over a list recomputed from the ring, on the
@@ -44,13 +44,20 @@ import {
   MARK_AFTER_MS,
   MARK_BEFORE_MS,
   WINDOW_AFTER_MS,
+  type CaptureMode,
   type Finding,
 } from "@shared/activity"
 
 import { findingsFor, type Ranking } from "./activity"
 import { enumeratedCount, slice } from "./activity-buffer"
 import { allMarks } from "./marks"
-import { observedCoincidences, observedRates, recordCoincidence } from "./sim/store"
+import {
+  observedCoincidences,
+  observedRates,
+  recordCoincidence,
+  storeCaptureMode,
+  storedCaptureMode,
+} from "./sim/store"
 
 /**
  * How long after the last event before an anchor is finished.
@@ -67,7 +74,10 @@ const LIMIT = 100
 
 interface Pending {
   kind: "input" | "mark"
-  /** The anchor name to match on finalising. Marks all share one. */
+  /**
+   * The anchor name to match on finalising, and the key in `pending`. Marks all
+   * share one, so a second mark while the first is open is the same capture.
+   */
   name: string
   /** When the interaction happened, which is what identifies its anchor. */
   at: number
@@ -78,11 +88,22 @@ interface Pending {
 const learning = new Map<string, ReturnType<typeof setTimeout>>()
 
 let loaded: string | null = null
+/** What was last chosen, and what is remembered for the aircraft. */
+let chosen: CaptureMode = "once"
+/** Whether a chosen `once` is still waiting for its interaction. */
 let armed = true
-let pending: Pending | null = null
+/**
+ * Captures whose window is still open, by anchor name.
+ *
+ * One per control rather than one in all: on `always`, flipping two switches
+ * half a second apart is two captures, and a single slot would drop the second
+ * while the first was still settling. Repeats of one control inside its window
+ * fold into its anchor as a ×N count, so they need no slot of their own.
+ */
+const pending = new Map<string, Pending>()
 let taken: Finding[] = []
 /**
- * Everyone told when the capture list or the armed state changes.
+ * Everyone told when the capture list or the capture mode changes.
  *
  * A set, like every other listener in main: a single slot meant a second
  * subscriber silently replaced the first, which is a failure with no symptom
@@ -94,34 +115,62 @@ function notify(): void {
   for (const listener of captureListeners) listener()
 }
 
-/** Fires when the capture list or the armed state changes. */
+/** Fires when the capture list or the capture mode changes. */
 export function onCaptureChange(listener: () => void): () => void {
   captureListeners.add(listener)
   return () => captureListeners.delete(listener)
 }
 
-export function watchAircraft(aircraft: string | null): void {
-  loaded = aircraft
-}
-
-export function isArmed(): boolean {
-  return armed
-}
-
 /**
- * Arms or disarms auto-capture.
+ * The aircraft now loaded, and the capture mode remembered for it.
  *
- * Disarming never discards a capture in flight: the user asked for that one
- * before they changed their mind about the next one.
+ * The sim sends the same aircraft several times per change, so only a
+ * different one resets the mode: re-reading on every repeat would re-arm a
+ * `once` that had just been spent.
  */
-export function setArmed(next: boolean): void {
-  if (armed === next) return
-  armed = next
+export function watchAircraft(aircraft: string | null): void {
+  if (aircraft === loaded) return
+
+  loaded = aircraft
+  chosen = storedCaptureMode(aircraft) ?? "once"
+  armed = chosen === "once"
   notify()
 }
 
+/** The mode in effect. A spent `once` is `off` until it is chosen again. */
+export function captureMode(): CaptureMode {
+  return chosen === "once" && !armed ? "off" : chosen
+}
+
 /**
- * One input event. Always teaches; captures only when armed.
+ * Chooses a mode, and remembers it for the aircraft.
+ *
+ * Choosing `once` arms it, including when it is already chosen and spent:
+ * that is the panel asking for the next interaction again.
+ *
+ * Leaving a mode never discards a capture in flight: the user asked for that
+ * one before they changed their mind about the next one.
+ */
+export function setCaptureMode(mode: CaptureMode): void {
+  const before = captureMode()
+
+  chosen = mode
+  armed = mode === "once"
+  storeCaptureMode(loaded, mode)
+
+  if (captureMode() !== before) notify()
+}
+
+/**
+ * The arm hotkey. From `off` it asks for the next interaction; on `once` or
+ * `always` that is already happening, so it does nothing.
+ */
+export function armFromHotkey(): void {
+  if (captureMode() === "off") setCaptureMode("once")
+}
+
+/**
+ * One input event. Always teaches; captures depending on the mode.
  *
  * The teaching half is debounced per *control*, because the simulator reports
  * every interaction at least twice and a knob a hundred times — a timer per
@@ -138,13 +187,25 @@ export function noteInteraction(control: string, at: number): void {
     }, WINDOW_AFTER_MS + SETTLE_MS)
   )
 
-  // Disarmed, or already holding one: this interaction is background. It still
-  // teaches, above, and it never becomes a row.
-  if (!armed || pending) return
+  // Anything that does not capture below is background. It still teaches,
+  // above, and it never becomes a row.
+  const mode = captureMode()
 
-  armed = false
+  if (mode === "once") {
+    // Holding one already means the arm is spent on it.
+    if (pending.size) return
+    armed = false
+  } else if (mode === "always") {
+    if (pending.has(control)) return
+  } else {
+    return
+  }
+
   begin({ kind: "input", name: control, at })
 }
+
+/** Every mark's anchor name. */
+const MARK = "Mark"
 
 /**
  * The hotkey, or the button. Always captures.
@@ -154,27 +215,54 @@ export function noteInteraction(control: string, at: number): void {
  * class of bug as the one this file was rewritten to fix.
  */
 export function noteMark(at: number): void {
-  if (pending) return
+  if (pending.has(MARK)) return
 
-  armed = false
-  begin({ kind: "mark", name: "Mark", at })
+  // A mark spends a waiting `once`, as it always has: pressing Capture asks
+  // for this moment, and the arm was asking for the next one.
+  if (chosen === "once") armed = false
+  begin({ kind: "mark", name: MARK, at })
 }
 
-/** Finalised captures, plus the one in flight so a row appears immediately. */
+/** Finalised captures, plus those in flight so a row appears immediately. */
 export function captures(): Finding[] {
-  if (!pending) return taken
+  if (!pending.size) return taken
 
-  const live = findFor(pending)
-  return live ? [...taken, live] : taken
+  // Ranked once for all of them. On `always` an aircraft change can open
+  // dozens at once, and ranking the ring per capture multiplies by each.
+  const found = rank()
+  const list = [...taken]
+
+  for (const what of [...pending.values()].sort((a, b) => a.at - b.at)) {
+    const one = match(found, what)
+    if (one && !list.some((kept) => same(kept, one))) list.push(one)
+  }
+
+  return list
+}
+
+/**
+ * Whether two captures are of one anchor.
+ *
+ * They can be: a mark next to an input anchors to that input's finding (see
+ * `match`), so on `always` pressing Capture just after flipping a switch opens
+ * two captures that finish as the same row. The panel keys rows by anchor time,
+ * so a second copy would be a duplicate key as well as a duplicate line.
+ */
+function same(a: Finding, b: Finding): boolean {
+  return (
+    a.anchor.kind === b.anchor.kind &&
+    a.anchor.name === b.anchor.name &&
+    a.anchor.t === b.anchor.t
+  )
 }
 
 function begin(what: Omit<Pending, "timer">): void {
   const after = what.kind === "mark" ? MARK_AFTER_MS : WINDOW_AFTER_MS
 
-  pending = {
+  pending.set(what.name, {
     ...what,
-    timer: setTimeout(finalise, after + SETTLE_MS),
-  }
+    timer: setTimeout(() => finalise(what.name), after + SETTLE_MS),
+  })
 
   // Immediately. The window looks backwards, so the evidence is already in the
   // ring when the key goes down and the row arrives with its candidates rather
@@ -188,16 +276,20 @@ function begin(what: Omit<Pending, "timer">): void {
  * A capture with no anchor is not an empty finding, it is a capture that should
  * not have happened — an aircraft change dumps hundreds of input events at
  * once, `anchorsIn` drops them as a machine burst, and the arm that fired on
- * the first of them has to be given back rather than spent on nothing.
+ * the first of them has to be given back rather than spent on nothing. On
+ * `always` there is no arm to give back, and those captures simply vanish.
  */
-function finalise(): void {
-  const found = pending && findFor(pending)
-  pending = null
+function finalise(name: string): void {
+  const what = pending.get(name)
+  if (!what) return
+
+  pending.delete(name)
+  const found = match(rank(), what)
 
   if (found) {
-    taken.push(found)
+    if (!taken.some((kept) => same(kept, found))) taken.push(found)
     if (taken.length > LIMIT) taken = taken.slice(-LIMIT)
-  } else {
+  } else if (chosen === "once") {
     armed = true
   }
 
@@ -216,11 +308,7 @@ function finalise(): void {
  * so a mark next to one produces no anchor of its own and the finding it was
  * pointing at is the input's.
  */
-function findFor(what: Pending): Finding | undefined {
-  // `allMarks()`, not an empty list: the ring drops `mark` events, so a mark
-  // anchor only exists if the marks are handed in beside the changes.
-  const found = findingsFor(slice(), allMarks(), context())
-
+function match(found: Finding[], what: Pending): Finding | undefined {
   const wanted = found.filter((one) =>
     what.kind === "mark"
       ? one.anchor.kind === "mark" && one.anchor.t === what.at
@@ -240,6 +328,13 @@ function findFor(what: Pending): Finding | undefined {
   return near.sort(
     (a, b) => Math.abs(a.anchor.t - what.at) - Math.abs(b.anchor.t - what.at)
   )[0]
+}
+
+/** Every finding the ring holds now. */
+function rank(): Finding[] {
+  // `allMarks()`, not an empty list: the ring drops `mark` events, so a mark
+  // anchor only exists if the marks are handed in beside the changes.
+  return findingsFor(slice(), allMarks(), context())
 }
 
 /** What the ranking knows beyond the events. Rebuilt per call; both are cached. */
@@ -285,18 +380,24 @@ export function resetActivityHistory(): void {
   for (const timer of learning.values()) clearTimeout(timer)
   learning.clear()
 
-  if (pending) clearTimeout(pending.timer)
-  pending = null
+  for (const what of pending.values()) clearTimeout(what.timer)
+  pending.clear()
   taken = []
+  chosen = "once"
   armed = true
   loaded = null
 }
 
-/** Empties the list without forgetting the aircraft. What "clear entries" does. */
+/**
+ * Empties the list without forgetting the aircraft. What "clear entries" does.
+ *
+ * A spent `once` is armed again, as clearing always did. A chosen `off` stays
+ * off, because somebody picked it.
+ */
 export function clearCaptures(): void {
-  if (pending) clearTimeout(pending.timer)
-  pending = null
+  for (const what of pending.values()) clearTimeout(what.timer)
+  pending.clear()
   taken = []
-  armed = true
+  armed = chosen === "once"
   notify()
 }

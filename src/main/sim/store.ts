@@ -20,6 +20,7 @@
  * session.
  */
 
+import type { CaptureMode } from "@shared/activity"
 import type { SimEvent } from "@shared/sim"
 
 import { database } from "../db"
@@ -558,5 +559,61 @@ export function pendingSimEvidence(): {
     names: pending.names.size,
     changes: pending.changes.size,
     aircraft: pending.aircraft,
+  }
+}
+
+const CAPTURE_MODES: readonly CaptureMode[] = ["off", "once", "always"]
+
+/**
+ * The auto-capture mode last chosen with this aircraft loaded, or null.
+ *
+ * Null for an aircraft nobody has chosen for, and for a value this build does
+ * not know — a newer version's mode read by an older one falls back to the
+ * default rather than reaching the panel as a fourth state.
+ */
+export function storedCaptureMode(aircraft: string | null): CaptureMode | null {
+  if (!aircraft) return null
+
+  try {
+    const row = database()
+      .prepare(`SELECT capture_mode FROM sim_aircraft WHERE aircraft = ?`)
+      .get(aircraft) as { capture_mode: string | null } | undefined
+
+    const mode = row?.capture_mode
+    return CAPTURE_MODES.includes(mode as CaptureMode)
+      ? (mode as CaptureMode)
+      : null
+  } catch (error) {
+    const reason = error instanceof Error ? error.message : String(error)
+    console.warn(`capture mode: not read — ${reason}`)
+    return null
+  }
+}
+
+/**
+ * Remembers a chosen mode against this aircraft.
+ *
+ * Inserts the row when the aircraft has none yet. `observed_ms` stays zero,
+ * which `observedRates` already reads as "no history", so a mode chosen in the
+ * first seconds of an aircraft's first session does not invent a rate.
+ */
+export function storeCaptureMode(
+  aircraft: string | null,
+  mode: CaptureMode
+): void {
+  if (!aircraft) return
+
+  try {
+    const now = Date.now()
+    database()
+      .prepare(
+        `INSERT INTO sim_aircraft (aircraft, observed_ms, first_seen, last_seen, capture_mode)
+         VALUES (?, 0, ?, ?, ?)
+         ON CONFLICT (aircraft) DO UPDATE SET capture_mode = excluded.capture_mode`
+      )
+      .run(aircraft, now, now, mode)
+  } catch (error) {
+    const reason = error instanceof Error ? error.message : String(error)
+    console.warn(`capture mode: not written — ${reason}`)
   }
 }

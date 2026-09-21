@@ -358,10 +358,23 @@ export const MARK_AFTER_MS = 500
 export const MARK_ABSORB_MS = 2_000
 
 /**
+ * What an interaction in the sim does to the capture list.
+ *
+ * - `off` — nothing. Capture and its hotkey still work.
+ * - `once` — the next interaction becomes a row, and the mode drops to `off`.
+ * - `always` — every interaction becomes a row.
+ *
+ * `once` is the only one that changes by itself. Main keeps what was *chosen*
+ * apart from what is *in effect*: a spent `once` reads as `off` in the panel,
+ * and clearing the list arms it again, where a chosen `off` stays off.
+ */
+export type CaptureMode = "off" | "once" | "always"
+
+/**
  * The two things worth doing without leaving the cockpit.
  *
- * `capture` takes one; `arm` switches auto-capture back on for the next
- * interaction. Both exist for the same reason the hotkey does at all — the
+ * `capture` takes one; `arm` puts auto-capture on `once` when it is `off`, and
+ * does nothing otherwise. Both exist for the same reason the hotkey does at all — the
  * simulator is fullscreen, and a control that needs alt-tab is a control that
  * costs you the thing you were about to observe.
  */
