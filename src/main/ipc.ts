@@ -33,7 +33,7 @@ import type {
   SetterEntry,
   SetterPreview,
 } from "@shared/setter"
-import type { Finding, HotkeyAction } from "@shared/activity"
+import type { CaptureMode, Finding, HotkeyAction } from "@shared/activity"
 import type { PanelScan } from "@shared/panels"
 import type {
   CommunityFolder,
@@ -51,13 +51,14 @@ import { picksIn } from "./sim/picks"
 import { runSetter } from "./sim/run"
 import { resolveSetter } from "./sim/setter"
 import {
+  armFromHotkey,
+  captureMode,
   captures,
   clearCaptures,
-  isArmed,
   noteInteraction,
   noteMark,
   onCaptureChange,
-  setArmed,
+  setCaptureMode,
   watchAircraft,
 } from "./activity-history"
 import {
@@ -434,8 +435,8 @@ export function registerIpc(getWindow: () => BrowserWindow): void {
     //
     // Only interactions signal Activity. Values arrive in thousands and never
     // create a finding; they only fill in one some anchor already made.
-    // Every interaction teaches, and captures only when armed. The panel is
-    // told by `onCaptureChange` rather than from here, because "something
+    // Every interaction teaches, and captures depending on the mode. The panel
+    // is told by `onCaptureChange` rather than from here, because "something
     // happened" and "the list changed" stopped being the same event when
     // arming moved out of the renderer.
     if (event.kind === "input") noteInteraction(event.name, event.t)
@@ -648,9 +649,9 @@ export function registerIpc(getWindow: () => BrowserWindow): void {
 
   ipcMain.handle("activity:findings", (): Finding[] => captures())
 
-  ipcMain.handle("activity:armed", (): boolean => isArmed())
-  ipcMain.handle("activity:arm", (_event, armed: boolean): void =>
-    setArmed(armed)
+  ipcMain.handle("activity:mode", (): CaptureMode => captureMode())
+  ipcMain.handle("activity:set-mode", (_event, mode: CaptureMode): void =>
+    setCaptureMode(mode)
   )
 
   const activityChanged = (): void => {
@@ -737,7 +738,7 @@ export function registerIpc(getWindow: () => BrowserWindow): void {
 
   // The key that arms, which is the other half of not having to alt-tab: the
   // panel's own button is out of reach while the simulator is fullscreen.
-  onHotkey("arm", () => setArmed(!isArmed()))
+  onHotkey("arm", armFromHotkey)
 
   ipcMain.handle("link:install-state", (): Promise<LinkInstallState> =>
     linkInstallState()

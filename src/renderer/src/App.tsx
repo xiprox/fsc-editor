@@ -46,10 +46,14 @@ const SIDEBAR_KEY = "sidebar-width"
   namespace chip — lands on one line. At 300 the last chip wrapped to a row of
   its own, which reads as a second group of filters rather than the tail of the
   first one.
+
+  The minimum is Radar's second header row: Auto-capture, its three segments
+  and Capture measure 301px with their gaps and padding. At the old 264 the
+  label was pushed out past the panel's left edge.
 */
 const PANEL = {
   side: "right",
-  min: 264,
+  min: 304,
   max: 520,
   initial: 336,
 } as const

@@ -278,6 +278,23 @@ const MIGRATIONS: Migration[] = [
       `)
     },
   },
+  {
+    version: 7,
+    up(db) {
+      db.exec(`
+        -- Radar's auto-capture mode, as last chosen with this aircraft loaded:
+        -- 'off', 'once' or 'always'. Null until somebody chooses, which reads
+        -- as 'once'.
+        --
+        -- Per aircraft because noise is. A PA-24 reports an input event only
+        -- when a hand moves, so 'always' fills the list with exactly the
+        -- controls you worked. The A220 reports AIRLINER_ALT_FLAP_TOGGLE at
+        -- 4 Hz with nobody touching it, and 'always' there is a new row
+        -- about once a second.
+        ALTER TABLE sim_aircraft ADD COLUMN capture_mode TEXT;
+      `)
+    },
+  },
 ]
 
 const SCHEMA_VERSION_KEY = "schema_version"

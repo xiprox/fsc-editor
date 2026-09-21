@@ -165,8 +165,8 @@ const api: Api = {
   markHotkey: () => ipcRenderer.invoke("activity:hotkey"),
   bindMarkHotkey: (action, accelerator) =>
     ipcRenderer.invoke("activity:bind-hotkey", action, accelerator),
-  activityArmed: () => ipcRenderer.invoke("activity:armed"),
-  armActivity: (armed) => ipcRenderer.invoke("activity:arm", armed),
+  captureMode: () => ipcRenderer.invoke("activity:mode"),
+  setCaptureMode: (mode) => ipcRenderer.invoke("activity:set-mode", mode),
   clearActivity: () => ipcRenderer.invoke("activity:clear"),
   collectReport: () => ipcRenderer.invoke("report:collect"),
   revealReport: (file) => ipcRenderer.invoke("report:reveal", file),
