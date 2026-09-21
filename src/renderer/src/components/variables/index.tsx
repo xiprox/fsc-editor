@@ -293,11 +293,10 @@ export function VariablesPanel() {
         )}
       </div>
 
-      {namespace === "B" && (
-        <InputEventsNote
+      {namespace === "b" && (
+        <NoInputEventsNote
           live={sim.phase === "live"}
-          aircraft={aircraft}
-          count={vars?.inputEvents?.length ?? 0}
+          listed={Boolean(aircraft) && (vars?.inputEvents?.length ?? 0) > 0}
         />
       )}
 
@@ -318,49 +317,29 @@ export function VariablesPanel() {
 }
 
 /**
- * What the `B:` list is, in one line above it.
+ * Why the `B:` list is short, when it is.
  *
- * Not an empty state, which is why it is not a case in `VariablesEmpty`: the
- * shipped catalogue always supplies some `B:` names, so that list is never
- * empty and the explanation would never be reached. The thing needing saying
- * is about the names that are *missing* from a full-looking list.
+ * Not an empty state: the shipped catalogue always supplies some `B:` names,
+ * so the list looks complete without an aircraft while missing every input
+ * event the aeroplane would register. The enumeration is per aircraft, and
+ * with none loaded there is nothing to enumerate.
  *
- * Two facts, and it says whichever one is true:
- *
- * - **No aeroplane, so no input events.** The enumeration is per aircraft and
- *   there is nothing to enumerate.
- * - **These are IDs.** `AIRLINER_FCU_CHRONO_2` is what the sim lists; the
- *   reference that works is `AIRLINER_FCU_CHRONO_2_Push`, and the preset half
- *   is never in the enumeration. Saying so here is cheaper than the diagnostic
- *   that catches it afterwards.
- *
- * Silent while the simulator is not running. 04-connection's rule for that
- * state is to say nothing louder — the status chip already reads `Sim
- * offline`, and an instruction the panel cannot make good on is worse than no
- * line at all.
+ * Silent while the sim is offline. The footer chip already says so, and an
+ * instruction the panel cannot make good on is worse than no line at all.
  */
-function InputEventsNote({
+function NoInputEventsNote({
   live,
-  aircraft,
-  count,
+  listed,
 }: {
   live: boolean
-  aircraft: string | null
-  count: number
+  /** Whether the aircraft in the sim has reported its input events. */
+  listed: boolean
 }) {
-  if (!live) return null
+  if (!live || listed) return null
 
   return (
     <p className="px-2 pb-2 text-[11px]/relaxed text-muted-foreground">
-      {aircraft && count > 0 ? (
-        <>
-          {count.toLocaleString()} on {aircraft}. These are IDs — writing one
-          needs an action, as in{" "}
-          <span className="font-mono">NAME_Toggle</span>.
-        </>
-      ) : (
-        "Load an aircraft to list the input events it registers."
-      )}
+      Load an aircraft in the sim to list the input events it registers.
     </p>
   )
 }
