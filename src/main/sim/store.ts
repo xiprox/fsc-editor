@@ -617,3 +617,50 @@ export function storeCaptureMode(
     console.warn(`capture mode: not written — ${reason}`)
   }
 }
+
+/** The input events ignored with this aircraft loaded. Empty without one. */
+export function storedIgnoredControls(aircraft: string | null): Set<string> {
+  const controls = new Set<string>()
+  if (!aircraft) return controls
+
+  try {
+    const rows = database()
+      .prepare(`SELECT control FROM sim_ignored_control WHERE aircraft = ?`)
+      .all(aircraft) as { control: string }[]
+
+    for (const row of rows) controls.add(row.control)
+  } catch (error) {
+    const reason = error instanceof Error ? error.message : String(error)
+    console.warn(`ignored controls: not read — ${reason}`)
+  }
+
+  return controls
+}
+
+/** Ignores an input event for this aircraft, or stops ignoring it. */
+export function storeIgnoredControl(
+  aircraft: string | null,
+  control: string,
+  ignored: boolean
+): void {
+  if (!aircraft) return
+
+  try {
+    const db = database()
+
+    if (ignored) {
+      db.prepare(
+        `INSERT INTO sim_ignored_control (aircraft, control, since)
+         VALUES (?, ?, ?)
+         ON CONFLICT (aircraft, control) DO NOTHING`
+      ).run(aircraft, control, Date.now())
+    } else {
+      db.prepare(
+        `DELETE FROM sim_ignored_control WHERE aircraft = ? AND control = ?`
+      ).run(aircraft, control)
+    }
+  } catch (error) {
+    const reason = error instanceof Error ? error.message : String(error)
+    console.warn(`ignored controls: not written — ${reason}`)
+  }
+}

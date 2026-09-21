@@ -55,10 +55,12 @@ import {
   captureMode,
   captures,
   clearCaptures,
+  ignoredControls,
   noteInteraction,
   noteMark,
   onCaptureChange,
   setCaptureMode,
+  setIgnored,
   watchAircraft,
 } from "./activity-history"
 import {
@@ -652,6 +654,11 @@ export function registerIpc(getWindow: () => BrowserWindow): void {
   ipcMain.handle("activity:mode", (): CaptureMode => captureMode())
   ipcMain.handle("activity:set-mode", (_event, mode: CaptureMode): void =>
     setCaptureMode(mode)
+  )
+  ipcMain.handle("activity:ignored", (): string[] => ignoredControls())
+  ipcMain.handle(
+    "activity:set-ignored",
+    (_event, control: string, on: boolean): void => setIgnored(control, on)
   )
 
   const activityChanged = (): void => {

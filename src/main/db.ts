@@ -295,6 +295,24 @@ const MIGRATIONS: Migration[] = [
       `)
     },
   },
+  {
+    version: 8,
+    up(db) {
+      db.exec(`
+        -- Input events Radar treats as not a person, per aircraft. The A220
+        -- reports AIRLINER_ALT_FLAP_TOGGLE at 4 Hz with nobody touching it: it
+        -- takes a waiting Once before any hand moves, and a Capture press
+        -- lands on its finding rather than on what was pressed. Ignoring it
+        -- keeps it out of both. It still reaches the value store and the log.
+        CREATE TABLE sim_ignored_control (
+          aircraft TEXT NOT NULL,
+          control  TEXT NOT NULL,
+          since    REAL NOT NULL,
+          PRIMARY KEY (aircraft, control)
+        );
+      `)
+    },
+  },
 ]
 
 const SCHEMA_VERSION_KEY = "schema_version"

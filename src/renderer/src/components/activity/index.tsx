@@ -1,6 +1,14 @@
-import { useCallback, useEffect, useState } from "react"
+import { Fragment, useCallback, useEffect, useState } from "react"
 
-import { Circle, ClipboardCopy, Ellipsis, Eraser } from "lucide-react"
+import {
+  Circle,
+  ClipboardCopy,
+  Ellipsis,
+  Eraser,
+  Eye,
+  EyeOff,
+  type LucideIcon,
+} from "lucide-react"
 
 import {
   MARK_BEFORE_MS,
@@ -16,12 +24,16 @@ import {
   ContextMenu,
   ContextMenuContent,
   ContextMenuItem,
+  ContextMenuSeparator,
   ContextMenuTrigger,
 } from "@/components/ui/context-menu"
 import {
   DropdownMenu,
   DropdownMenuContent,
+  DropdownMenuGroup,
   DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group"
@@ -91,6 +103,7 @@ export function ActivityPanel() {
    */
   const [pinned, setPinned] = useState<number | null>(null)
   const [mode, setMode] = useState<CaptureMode>("once")
+  const [ignored, setIgnored] = useState<string[]>([])
 
   const detail = usePanelWidth("radar.detail", {
     side: "bottom",
@@ -100,13 +113,15 @@ export function ActivityPanel() {
   })
 
   const refresh = useCallback(async () => {
-    const [next, inEffect] = await Promise.all([
+    const [next, inEffect, quiet] = await Promise.all([
       window.api.activityFindings(),
       window.api.captureMode(),
+      window.api.ignoredControls(),
     ])
 
     setFindings(next)
     setMode(inEffect)
+    setIgnored(quiet)
   }, [])
 
   useEffect(() => {
@@ -168,6 +183,60 @@ export function ActivityPanel() {
             is its own count.
           */}
           <div className="ml-auto flex items-center gap-2">
+            {/*
+              Only while something is ignored, because it is the way back: a
+              control ignored by mistake would otherwise be gone for good on
+              this aircraft, with nothing on screen saying so.
+            */}
+            {ignored.length > 0 && (
+              <DropdownMenu>
+                <Tooltip>
+                  <TooltipTrigger
+                    render={
+                      <DropdownMenuTrigger
+                        render={
+                          <Button
+                            variant="ghost"
+                            size="xs"
+                            aria-label={`${ignored.length} ignored`}
+                            className="text-muted-foreground"
+                          />
+                        }
+                      />
+                    }
+                  >
+                    <EyeOff />
+                    {ignored.length}
+                  </TooltipTrigger>
+                  <TooltipContent side="top" className="max-w-64">
+                    Ignored events
+                  </TooltipContent>
+                </Tooltip>
+                <DropdownMenuContent className="max-w-80">
+                  <DropdownMenuGroup>
+                    <DropdownMenuLabel>
+                      Ignored on this aircraft. Click one to stop ignoring.
+                    </DropdownMenuLabel>
+                    {ignored.map((control) => (
+                      <DropdownMenuItem
+                        key={control}
+                        onClick={() =>
+                          void window.api.setIgnored(control, false)
+                        }
+                      >
+                        <InputName name={control} />
+                        {/*
+                          Trailing, because the list opens under a button at
+                          the panel's right edge: the pointer arrives on this
+                          side, and the name reads first from the left.
+                        */}
+                        <Eye className="ml-auto shrink-0" />
+                      </DropdownMenuItem>
+                    ))}
+                  </DropdownMenuGroup>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            )}
             <Tooltip>
               <TooltipTrigger
                 render={
@@ -339,12 +408,17 @@ export function ActivityPanel() {
                   </ContextMenuTrigger>
 
                   <ContextMenuContent>
-                    {rowActions(row.anchor).map(({ label, run }) => (
-                      <ContextMenuItem key={label} onClick={run}>
-                        <ClipboardCopy />
-                        {label}
-                      </ContextMenuItem>
-                    ))}
+                    {rowActions(row.anchor).map(
+                      ({ label, Icon, run, separated }) => (
+                        <Fragment key={label}>
+                          {separated && <ContextMenuSeparator />}
+                          <ContextMenuItem onClick={run}>
+                            <Icon />
+                            {label}
+                          </ContextMenuItem>
+                        </Fragment>
+                      )
+                    )}
                   </ContextMenuContent>
                 </ContextMenu>
 
@@ -367,12 +441,17 @@ export function ActivityPanel() {
                       <Ellipsis />
                     </DropdownMenuTrigger>
                     <DropdownMenuContent>
-                      {rowActions(row.anchor).map(({ label, run }) => (
-                        <DropdownMenuItem key={label} onClick={run}>
-                          <ClipboardCopy />
-                          {label}
-                        </DropdownMenuItem>
-                      ))}
+                      {rowActions(row.anchor).map(
+                        ({ label, Icon, run, separated }) => (
+                          <Fragment key={label}>
+                            {separated && <DropdownMenuSeparator />}
+                            <DropdownMenuItem onClick={run}>
+                              <Icon />
+                              {label}
+                            </DropdownMenuItem>
+                          </Fragment>
+                        )
+                      )}
                     </DropdownMenuContent>
                   </DropdownMenu>
                 )}
@@ -509,13 +588,33 @@ function flatten(candidates: Finding["candidates"]) {
  * The same two copies as a variable chip, and the same order: the `B:` name the
  * row shows, then the bare id the sim reported. A mark has no name to copy —
  * "Manual Capture" is ours — so neither menu is shown for one.
+ *
+ * Ignore sits apart, below a separator, because it is not a copy: it changes
+ * what Radar does on this aircraft from now on.
  */
-function rowActions(
-  anchor: Finding["anchor"]
-): { label: string; run: () => void }[] {
+function rowActions(anchor: Finding["anchor"]): {
+  label: string
+  Icon: LucideIcon
+  run: () => void
+  separated?: boolean
+}[] {
   return [
-    { label: "Copy name", run: () => void copy(`B:${anchor.name}`) },
-    { label: "Copy name without prefix", run: () => void copy(anchor.name) },
+    {
+      label: "Copy name",
+      Icon: ClipboardCopy,
+      run: () => void copy(`B:${anchor.name}`),
+    },
+    {
+      label: "Copy name without prefix",
+      Icon: ClipboardCopy,
+      run: () => void copy(anchor.name),
+    },
+    {
+      label: "Ignore this control",
+      Icon: EyeOff,
+      run: () => void window.api.setIgnored(anchor.name, true),
+      separated: true,
+    },
   ]
 }
 
@@ -570,10 +669,26 @@ function Label({ anchor }: { anchor: Finding["anchor"] }) {
     )
   }
 
+  return <InputName name={anchor.name} className="w-full" />
+}
+
+/**
+ * An input event as a profile writes it: `B:` and the id, in the editor's
+ * colours. The capture rows and the ignored list both show one, and the same
+ * name drawn two ways would read as two different things.
+ */
+function InputName({ name, className }: { name: string; className?: string }) {
   return (
-    <span className="flex w-full min-w-0 items-baseline font-mono">
-      <span className="shrink-0 font-bold text-[var(--syntax-prefix)]">B:</span>
-      <span className="truncate text-[var(--syntax-var)]">{anchor.name}</span>
+    <span className={cn("flex min-w-0 items-baseline font-mono", className)}>
+      <span
+        data-keep-color
+        className="shrink-0 font-bold text-[var(--syntax-prefix)]"
+      >
+        B:
+      </span>
+      <span data-keep-color className="truncate text-[var(--syntax-var)]">
+        {name}
+      </span>
     </span>
   )
 }

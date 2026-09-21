@@ -57,6 +57,8 @@ import {
   recordCoincidence,
   storeCaptureMode,
   storedCaptureMode,
+  storeIgnoredControl,
+  storedIgnoredControls,
 } from "./sim/store"
 
 /**
@@ -103,6 +105,15 @@ let armed = true
 const pending = new Map<string, Pending>()
 let taken: Finding[] = []
 /**
+ * Input events this aircraft is known to fire with nobody touching it.
+ *
+ * Kept out of capturing, out of what is ranked and out of what is learned. The
+ * ranking is the one that matters most: a mark next to an input anchors to
+ * that input's finding, so on an aircraft with a ticking control every Capture
+ * press found the ticker.
+ */
+let ignored = new Set<string>()
+/**
  * Everyone told when the capture list or the capture mode changes.
  *
  * A set, like every other listener in main: a single slot meant a second
@@ -134,6 +145,40 @@ export function watchAircraft(aircraft: string | null): void {
   loaded = aircraft
   chosen = storedCaptureMode(aircraft) ?? "once"
   armed = chosen === "once"
+  ignored = storedIgnoredControls(aircraft)
+  notify()
+}
+
+/** The input events ignored for the aircraft now loaded, sorted. */
+export function ignoredControls(): string[] {
+  return [...ignored].sort()
+}
+
+/**
+ * Ignores a control, or stops ignoring it, and remembers that for the aircraft.
+ *
+ * Ignoring also takes its rows off the list, including one still settling.
+ * The list is why somebody reached for this: it was full of the control.
+ */
+export function setIgnored(control: string, on: boolean): void {
+  if (ignored.has(control) === on) return
+
+  if (on) {
+    ignored.add(control)
+    taken = taken.filter((one) => one.anchor.name !== control)
+
+    const open = pending.get(control)
+    if (open) {
+      clearTimeout(open.timer)
+      pending.delete(control)
+      // It had spent a waiting `once` on something that was never a person.
+      if (chosen === "once") armed = true
+    }
+  } else {
+    ignored.delete(control)
+  }
+
+  storeIgnoredControl(loaded, control, on)
   notify()
 }
 
@@ -178,6 +223,8 @@ export function armFromHotkey(): void {
  * ranking that the knob's own variable is promiscuous.
  */
 export function noteInteraction(control: string, at: number): void {
+  if (ignored.has(control)) return
+
   clearTimeout(learning.get(control))
   learning.set(
     control,
@@ -334,7 +381,17 @@ function match(found: Finding[], what: Pending): Finding | undefined {
 function rank(): Finding[] {
   // `allMarks()`, not an empty list: the ring drops `mark` events, so a mark
   // anchor only exists if the marks are handed in beside the changes.
-  return findingsFor(slice(), allMarks(), context())
+  return findingsFor(unignored(), allMarks(), context())
+}
+
+/** The ring, without the firings of ignored controls. */
+function unignored(): ReturnType<typeof slice> {
+  const events = slice()
+  if (!ignored.size) return events
+
+  return events.filter(
+    (event) => event.kind !== "input" || !ignored.has(event.name)
+  )
 }
 
 /** What the ranking knows beyond the events. Rebuilt per call; both are cached. */
@@ -357,7 +414,7 @@ function context(): Ranking {
 function learn(control: string): void {
   if (!loaded) return
 
-  const latest = findingsFor(slice(), allMarks(), context())
+  const latest = findingsFor(unignored(), allMarks(), context())
     .filter((finding) => finding.anchor.name === control)
     .sort((a, b) => a.anchor.t - b.anchor.t)
     .pop()
@@ -385,6 +442,7 @@ export function resetActivityHistory(): void {
   taken = []
   chosen = "once"
   armed = true
+  ignored = new Set()
   loaded = null
 }
 

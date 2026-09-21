@@ -167,6 +167,9 @@ const api: Api = {
     ipcRenderer.invoke("activity:bind-hotkey", action, accelerator),
   captureMode: () => ipcRenderer.invoke("activity:mode"),
   setCaptureMode: (mode) => ipcRenderer.invoke("activity:set-mode", mode),
+  ignoredControls: () => ipcRenderer.invoke("activity:ignored"),
+  setIgnored: (control, on) =>
+    ipcRenderer.invoke("activity:set-ignored", control, on),
   clearActivity: () => ipcRenderer.invoke("activity:clear"),
   collectReport: () => ipcRenderer.invoke("report:collect"),
   revealReport: (file) => ipcRenderer.invoke("report:reveal", file),
