@@ -45,7 +45,8 @@ import { useStore } from "@/store"
 
 const EXPANDED_KEY = "expanded-folders"
 const INDENT = 12
-const BASE_PADDING = 8
+/** The panel header's `px-3`, so a row's icon starts under the title. */
+const BASE_PADDING = 12
 /** A row glyph — `size-3.5` — and the row's `gap-1`, in px. */
 const GLYPH = 14
 const GAP = 4
