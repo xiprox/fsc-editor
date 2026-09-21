@@ -156,24 +156,11 @@ export function ActivityPanel() {
         <div className="flex h-9 items-center gap-2 ps-3 pe-1.5">
           <span className="text-[12.5px] font-medium">Radar</span>
           {/*
-          A count when there is something to count, and otherwise nothing.
-          "watching" used to sit here and was almost never seen, because the
-          list was derived from the ring and a connected simulator filled it
-          within seconds. Captures made the empty list the ordinary state, and
-          the word did not survive being looked at: the Auto-capture button
-          already says whether anything is being watched *for*, and the list
-          below says what to do about it.
-
-          `not connected` used to take its place on an empty list and is gone
-          for the same reason — `RadarEmpty` is holding the whole panel open
-          under it, saying that at a size somebody can read.
-        */}
-          {rows.length > 0 && (
-            <span className="text-[11px] text-muted-foreground">
-              {rows.length} {rows.length === 1 ? "capture" : "captures"}
-            </span>
-          )}
-
+            Nothing beside the title. "watching", `not connected` and a capture
+            count have each sat here and gone: Auto-capture says what is being
+            watched for, `RadarEmpty` says why the panel is blank, and the list
+            is its own count.
+          */}
           <div className="ml-auto flex items-center gap-2">
             <Tooltip>
               <TooltipTrigger
