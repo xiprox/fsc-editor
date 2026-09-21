@@ -108,6 +108,14 @@ function readBottom(): BottomPanel | null {
 }
 
 const RADAR_KEY = "radar-open"
+
+/** The Variables panel's search, as it was left. See `variablesView`. */
+export interface VariablesView {
+  query: string
+  /** The namespace chip, as `L`, `A` and so on, or null for all. */
+  namespace: string | null
+  thisAircraft: boolean
+}
 const PROFILES_KEY = "profiles-open"
 
 /** Whether the Profiles panel is showing. Open unless somebody closed it. */
@@ -320,6 +328,27 @@ interface State {
    * like the others, so a window somebody collapsed to write in stays so.
    */
   profiles: boolean
+  /**
+   * What the Variables panel was showing, kept here so hiding the panel does
+   * not throw it away: the panel is unmounted while closed, and its own state
+   * went with it.
+   *
+   * Session only, deliberately not in `localStorage`. Coming back to a search
+   * from a minute ago is picking up where you were; coming back to one typed
+   * yesterday is a list somebody has to clear before they can start.
+   */
+  variablesView: VariablesView
+  /**
+   * How far the Variables list was scrolled. Apart from `variablesView`, and
+   * read with `getState` only, so a scroll writes it without re-rendering any
+   * component — nothing subscribes to it.
+   */
+  variablesScroll: number
+  /**
+   * The capture Radar has selected, by anchor time, or null for the newest.
+   * Here for the same reason as `variablesView`.
+   */
+  radarPinned: number | null
   /** Where the host is, and what they have not saved. Null unless connected. */
   presence: Presence | null
   /**
@@ -488,6 +517,8 @@ interface State {
   setBottom: (bottom: BottomPanel | null) => void
   setRadar: (radar: boolean) => void
   setProfiles: (profiles: boolean) => void
+  setVariablesView: (patch: Partial<VariablesView>) => void
+  setRadarPinned: (pinned: number | null) => void
   /** Empties both the mirror and main's ring. */
   clearLog: () => Promise<void>
   /**
@@ -1118,6 +1149,9 @@ export const useStore = create<State>((set, get) => ({
   panel: readPanel(),
   radar: readRadar(),
   profiles: readProfiles(),
+  variablesView: { query: "", namespace: null, thisAircraft: false },
+  variablesScroll: 0,
+  radarPinned: null,
   presence: null,
   viewMode: {},
   remoteContent: {},
@@ -1943,6 +1977,14 @@ export const useStore = create<State>((set, get) => ({
   setProfiles(profiles) {
     localStorage.setItem(PROFILES_KEY, String(profiles))
     set({ profiles })
+  },
+
+  setVariablesView(patch) {
+    set({ variablesView: { ...get().variablesView, ...patch } })
+  },
+
+  setRadarPinned(radarPinned) {
+    set({ radarPinned })
   },
 
   async clearLog() {

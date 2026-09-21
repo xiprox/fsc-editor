@@ -100,8 +100,12 @@ export function ActivityPanel() {
    * kept growing behind it, which is a lesson worth keeping in a comment: a
    * renderer can decide what to look at, and must not be the thing deciding
    * what exists.
+   *
+   * In the store rather than in state, so hiding Radar does not drop it: the
+   * panel is unmounted while closed.
    */
-  const [pinned, setPinned] = useState<number | null>(null)
+  const pinned = useStore((state) => state.radarPinned)
+  const setPinned = useStore((state) => state.setRadarPinned)
   const [mode, setMode] = useState<CaptureMode>("once")
   const [ignored, setIgnored] = useState<string[]>([])
 
