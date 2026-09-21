@@ -1,10 +1,11 @@
 /**
  * Where the caret is, for the panels that follow it.
  *
- * Distinct from the store's `activeLine`, which is the first *visible* line
- * and drives the sidebar's highlight. The two look interchangeable and are
- * not: scrolling moves one and never the other, and the Trace panel was built
- * against `activeLine` first and reported line 1 for every entry in the file.
+ * Distinct from the store's `activeLine`, which drives the sidebar's
+ * highlight and falls back to the viewport once the caret scrolls away. The
+ * two look interchangeable and are not: scrolling can move one and never the
+ * other, and the Trace panel was built against `activeLine` when it was the
+ * first visible line, and reported line 1 for every entry in the file.
  *
  * Module state with an emitter rather than store state, for the same reason
  * `sim-values.ts` is: this changes on every cursor move, and a zustand write

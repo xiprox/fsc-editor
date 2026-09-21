@@ -248,9 +248,10 @@ interface State {
   open: Record<string, OpenFile>
   outlines: Record<string, OutlineNode[]>
   /**
-   * 1-based first visible line of the active file, for highlighting the
-   * outline. The viewport rather than the caret, so scrolling through the file
-   * moves the highlight and the sidebar agrees with the sticky header.
+   * 1-based line of the active file you are practically at: the caret while it
+   * is on screen, otherwise a third of the way down the viewport. Drives the
+   * outline's highlight and the section peers see the host in. See
+   * `reportActiveLine`.
    */
   activeLine: number
   busy: boolean

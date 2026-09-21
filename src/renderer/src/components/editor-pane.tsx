@@ -276,9 +276,8 @@ export function EditorPane({ group }: { group: string }) {
 
     instance.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyS, saveLocal)
 
-    // Scrolling is what moves you between sections, so the highlight follows
-    // viewport. Cursor moves are included because they can scroll the view
-    // without a scroll event of their own arriving first.
+    // Scrolling and the caret both move where you are — see
+    // `reportActiveLine` — so the highlight is recomputed on either.
     const track = () => reportActiveLine(group, instance)
     const scroll = instance.onDidScrollChange(track)
     const cursor = instance.onDidChangeCursorPosition(track)
@@ -696,7 +695,17 @@ export function EditorPane({ group }: { group: string }) {
 }
 
 /**
- * Publishes the first visible line, which is what the outline highlights.
+ * Publishes the line you are practically at, which is what the outline
+ * highlights and what peers are told the host is reading.
+ *
+ * The caret, while it is on screen: that is where you are working. Once it has
+ * scrolled out of view it has been left behind, and the line a third of the
+ * way down the viewport stands in — roughly where the eye is.
+ *
+ * Not the first visible line, which is what it was. A section whose heading has
+ * just scrolled off still owns the few lines above the next heading, so with
+ * INSTRUMENTS in full view and the caret inside it the outline read GLASS TAP,
+ * a section nowhere on screen.
  *
  * Only from the focused group. There is one highlight in the sidebar and it
  * belongs to the file the sidebar is pointing at, so a pane you are not in
@@ -705,12 +714,29 @@ export function EditorPane({ group }: { group: string }) {
 function reportActiveLine(group: string, editor: Editor): void {
   if (useStore.getState().focusedGroup !== group) return
 
-  const visible = editor.getVisibleRanges()[0]
-  if (visible) useStore.getState().setActiveLine(visible.startLineNumber)
+  const ranges = editor.getVisibleRanges()
+  const caret = editor.getPosition()?.lineNumber
+
+  if (ranges.length) {
+    const first = ranges[0]!.startLineNumber
+    const last = ranges[ranges.length - 1]!.endLineNumber
+    // Folded regions split the visible lines into several ranges; the caret
+    // counts as on screen only inside one of them, not in a fold between.
+    const onScreen =
+      caret !== undefined &&
+      ranges.some(
+        (range) =>
+          caret >= range.startLineNumber && caret <= range.endLineNumber
+      )
+
+    useStore
+      .getState()
+      .setActiveLine(onScreen ? caret : first + Math.floor((last - first) / 3))
+  }
 
   /*
-   * And the caret, which is a different fact from the visible line however
-   * much the two names sound alike: scrolling moves one and never the other.
+   * And the caret itself, which is a different fact from the line above
+   * however much the two sound alike: scrolling can move one and not the other.
    * Both are reported from here because both are only true of the focused
    * group, and that check is already made above.
    */
