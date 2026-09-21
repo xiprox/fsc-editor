@@ -298,14 +298,7 @@ export function ActivityPanel() {
                     monospaced characters of pure precision, which at the front
                     of a row reads as the most important thing on it.
                   */}
-                  <span
-                    className={cn(
-                      "w-full truncate font-mono",
-                      row.anchor.kind === "mark" && "text-radar-foreground"
-                    )}
-                  >
-                    {label(row.anchor)}
-                  </span>
+                  <Label anchor={row.anchor} />
                   <span className="flex w-full items-baseline gap-1.5 font-mono text-[10px] text-muted-foreground/70">
                     {stamp(row.anchor.t)}
                     {row.anchor.repeats > 1 && (
@@ -451,9 +444,28 @@ function flatten(candidates: Finding["candidates"]) {
  * ambiguous in the two places it most needs to be exact. And the anchor's name
  * is the key promiscuity counts by, so it is a value the ranking depends on,
  * not a caption.
+ *
+ * An input event is drawn as the `B:` name a profile writes, in the editor's
+ * colours — the sim reports the bare id, and a row showing that would be the
+ * one place in the app a `B:` event is spelled without its namespace. Not a
+ * `VarChip`: the row is already the button, and a chip inside it would be a
+ * second target with its own menu.
  */
-function label(anchor: Finding["anchor"]): string {
-  return anchor.kind === "mark" ? "Manual Capture" : anchor.name
+function Label({ anchor }: { anchor: Finding["anchor"] }) {
+  if (anchor.kind === "mark") {
+    return (
+      <span className="w-full truncate font-mono text-radar-foreground">
+        Manual Capture
+      </span>
+    )
+  }
+
+  return (
+    <span className="flex w-full min-w-0 items-baseline font-mono">
+      <span className="shrink-0 font-bold text-[var(--syntax-prefix)]">B:</span>
+      <span className="truncate text-[var(--syntax-var)]">{anchor.name}</span>
+    </span>
+  )
 }
 
 /** `13:04:24.812` — the same format the Log panel uses, for the same reason. */
