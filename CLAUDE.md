@@ -153,10 +153,7 @@ Claude commits only when asked, and never picks the wording on its own.
    per commit holding exactly two questions. The commit text goes in each
    option's label, where it is read at a glance; the small print under it says
    which option it is.
-   - **`Commit 2 of 5 (<what it holds>): which title?`**, header `Title`. The
-     parentheses say which part of the session's work went into this commit,
-     named the way it was discussed rather than by file:
-     `(the variable chip's copy menu)`, not `(var-chip.tsx)`. The suggested title,
+   - **`Commit 2 of 5: which title?`**, header `Title`. The suggested title,
      described as `Suggested`, then an alternative only when there is a real
      one, described by what it changes (`Narrower scope`).
    - **`Commit 2 of 5: which description?`**, header `Description`. The
