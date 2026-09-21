@@ -17,7 +17,14 @@ const TONE: Record<RailTone, string> = {
 }
 
 /**
- * The strip of panel buttons down the trailing edge.
+ * Which edge of the window a rail runs down. `end` is the panels' rail;
+ * `start` is Profiles', the mirror of it at the leading edge.
+ */
+export type RailSide = "start" | "end"
+
+/**
+ * The strip of panel buttons down the trailing edge — or, with `side="start"`,
+ * the leading one, which holds Profiles.
  *
  * Vertical text rather than icons alone: an icon has to be learned, and there is
  * a whole column of height going spare. The label is rotated as a unit rather
@@ -39,12 +46,19 @@ const TONE: Record<RailTone, string> = {
 export function Rail({
   children,
   bottom,
+  side = "end",
 }: {
   children: React.ReactNode
   bottom?: React.ReactNode
+  side?: RailSide
 }) {
   return (
-    <div className="flex w-7 shrink-0 flex-col items-stretch border-l border-border bg-sidebar">
+    <div
+      className={cn(
+        "flex w-7 shrink-0 flex-col items-stretch border-border bg-sidebar",
+        side === "end" ? "border-l" : "border-r"
+      )}
+    >
       {children}
       {bottom && <div className="mt-auto flex flex-col items-stretch">{bottom}</div>}
     </div>
@@ -74,6 +88,7 @@ function RailToggle({
   active,
   tone,
   orientation = "vertical",
+  side = "end",
 }: {
   label: string
   open: boolean
@@ -82,8 +97,10 @@ function RailToggle({
   active?: string
   tone?: RailTone
   orientation?: RailOrientation
+  side?: RailSide
 }) {
   const vertical = orientation === "vertical"
+  const start = side === "start"
 
   return (
     <button
@@ -109,15 +126,30 @@ function RailToggle({
          */
         open && tone && TONE[tone],
         open &&
-          (vertical
-            ? "shadow-[inset_2px_0_0_var(--tone-edge)]"
-            : "shadow-[inset_0_2px_0_var(--tone-edge)]")
+          (!vertical
+            ? "shadow-[inset_0_2px_0_var(--tone-edge)]"
+            : start
+              ? "shadow-[inset_-2px_0_0_var(--tone-edge)]"
+              : "shadow-[inset_2px_0_0_var(--tone-edge)]")
       )}
     >
       {dot}
+      {/*
+        On the leading rail the word reads bottom to top instead. Both rails
+        then have the tops of their letters toward the window's outer edge, so
+        the two read as a mirrored pair.
+
+        `sideways-lr` rather than `vertical-rl` turned with a 180° transform: a
+        transformed text layer is rasterised off the pixel grid and came out
+        blurred beside the crisp labels on the other rail.
+      */}
       <span
         className="text-[11.5px] tracking-wide"
-        style={vertical ? { writingMode: "vertical-rl" } : undefined}
+        style={
+          vertical
+            ? { writingMode: start ? "sideways-lr" : "vertical-rl" }
+            : undefined
+        }
       >
         {label}
       </span>
@@ -170,6 +202,7 @@ export function ToggleRailButton({
   dot,
   active,
   tone,
+  side,
 }: {
   open: boolean
   onToggle: () => void
@@ -179,6 +212,8 @@ export function ToggleRailButton({
   active?: string
   /** The palette the open state's bar is drawn in; neutral when absent. */
   tone?: RailTone
+  /** Which rail it sits on, so its open-state bar faces the editor. */
+  side?: RailSide
 }) {
   return (
     <RailToggle
@@ -188,6 +223,7 @@ export function ToggleRailButton({
       dot={dot}
       active={active}
       tone={tone}
+      side={side}
     />
   )
 }
