@@ -179,7 +179,22 @@ export function VariablesPanel() {
 
   return (
     <div className="flex h-full flex-col bg-sidebar text-sidebar-foreground">
-      <PanelHeader title="Variables">
+      {/*
+        The count sits with the title rather than in a footer under the list: it
+        answers "how much is there", which is a question about the panel, and a
+        footer cost a row of height at the bottom of a list that wants all of
+        it. Just the numbers, since the title already says what they count.
+      */}
+      <PanelHeader
+        title="Variables"
+        after={
+          <span className="text-[11px] text-muted-foreground tabular-nums">
+            {searching && results.length < total
+              ? `${results.length.toLocaleString()} of ${total.toLocaleString()}`
+              : total.toLocaleString()}
+          </span>
+        }
+      >
         <Button
           variant="ghost"
           size="icon-sm"
@@ -261,12 +276,6 @@ export function VariablesPanel() {
           />
         </div>
       )}
-
-      <footer className="flex h-6 shrink-0 items-center border-t border-divider-subtle px-1 text-[11px] text-muted-foreground">
-        {searching && results.length < total
-          ? `${results.length.toLocaleString()} of ${total.toLocaleString()} variables`
-          : `${total.toLocaleString()} variables`}
-      </footer>
     </div>
   )
 }
