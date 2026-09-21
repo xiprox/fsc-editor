@@ -2,7 +2,7 @@ import { Fragment, useEffect, useMemo, useRef, useState } from "react"
 
 import {
   ChevronDown,
-  ChevronRight,
+  ChevronUp,
   ClipboardCopy,
   Copy,
   FileCode2,
@@ -51,15 +51,29 @@ const GLYPH = 14
 const GAP = 4
 
 /**
- * How far into a row the name itself starts: the spacer and the icon in front
- * of it, plus the two `gap-1`s. Anything that belongs to the *name* rather than
- * to the row — the field's refusal, so far — lines up here rather than under the
- * icons, which are about the file.
+ * How far into a row the name itself starts: the icon in front of it and its
+ * `gap-1`. Anything that belongs to the *name* rather than to the row — the
+ * field's refusal, so far — lines up here rather than under the icon, which is
+ * about the file.
  */
-const NAME_INSET = GLYPH + GAP + GLYPH + GAP
+const NAME_INSET = GLYPH + GAP
 
-/** The same for a row that reserves no chevron column — see `NamingRow`. */
-const NAME_INSET_FLUSH = GLYPH + GAP
+/**
+ * The disclosure chevron, at a row's trailing edge.
+ *
+ * On the right so the rows' icons line up on the panel's own edge: at the
+ * front, every row kept a chevron's column whether it had one or not, and most
+ * files have no outline. The tree is shallow — a folder level and a file's
+ * sections — so the indent carries the nesting on its own.
+ *
+ * Down while closed and up while open, the way an accordion says it. A `>` at
+ * the end of a row reads as "go there", and pressing a file row already opens
+ * the file.
+ */
+function Disclosure({ open }: { open: boolean }) {
+  const Chevron = open ? ChevronUp : ChevronDown
+  return <Chevron className="size-3.5 shrink-0 text-muted-foreground" />
+}
 
 type TreeNode =
   | { type: "file"; name: string; path: string }
@@ -309,7 +323,6 @@ function NamingRow({
   label,
   placeholder,
   padding,
-  aligned = true,
   commit,
   onDone,
 }: {
@@ -317,16 +330,6 @@ function NamingRow({
   label: string
   placeholder?: string
   padding: React.CSSProperties
-  /**
-   * Whether to reserve the chevron's column in front of the icon.
-   *
-   * A rename is a row of the list wearing a field, and it has to stay lined up
-   * with the rows above and below it. Naming a *new* profile is a prompt above
-   * the list rather than a row in it — and in the case it exists for, an empty
-   * workspace, there is nothing underneath to line up with at all, so the
-   * reserved column is just a gap in front of the icon with no explanation.
-   */
-  aligned?: boolean
   /** The refusal, or null when the name landed. */
   commit: (name: string) => Promise<string | null>
   onDone: () => void
@@ -336,7 +339,6 @@ function NamingRow({
   return (
     <div style={padding} className="flex w-full flex-col py-1 pr-2">
       <div className="flex w-full items-center gap-1">
-        {aligned && <span className="size-3.5 shrink-0" />}
         <FileCode2 className="size-3.5 shrink-0 text-muted-foreground" />
         <NameField
           name={name}
@@ -365,7 +367,7 @@ function NamingRow({
       */}
       {error && (
         <p
-          style={{ paddingLeft: aligned ? NAME_INSET : NAME_INSET_FLUSH }}
+          style={{ paddingLeft: NAME_INSET }}
           className="flex items-start gap-1.5 pt-1 text-[11px] text-muted-foreground"
         >
           <TriangleAlert className="mt-px size-3 shrink-0" />
@@ -399,7 +401,6 @@ function OutlineRow({
         node.kind === "block" && "text-[11px] tracking-wide uppercase"
       )}
     >
-      <span className="size-3.5 shrink-0" />
       <Icon className="size-3 shrink-0 opacity-70" />
       <span className="truncate">{node.title}</span>
     </button>
@@ -447,7 +448,6 @@ function Row({
   if (node.type === "dir") {
     const isExpanded = state.expanded.has(node.path)
     const FolderIcon = isExpanded ? FolderOpen : Folder
-    const Chevron = isExpanded ? ChevronDown : ChevronRight
 
     return (
       <>
@@ -458,9 +458,11 @@ function Row({
             style={padding}
             className="flex w-full items-center gap-1 py-1 pr-2 text-left text-[13px] hover:bg-accent/60"
           >
-            <Chevron className="size-3.5 shrink-0 text-muted-foreground" />
             <FolderIcon className="size-3.5 shrink-0 text-muted-foreground" />
             <span className="truncate">{node.name}</span>
+            <span className="ml-auto flex shrink-0">
+              <Disclosure open={isExpanded} />
+            </span>
           </ContextMenuTrigger>
 
           {/*
@@ -506,7 +508,6 @@ function Row({
   // Only files we have read, and only those that use sections, have anything.
   const blocks = blocksOf(outline)
   const isExpanded = state.expanded.has(node.path)
-  const Chevron = isExpanded ? ChevronDown : ChevronRight
 
   const activeLines = new Set(
     isActive
@@ -568,29 +569,37 @@ function Row({
             isActive && "bg-accent text-accent-foreground"
           )}
         >
-          {blocks.length ? (
-            <Chevron
-              role="button"
-              aria-label={isExpanded ? "Collapse outline" : "Expand outline"}
-              className="size-3.5 shrink-0 opacity-70"
-              onClick={(event) => {
-                event.stopPropagation()
-                state.onToggle(node.path)
-              }}
-            />
-          ) : (
-            <span className="size-3.5 shrink-0" />
-          )}
           <FileCode2 className="size-3.5 shrink-0 text-muted-foreground" />
           <span className="truncate">{node.name}</span>
-          {dirty && (
-            <span
-              className={cn(
-                "ml-auto size-1.5 shrink-0 rounded-full",
-                stale ? "bg-amber-600 dark:bg-amber-400" : "bg-foreground/60"
-              )}
-            />
-          )}
+          {/*
+            The unsaved dot, then the chevron's slot, kept on every file row
+            whether it has an outline or not so the dots stand in one column.
+          */}
+          <span className="ml-auto flex shrink-0 items-center gap-1">
+            {dirty && (
+              <span
+                className={cn(
+                  "size-1.5 shrink-0 rounded-full",
+                  stale ? "bg-amber-600 dark:bg-amber-400" : "bg-foreground/60"
+                )}
+              />
+            )}
+            {blocks.length ? (
+              <span
+                role="button"
+                aria-label={isExpanded ? "Collapse outline" : "Expand outline"}
+                className="flex"
+                onClick={(event) => {
+                  event.stopPropagation()
+                  state.onToggle(node.path)
+                }}
+              >
+                <Disclosure open={isExpanded} />
+              </span>
+            ) : (
+              <span className="size-3.5 shrink-0" />
+            )}
+          </span>
         </ContextMenuTrigger>
 
         {/*
@@ -760,7 +769,6 @@ export function FileTree() {
       label="Name of the new profile"
       placeholder="Aircraft name"
       padding={{ paddingLeft: BASE_PADDING }}
-      aligned={false}
       commit={createNamedProfile}
       onDone={cancelNamingProfile}
     />
