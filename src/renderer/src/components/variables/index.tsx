@@ -397,7 +397,7 @@ function VariablesEmpty({
         </EmptyMedia>
         <EmptyTitle className="text-[13px]">Find a variable</EmptyTitle>
         <EmptyDescription className="text-[11.5px]/relaxed">
-          Every variable known from your profiles, the sim, and the MSFS SDK.
+          Every known variable from other profiles, the sim, and the MSFS SDK.
         </EmptyDescription>
       </EmptyHeader>
     </Empty>
