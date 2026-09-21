@@ -107,6 +107,66 @@ tense; fact then consequence after an em dash; buttons are the specific verb;
 one vocabulary (the app, the FSC folder, sim module, the host and peers). It
 also lists which surfaces are still owed a holistic pass.
 
+## Commits
+
+release-please writes `CHANGELOG.md` from commit titles. A `feat` or `fix`
+title lands there verbatim, under Features or Bug Fixes, so **the title is a
+release note** and is written for the person reading one.
+
+- **Type.** `feat` is anything new or changed that a user will notice,
+  including polish and a new way of showing information. `fix` is something
+  that was wrong and now isn't. `refactor`, `docs`, `test`, `ci` and `chore`
+  are for changes nobody using the app would notice, and stay out of the
+  changelog.
+- **Scope** is a part of the app a user recognises, never a file or a layer:
+  `editor`, `profiles`, `variables`, `radar`, `trace`, `log`, `issues`,
+  `simconnect` (the SimConnect link: status, reconnects, `A:` and `B:` reads),
+  `sim-module` (the package, and what travels over its channel, such as `L:`
+  values), `remote-connect`, `settings`, `workspace`, `updates`. Not `sim`,
+  which could mean MSFS itself.
+- **Title.** Say what the user gets or can now do, never what the code does,
+  and use no internal names. Something to do reads as an instruction
+  (`right-click a variable to copy its name or value`); something to see reads
+  as a statement (`captured controls show their B: prefix`). No "ability to",
+  since the Features heading already says that. No em-dashes. Lower case after
+  the colon, no full stop, and spell-checked: "upadte" shipped in 0.1.1.
+- **One change per commit.** A title that needs "and" is two commits.
+- **Description.** Why, never what, since the diff shows what. Show the
+  concrete case rather than naming a property of it: "the row read
+  `AIRLINER_EFIS_…` while a profile writes `B:AIRLINER_EFIS_…`", not "for
+  consistency". It never restates the title, so it is as long as the reason
+  and no longer, and absent when the title is enough. Mention verification
+  only when something went unchecked, and say what: "Untested against a live
+  capture: rows only appear when a control is worked in the sim."
+
+### How Claude proposes a commit
+
+Claude commits only when asked, and never picks the wording on its own.
+
+1. **List every proposed commit in the reply**, in order, each as a code block
+   holding the exact title and description. The split is part of the proposal.
+2. **Ask about one commit at a time**, in order, with one AskUserQuestion call
+   per commit holding exactly two questions. The commit text goes in each
+   option's label, where it is read at a glance; the small print under it says
+   which option it is.
+   - **`Commit 2 of 5 (<what it holds>): which title?`**, header `Title`. The
+     parentheses say which part of the session's work went into this commit,
+     named the way it was discussed rather than by file:
+     `(the variable chip's copy menu)`, not `(var-chip.tsx)`. The suggested title,
+     described as `Suggested`, then an alternative only when there is a real
+     one, described by what it changes (`Narrower scope`).
+   - **`Commit 2 of 5: which description?`**, header `Description`. The
+     suggested description's first sentence, described as `Suggested`, with the
+     full text as its preview; then `None`. When the suggestion is no
+     description, `None` comes first and one short description second.
+
+   Other is how a different wording arrives, and is used exactly as typed. A
+   different split is also given through Other, on the title question.
+
+3. **Commit as soon as the answers arrive**, then show `git log --oneline -1`
+   and ask about the next one. The co-author trailer is added to every
+   description, including a chosen None, and is not shown in the options.
+
 ## Working in this repo
 
 ### Nothing personal in the tree
