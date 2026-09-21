@@ -6,7 +6,7 @@ import { EditorGrid } from "@/components/editor-grid"
 import { FileTree } from "@/components/file-tree"
 import { FscLaunch } from "@/components/fsc-launch"
 import { PanelHeader } from "@/components/panel-header"
-import { Rail } from "@/components/rail"
+import { Rail, ToggleRailButton } from "@/components/rail"
 import {
   RemoteChip,
   RemoteConnectPanel,
@@ -15,7 +15,10 @@ import {
 import { ActivityPanel, ActivityRailButton } from "@/components/activity"
 import { IssuesPanel, IssuesRailButton } from "@/components/issues"
 import { TracePanel, TraceRailButton } from "@/components/trace"
-import { CurrentAircraft } from "@/components/current-aircraft"
+import {
+  CurrentAircraft,
+  CurrentAircraftRail,
+} from "@/components/current-aircraft"
 import { LogFooterButton, LogPanel } from "@/components/log"
 import { ReportButton } from "@/components/report"
 import {
@@ -152,6 +155,8 @@ function Workbench() {
   const panel = useStore((state) => state.panel)
   const bottom = useStore((state) => state.bottom)
   const radar = useStore((state) => state.radar)
+  const profiles = useStore((state) => state.profiles)
+  const setProfiles = useStore((state) => state.setProfiles)
 
   const sidebar = usePanelWidth(SIDEBAR_KEY, SIDEBAR)
   const side = usePanelWidth(PANEL_KEY, PANEL)
@@ -164,14 +169,21 @@ function Workbench() {
 
   const [settingsOpen, setSettingsOpen] = useState(false)
 
-  // Ctrl+, — the shortcut every editor has taught. On the window rather than
-  // a Monaco command, so it works from any panel, not only with the editor
-  // focused; Monaco binds nothing to it, so nothing is being taken away.
+  // Ctrl+, and Ctrl+B — the shortcuts every editor has taught, for settings
+  // and for the leading panel. On the window rather than as Monaco commands,
+  // so they work from any panel, not only with the editor focused; Monaco
+  // binds nothing to either, so nothing is being taken away.
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
-      if (event.ctrlKey && !event.altKey && !event.shiftKey && event.key === ",") {
+      if (!event.ctrlKey || event.altKey || event.shiftKey) return
+
+      if (event.key === ",") {
         event.preventDefault()
         setSettingsOpen(true)
+      } else if (event.key.toLowerCase() === "b") {
+        event.preventDefault()
+        const { profiles, setProfiles } = useStore.getState()
+        setProfiles(!profiles)
       }
     }
 
@@ -199,49 +211,72 @@ function Workbench() {
 
       <div className="flex min-h-0 flex-1">
         {/*
+          The leading rail, the mirror of the one at the trailing edge, for the
+          one panel that lives on this side. While Profiles is collapsed the
+          aircraft in the sim stands at the bottom of it, turned on its side.
+        */}
+        <Rail
+          side="start"
+          bottom={
+            profiles ? undefined : (
+              <CurrentAircraftRail onOpen={() => setProfiles(true)} />
+            )
+          }
+        >
+          <ToggleRailButton
+            side="start"
+            label="Profiles"
+            open={profiles}
+            onToggle={() => setProfiles(!profiles)}
+          />
+        </Rail>
+
+        {/*
           Same shape as the Remote Connect panel opposite it — header strip,
           then a scrolling body — so the window reads as two panels around an
           editor rather than as a sidebar and a separate thing.
         */}
-        <aside
-          className="flex shrink-0 flex-col bg-sidebar text-sidebar-foreground"
-          style={{ width: sidebar.width }}
-        >
-          {/*
-            Starting a profile is also offered by the two empty states, and it
-            has to be here as well: those only exist while the list is empty,
-            and the second profile somebody writes is no more findable than the
-            first was.
+        {profiles && (
+          <aside
+            className="flex shrink-0 flex-col bg-sidebar text-sidebar-foreground"
+            style={{ width: sidebar.width }}
+          >
+            {/*
+              Starting a profile is also offered by the two empty states, and it
+              has to be here as well: those only exist while the list is empty,
+              and the second profile somebody writes is no more findable than the
+              first was.
 
-            **There is no rescan here**, and the list does not need one: the
-            workspace is watched recursively and every change rebuilds it. What
-            a rescan additionally does is rebuild the *variable index*, which
-            `applyFiles` deliberately skips on each watcher tick — and that is a
-            Variables concern, offered by the Variables panel under the same
-            label. Two buttons spelled `Rescan profiles` in one window, one of
-            them on a list that keeps itself current, taught that the sidebar
-            needed nudging. It does not. `watch.ts` names this button as its
-            recovery path if `fs.watch` dies silently; the Variables one and the
-            empty editor's both still serve that.
-          */}
-          <PanelHeader title="Profiles">
-            <Button
-              className="-me-2"
-              variant="ghost"
-              size="icon-sm"
-              aria-label="New profile"
-              onClick={startNamingProfile}
-            >
-              <FilePlus2 />
-            </Button>
-          </PanelHeader>
-          <div className="scrollbar-overlay min-h-0 flex-1 overflow-y-auto">
-            <FileTree />
-          </div>
-          <CurrentAircraft />
-        </aside>
+              **There is no rescan here**, and the list does not need one: the
+              workspace is watched recursively and every change rebuilds it. What
+              a rescan additionally does is rebuild the *variable index*, which
+              `applyFiles` deliberately skips on each watcher tick — and that is a
+              Variables concern, offered by the Variables panel under the same
+              label. Two buttons spelled `Rescan profiles` in one window, one of
+              them on a list that keeps itself current, taught that the sidebar
+              needed nudging. It does not. `watch.ts` names this button as its
+              recovery path if `fs.watch` dies silently; the Variables one and the
+              empty editor's both still serve that.
+            */}
+            <PanelHeader title="Profiles">
+              <Button
+                className="-me-2"
+                variant="ghost"
+                size="icon-sm"
+                aria-label="New profile"
+                onClick={startNamingProfile}
+              >
+                <FilePlus2 />
+              </Button>
+            </PanelHeader>
+            <div className="scrollbar-overlay min-h-0 flex-1 overflow-y-auto">
+              <FileTree />
+            </div>
+            <CurrentAircraft />
+          </aside>
+        )}
 
-        <Splitter handlers={sidebar.handlers} />
+        {profiles && <Splitter handlers={sidebar.handlers} />}
 
         {/*
           The editor, the side column and the bottom slot, as a grid rather than

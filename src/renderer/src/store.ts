@@ -108,6 +108,12 @@ function readBottom(): BottomPanel | null {
 }
 
 const RADAR_KEY = "radar-open"
+const PROFILES_KEY = "profiles-open"
+
+/** Whether the Profiles panel is showing. Open unless somebody closed it. */
+function readProfiles(): boolean {
+  return localStorage.getItem(PROFILES_KEY) !== "false"
+}
 
 /**
  * Whether Radar is showing.
@@ -309,6 +315,11 @@ interface State {
    * sits in that column rather than in the bottom slot.
    */
   radar: boolean
+  /**
+   * Whether the Profiles panel is showing, at the leading edge. Remembered
+   * like the others, so a window somebody collapsed to write in stays so.
+   */
+  profiles: boolean
   /** Where the host is, and what they have not saved. Null unless connected. */
   presence: Presence | null
   /**
@@ -476,6 +487,7 @@ interface State {
   setPanel: (panel: Panel | null) => void
   setBottom: (bottom: BottomPanel | null) => void
   setRadar: (radar: boolean) => void
+  setProfiles: (profiles: boolean) => void
   /** Empties both the mirror and main's ring. */
   clearLog: () => Promise<void>
   /**
@@ -1105,6 +1117,7 @@ export const useStore = create<State>((set, get) => ({
   localManifest: [],
   panel: readPanel(),
   radar: readRadar(),
+  profiles: readProfiles(),
   presence: null,
   viewMode: {},
   remoteContent: {},
@@ -1925,6 +1938,11 @@ export const useStore = create<State>((set, get) => ({
   setRadar(radar) {
     localStorage.setItem(RADAR_KEY, String(radar))
     set({ radar })
+  },
+
+  setProfiles(profiles) {
+    localStorage.setItem(PROFILES_KEY, String(profiles))
+    set({ profiles })
   },
 
   async clearLog() {

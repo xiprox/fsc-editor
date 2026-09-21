@@ -82,3 +82,37 @@ export function CurrentAircraft() {
     </div>
   )
 }
+
+/**
+ * The card above, turned on its side for the Profiles rail while the panel is
+ * collapsed: the same tint, top edge, plane and name, without the action.
+ * Pressing it opens Profiles, where the action is.
+ *
+ * Set in `sideways-lr`, which reads bottom to top: the card's row turned a
+ * quarter to the left, plane at the bottom. Writing mode rather than a rotate
+ * transform, for two reasons. A rotated element keeps its unrotated box for
+ * layout, so the tinted box could not hug the name and stood 240px tall under
+ * a short one. And a transformed text layer is rasterised off the pixel grid,
+ * which blurred the Profiles label above it the same way. The plane stays
+ * upright: an icon is not laid out as text, so the writing mode leaves it be.
+ *
+ * `max-h-64` caps how far up the rail a long name runs before it truncates.
+ */
+export function CurrentAircraftRail({ onOpen }: { onOpen: () => void }) {
+  const { aircraft } = useAircraftProfile()
+
+  if (!aircraft) return null
+
+  return (
+    <button
+      type="button"
+      aria-label={`Open Profiles: ${aircraft}`}
+      onClick={onOpen}
+      className="flex max-h-64 w-7 shrink-0 items-center gap-1.5 border-t border-sim-border/80 bg-sim/5 px-2 py-3 text-sim-foreground"
+      style={{ writingMode: "sideways-lr" }}
+    >
+      <Plane className="size-3.5 shrink-0" />
+      <span className="truncate text-[13px] font-medium">{aircraft}</span>
+    </button>
+  )
+}
