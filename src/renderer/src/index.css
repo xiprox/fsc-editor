@@ -148,7 +148,7 @@
      *
      * `--divider` runs between panels, and between a panel and the editor —
      * every `Splitter` that is a panel's edge. `--divider-subtle` runs inside
-     * one panel: a list and its footer, Radar's captures and their variables.
+     * one panel, like the line between Radar's captures and their variables.
      * The edge between two things outranks a line within one of them.
      *
      * Both solid, where `--border` is white at 10% in dark. A see-through line
