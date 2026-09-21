@@ -114,10 +114,14 @@ title lands there verbatim, under Features or Bug Fixes, so **the title is a
 release note** and is written for the person reading one.
 
 - **Type.** `feat` is anything new or changed that a user will notice,
-  including polish and a new way of showing information. `fix` is something
-  that was wrong and now isn't. `refactor`, `docs`, `test`, `ci` and `chore`
-  are for changes nobody using the app would notice, and stay out of the
-  changelog.
+  including polish worth announcing and a new way of showing information.
+  `fix` is something that was wrong and now isn't. `style` is a visual change
+  to the app that is not worth a line in the changelog: a count taken out of a
+  header, a button that points at a menu which already existed. Between `feat`
+  and `style`, ask whether the change would be announced. Here `style` means
+  the app's look, not code formatting. `refactor`, `docs`, `test`, `ci` and
+  `chore` are for changes nobody using the app would notice. Everything but
+  `feat` and `fix` stays out of the changelog.
 - **Scope** is a part of the app a user recognises, never a file or a layer:
   `editor`, `profiles`, `variables`, `radar`, `trace`, `log`, `issues`,
   `simconnect` (the SimConnect link: status, reconnects, `A:` and `B:` reads),
