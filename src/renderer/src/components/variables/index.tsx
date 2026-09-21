@@ -1,4 +1,11 @@
-import { useDeferredValue, useEffect, useMemo, useRef, useState } from "react"
+import {
+  useDeferredValue,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react"
 
 import type { VarSearchResult } from "@/lib/var-search"
 
@@ -111,9 +118,15 @@ export function VariablesPanel() {
   const refresh = useStore((state) => state.refresh)
   const sim = useStore((state) => state.sim)
 
-  const [query, setQuery] = useState("")
-  const [namespace, setNamespace] = useState<string | null>(null)
-  const [thisAircraft, setThisAircraft] = useState(false)
+  // In the store rather than in state, so closing the panel does not clear the
+  // search it was showing. See `variablesView`.
+  const { query, namespace, thisAircraft } = useStore(
+    (state) => state.variablesView
+  )
+  const setView = useStore((state) => state.setVariablesView)
+  const setQuery = (next: string) => setView({ query: next })
+  const setNamespace = (next: string | null) => setView({ namespace: next })
+  const setThisAircraft = (next: boolean) => setView({ thisAircraft: next })
 
   /*
    * The aircraft the filter is about: the one the index was built against, and
@@ -438,7 +451,17 @@ function VariableList({ results }: { results: VarSearchResult[] }) {
     getScrollElement: () => scroller.current,
     estimateSize: () => ROW_HEIGHT,
     overscan: 8,
+    // Where the list was when the panel closed, so the first rows built are
+    // the ones about to be on screen rather than the top of the list.
+    initialOffset: () => useStore.getState().variablesScroll,
   })
+
+  // And the element itself put back there before the first paint, so the list
+  // does not show its top for a frame and then jump.
+  useLayoutEffect(() => {
+    const element = scroller.current
+    if (element) element.scrollTop = useStore.getState().variablesScroll
+  }, [])
 
   const items = rows.getVirtualItems()
 
@@ -459,6 +482,9 @@ function VariableList({ results }: { results: VarSearchResult[] }) {
   return (
     <div
       ref={scroller}
+      onScroll={(event) =>
+        useStore.setState({ variablesScroll: event.currentTarget.scrollTop })
+      }
       className="scrollbar-overlay min-h-0 flex-1 overflow-y-auto px-2"
     >
       <div className="relative w-full" style={{ height: rows.getTotalSize() }}>
