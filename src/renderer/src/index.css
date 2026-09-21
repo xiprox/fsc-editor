@@ -838,8 +838,14 @@
  * height cuts the tail off every `y`, `g` and `p` — and every profile ends in
  * `.yaml`. Clipping only the inline axis keeps the ellipsis and lets the
  * descenders hang below the box.
+ *
+ * `min-width: 0` because `clip` is not `hidden`. A flex item that hides its
+ * overflow may shrink below its content; one that clips may not, so without
+ * it every name in the file tree kept its full width and pushed its row out
+ * past the panel.
  */
 @utility truncate-trim {
+  min-width: 0;
   overflow-x: clip;
   text-overflow: ellipsis;
   white-space: nowrap;
