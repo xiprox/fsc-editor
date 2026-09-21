@@ -89,6 +89,20 @@ rings sit outside the border-box and bleed into the gap beside a neighbour.
 
 Disable rather than remove, so a row never reflows as things become available.
 
+### A label is centred by its letters
+
+`items-center` centres a line box, and where the letters sit inside it is the
+font's doing. Measured off the rendered pixels, every Inter label at 12.5–13px
+sat 1px high — panel titles, the file tree, the editor tabs — and the monospace
+Hosting chip likewise. A single-line label in a box of fixed height takes
+`text-trim`, which trims the line box to the letters so centring it centres
+them; one that also truncates takes `truncate-trim`, since `truncate` on a
+trimmed box cuts the tails off `y`, `g` and `p`. Give the box its height first —
+a trimmed label no longer holds a row open. The utilities, and why, are in
+`index.css`.
+
+Beside an icon or a dot, the capitals are what line up with it.
+
 ### Panel actions are icon buttons
 
 `<Button variant="ghost" size="icon-sm" aria-label="…"><Icon /></Button>`,

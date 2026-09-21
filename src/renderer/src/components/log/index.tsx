@@ -125,7 +125,7 @@ export function LogPanel() {
   return (
     <div className="flex h-full min-h-0 flex-col bg-sidebar">
       <header className="flex h-9 shrink-0 items-center gap-2 px-3">
-        <span className="text-[12.5px] font-medium">Log</span>
+        <span className="text-[12.5px] font-medium text-trim">Log</span>
         <span className="text-[11px] text-muted-foreground">
           {rows.length === log.length
             ? `${log.length}`

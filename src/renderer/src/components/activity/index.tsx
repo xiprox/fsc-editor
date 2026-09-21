@@ -179,7 +179,7 @@ export function ActivityPanel() {
       */}
       <header className="flex shrink-0 flex-col">
         <div className="flex h-9 items-center gap-2 ps-3 pe-1.5">
-          <span className="text-[12.5px] font-medium">Radar</span>
+          <span className="text-[12.5px] font-medium text-trim">Radar</span>
           {/*
             Nothing beside the title. "watching", `not connected` and a capture
             count have each sat here and gone: Auto-capture says what is being

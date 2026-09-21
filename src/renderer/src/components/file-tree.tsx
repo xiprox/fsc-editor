@@ -457,10 +457,10 @@ function Row({
             render={<button type="button" />}
             onClick={() => state.onToggle(node.path)}
             style={padding}
-            className="flex w-full items-center gap-1 py-1 pr-2 text-left text-[13px] hover:bg-accent/60"
+            className="flex h-7 w-full items-center gap-1 pr-2 text-left text-[13px] hover:bg-accent/60"
           >
             <FolderIcon className="size-3.5 shrink-0 text-muted-foreground" />
-            <span className="truncate">{node.name}</span>
+            <span className="truncate-trim">{node.name}</span>
             <span className="ml-auto flex shrink-0">
               <Disclosure open={isExpanded} />
             </span>
@@ -574,12 +574,12 @@ function Row({
           data-active={isActive}
           style={padding}
           className={cn(
-            "flex w-full items-center gap-1 py-1 pr-2 text-left text-[13px] hover:bg-accent/60",
+            "flex h-7 w-full items-center gap-1 pr-2 text-left text-[13px] hover:bg-accent/60",
             isActive && "bg-accent text-accent-foreground"
           )}
         >
           <FileCode2 className="size-3.5 shrink-0 text-muted-foreground" />
-          <span className="truncate">{node.name}</span>
+          <span className="truncate-trim">{node.name}</span>
           {/*
             The unsaved dot, then the chevron's slot, kept on every file row
             whether it has an outline or not so the dots stand in one column.

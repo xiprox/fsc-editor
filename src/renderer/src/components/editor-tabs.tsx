@@ -165,7 +165,7 @@ export function EditorTabs({ group }: { group: string }) {
                 : "max-w-55 text-muted-foreground hover:bg-accent/60 hover:text-foreground"
             )}
           >
-            <span className="min-w-0 truncate">
+            <span className="min-w-0 truncate-trim">
               {label.hint && <span className="opacity-55">{label.hint}/</span>}
               {label.name}
             </span>

@@ -811,6 +811,42 @@
 }
 
 /*
+ * A single-line label, centred by its letters rather than by its line box.
+ *
+ * `items-center` centres the line box, and where the letters sit inside it is
+ * the font's business: its ascent and descent, rounded to a pixel. Measured off
+ * the rendered pixels, every Inter label at 12.5–13px came out 1px high — the
+ * panel titles, the file tree, the editor tabs — and the monospace Hosting chip
+ * 1px high as well. Smaller controls happened to round the right way.
+ *
+ * Trimming the line box to cap height above and the baseline below makes the
+ * box *be* the letters, so centring it centres them, in any font at any size.
+ * The descenders still draw; they are just no longer part of the box.
+ *
+ * Only in a box with its own height. The trimmed line is shorter, so anything
+ * that took its height from the text — `py-1` around a label — gets shorter
+ * with it. Give the box a height first.
+ */
+@utility text-trim {
+  text-box: trim-both cap alphabetic;
+}
+
+/*
+ * `truncate` for a trimmed label.
+ *
+ * `truncate` clips with `overflow: hidden`, which on a box trimmed to cap
+ * height cuts the tail off every `y`, `g` and `p` — and every profile ends in
+ * `.yaml`. Clipping only the inline axis keeps the ellipsis and lets the
+ * descenders hang below the box.
+ */
+@utility truncate-trim {
+  overflow-x: clip;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  text-box: trim-both cap alphabetic;
+}
+
+/*
  * The four control sizes.
  *
  * `Button` and `Toggle` had a size table each, written out longhand and kept in

@@ -72,7 +72,7 @@ export function RemoteChip() {
       className="flex h-5 shrink-0 items-center gap-1.5 rounded-sm border border-remote-border bg-remote-surface px-1.5 text-[11px] text-remote-foreground"
     >
       <span aria-hidden className="size-1.5 shrink-0 rounded-full bg-remote" />
-      <span className="font-mono">{label}</span>
+      <span className="font-mono text-trim">{label}</span>
     </button>
   )
 }
