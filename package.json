@@ -1,7 +1,7 @@
 {
   "name": "fsc-editor",
   "private": true,
-  "version": "0.1.2",
+  "version": "0.2.0",
   "description": "Editor for FS Copilot aircraft profiles",
   "author": "xip",
   "license": "MIT",
