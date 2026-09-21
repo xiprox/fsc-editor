@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from "react"
 
-import { Circle, ClipboardCopy, Eraser } from "lucide-react"
+import { Circle, ClipboardCopy, Ellipsis, Eraser } from "lucide-react"
 
 import {
   MARK_BEFORE_MS,
@@ -18,6 +18,12 @@ import {
   ContextMenuItem,
   ContextMenuTrigger,
 } from "@/components/ui/context-menu"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group"
 import {
   Tooltip,
@@ -303,13 +309,16 @@ export function ActivityPanel() {
           */}
           <ul className="scrollbar-overlay min-h-11 flex-1 overflow-y-auto text-[11px]">
             {rows.map((row) => (
-              <li key={row.anchor.t}>
+              <li key={row.anchor.t} className="relative">
                 <ContextMenu disabled={row.anchor.kind !== "input"}>
                   <ContextMenuTrigger
                     render={<button type="button" />}
                     onClick={() => setPinned(row.anchor.t)}
                     className={cn(
                       "flex w-full flex-col items-start px-3 py-1.5 text-left hover:bg-accent/50",
+                      // Room for the ⋯ button, so the name truncates and the
+                      // ×N count stops before it rather than under it.
+                      row.anchor.kind === "input" && "pr-9",
                       finding?.anchor.t === row.anchor.t && "bg-accent"
                     )}
                   >
@@ -329,25 +338,44 @@ export function ActivityPanel() {
                     </span>
                   </ContextMenuTrigger>
 
-                  {/*
-                    The same two copies as a variable chip, and the same order:
-                    the `B:` name the row shows, then the bare id the sim
-                    reported. A mark has no name to copy — "Manual Capture" is
-                    ours — so it has no menu.
-                  */}
                   <ContextMenuContent>
-                    <ContextMenuItem
-                      onClick={() => void copy(`B:${row.anchor.name}`)}
-                    >
-                      <ClipboardCopy />
-                      Copy name
-                    </ContextMenuItem>
-                    <ContextMenuItem onClick={() => void copy(row.anchor.name)}>
-                      <ClipboardCopy />
-                      Copy name without prefix
-                    </ContextMenuItem>
+                    {rowActions(row.anchor).map(({ label, run }) => (
+                      <ContextMenuItem key={label} onClick={run}>
+                        <ClipboardCopy />
+                        {label}
+                      </ContextMenuItem>
+                    ))}
                   </ContextMenuContent>
                 </ContextMenu>
+
+                {/*
+                  The right-click menu, made visible. A sibling of the row
+                  rather than inside it, because a button cannot hold a button.
+                */}
+                {row.anchor.kind === "input" && (
+                  <DropdownMenu>
+                    <DropdownMenuTrigger
+                      render={
+                        <Button
+                          variant="ghost"
+                          size="icon-xs"
+                          aria-label={`More for B:${row.anchor.name}`}
+                          className="absolute top-1/2 right-2 -translate-y-1/2 text-muted-foreground"
+                        />
+                      }
+                    >
+                      <Ellipsis />
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent>
+                      {rowActions(row.anchor).map(({ label, run }) => (
+                        <DropdownMenuItem key={label} onClick={run}>
+                          <ClipboardCopy />
+                          {label}
+                        </DropdownMenuItem>
+                      ))}
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                )}
               </li>
             ))}
           </ul>
@@ -473,6 +501,22 @@ function flatten(candidates: Finding["candidates"]) {
       alias: true,
     })),
   ])
+}
+
+/**
+ * What a capture row's menu offers, once for both ways of opening it.
+ *
+ * The same two copies as a variable chip, and the same order: the `B:` name the
+ * row shows, then the bare id the sim reported. A mark has no name to copy —
+ * "Manual Capture" is ours — so neither menu is shown for one.
+ */
+function rowActions(
+  anchor: Finding["anchor"]
+): { label: string; run: () => void }[] {
+  return [
+    { label: "Copy name", run: () => void copy(`B:${anchor.name}`) },
+    { label: "Copy name without prefix", run: () => void copy(anchor.name) },
+  ]
 }
 
 /** The auto-capture segments, in order, with what each will do. */
