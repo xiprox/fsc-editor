@@ -462,6 +462,7 @@ export function ActivityPanel() {
           <Splitter
             className="mx-2"
             orientation="horizontal"
+            subtle
             handlers={detail.handlers}
           />
 

@@ -2,7 +2,11 @@ import type { PanelWidth } from "@/lib/panel-width"
 import { cn } from "@/lib/utils"
 
 /**
- * The divider between a panel and the editor.
+ * The divider between a panel and the editor, or between two panels.
+ *
+ * Drawn in `--divider`, the firmer of the two divider weights. A splitter
+ * inside one panel passes `subtle` and takes `--divider-subtle`, so a panel's
+ * own halves never read as more separate than the panel is from its neighbour.
  *
  * It is drawn as the one-pixel rule the layout wants, but a one-pixel target
  * means aiming for it. The `::after` widens what the pointer can hit to either
@@ -12,6 +16,7 @@ import { cn } from "@/lib/utils"
 export function Splitter({
   handlers,
   orientation = "vertical",
+  subtle = false,
   className,
 }: {
   handlers: PanelWidth["handlers"]
@@ -20,6 +25,8 @@ export function Splitter({
    * which is the orientation of the separator itself rather than of the drag.
    */
   orientation?: "vertical" | "horizontal"
+  /** Inside one panel rather than at its edge. */
+  subtle?: boolean
   className?: string
 }) {
   const horizontal = orientation === "horizontal"
@@ -29,7 +36,8 @@ export function Splitter({
       role="separator"
       aria-orientation={orientation}
       className={cn(
-        "relative shrink-0 bg-border hover:bg-ring/40",
+        "relative shrink-0 hover:bg-ring/40",
+        subtle ? "bg-divider-subtle" : "bg-divider",
         horizontal
           ? // Same trick on the other axis: a one-pixel rule, with a hit area
             // that reaches a few pixels either side and takes no space.
