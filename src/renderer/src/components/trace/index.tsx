@@ -62,9 +62,9 @@ export function TraceRailButton() {
 /**
  * The entry the caret is in.
  *
- * The caret, not the store's `activeLine` — that one is the first visible line
- * and drives the sidebar highlight, so this panel followed the scroll position
- * and reported line 1 for every entry until the two were told apart.
+ * The caret, not the store's `activeLine` — that one drives the sidebar
+ * highlight and follows the viewport once the caret is off screen, so a panel
+ * built on it would trace an entry you are not in.
  */
 function useTracedEntry(): { traced: TracedEntry | null; path: string | null } {
   const caret = useSyncExternalStore((listener) => {
