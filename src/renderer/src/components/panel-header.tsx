@@ -25,7 +25,7 @@ export function PanelHeader({
 }) {
   return (
     <header className="flex h-9 shrink-0 items-center gap-2 px-3">
-      <span className="shrink-0 text-[12.5px] font-medium">{title}</span>
+      <span className="shrink-0 text-[12.5px] font-medium text-trim">{title}</span>
       {after}
       {children && (
         <div className="ml-auto flex items-center gap-1">{children}</div>

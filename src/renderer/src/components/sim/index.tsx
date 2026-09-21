@@ -65,7 +65,7 @@ export function SimChip() {
             className={cn("size-1.5 shrink-0 rounded-full", chip.dot)}
           />
         )}
-        <span>{chip.label}</span>
+        <span className="text-trim">{chip.label}</span>
       </button>
       <SimInstallDialog
         key={session}
