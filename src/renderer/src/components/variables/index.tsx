@@ -262,7 +262,7 @@ export function VariablesPanel() {
         </div>
       )}
 
-      <footer className="flex h-6 shrink-0 items-center border-t border-border px-1 text-[11px] text-muted-foreground">
+      <footer className="flex h-6 shrink-0 items-center border-t border-divider-subtle px-1 text-[11px] text-muted-foreground">
         {searching && results.length < total
           ? `${results.length.toLocaleString()} of ${total.toLocaleString()} variables`
           : `${total.toLocaleString()} variables`}
