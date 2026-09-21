@@ -1,5 +1,14 @@
+import { ClipboardCopy } from "lucide-react"
 import { useEffect } from "react"
 
+import {
+  ContextMenu,
+  ContextMenuContent,
+  ContextMenuItem,
+  ContextMenuSeparator,
+  ContextMenuTrigger,
+} from "@/components/ui/context-menu"
+import { copy } from "@/lib/clipboard"
 import { formatValue } from "@/lib/live-decorations"
 import {
   Tooltip,
@@ -87,61 +96,110 @@ export function VarChip({
   const value = live ? watched : undefined
   const [prefix, bare] = split(name)
 
-  const chip = (
-          <span
-            /*
-             * Draggable, and that is the whole of it on this side.
-             *
-             * The editor's half is in `editor-pane.tsx`, and this side deliberately
-             * knows nothing about it: a chip that imported monaco could only ever live
-             * next to one, and the places it is most wanted — the Radar list, the
-             * Variables panel, the Log detail — are not next to one. All that crosses
-             * is `text/plain`.
-             *
-             * The bare namespaced name, because that is the thing being dragged. A
-             * whole `get:` line is a different gesture and can have its own modifier
-             * if it turns out to be wanted.
-             */
-            draggable
-            onDragStart={(event) => {
-              event.dataTransfer.setData("text/plain", name)
-              event.dataTransfer.effectAllowed = "copy"
-            }}
-            className={cn(
-              // Lifts on hover rather than lighting up: the chip is a label that
-              // happens to be interactive, and a row of them is often a list to read
-              // rather than a set of things to press. One step of the same muted
-              // tone, so it reads as "this responds" without competing with the row
-              // highlight underneath it.
-              "inline-flex max-w-full items-baseline gap-1 rounded-sm bg-muted/60 px-1.5 py-0.5 font-mono text-[11px] leading-tight hover:bg-muted",
-              className
-            )}
-          >
-            {prefix && (
-              <span className="shrink-0 font-bold text-[var(--syntax-prefix)]">
-                {prefix}
-              </span>
-            )}
-            <span className="truncate text-[var(--syntax-var)]">{bare}</span>
+  const face = (
+    <>
+      {prefix && (
+        <span className="shrink-0 font-bold text-[var(--syntax-prefix)]">
+          {prefix}
+        </span>
+      )}
+      <span className="truncate text-[var(--syntax-var)]">{bare}</span>
 
-            {/*
-            No value, no box. A variable the simulator has not reported is not
-            reading zero, and in a candidate list a zero is a completely plausible
-            reading — the placeholder would be indistinguishable from an answer.
-          */}
-            {value !== undefined && (
-              <span className="shrink-0 text-[var(--sim-value)]">
-                {formatValue(value, "")}
-              </span>
-            )}
-          </span>
+      {/*
+        No value, no box. A variable the simulator has not reported is not
+        reading zero, and in a candidate list a zero is a completely plausible
+        reading — the placeholder would be indistinguishable from an answer.
+      */}
+      {value !== undefined && (
+        <span className="shrink-0 text-[var(--sim-value)]">
+          {formatValue(value, "")}
+        </span>
+      )}
+    </>
   )
 
-  if (!doc) return chip
+  /*
+   * The tooltip's trigger, when there is one, is the same element as the
+   * menu's: Base UI composes the two through `render`, so the chip stays one
+   * span in the DOM rather than a span inside a span inside a div.
+   */
+  const menu = (
+    <ContextMenu>
+      <ContextMenuTrigger
+        render={doc ? <TooltipTrigger render={<span />} /> : <span />}
+        /*
+         * Draggable, and that is the whole of it on this side.
+         *
+         * The editor's half is in `editor-pane.tsx`, and this side deliberately
+         * knows nothing about it: a chip that imported monaco could only ever live
+         * next to one, and the places it is most wanted — the Radar list, the
+         * Variables panel, the Log detail — are not next to one. All that crosses
+         * is `text/plain`.
+         *
+         * The bare namespaced name, because that is the thing being dragged. A
+         * whole `get:` line is a different gesture and can have its own modifier
+         * if it turns out to be wanted.
+         */
+        draggable
+        onDragStart={(event) => {
+          event.dataTransfer.setData("text/plain", name)
+          event.dataTransfer.effectAllowed = "copy"
+        }}
+        className={cn(
+          // Lifts on hover rather than lighting up: the chip is a label that
+          // happens to be interactive, and a row of them is often a list to read
+          // rather than a set of things to press. One step of the same muted
+          // tone, so it reads as "this responds" without competing with the row
+          // highlight underneath it.
+          "inline-flex max-w-full items-baseline gap-1 rounded-sm bg-muted/60 px-1.5 py-0.5 font-mono text-[11px] leading-tight hover:bg-muted",
+          className
+        )}
+      >
+        {face}
+      </ContextMenuTrigger>
+
+      {/*
+        The drag's other half, for when the file is not the destination: a
+        search box, a message to the other pilot, a line of RPN in another
+        window. The same bare name the drag carries, for the same reason.
+
+        Without the prefix, for the places that spell the namespace some other
+        way or not at all — the SDK docs, a forum search, a `(L:…)` being typed
+        by hand around it. Offered only when there is a prefix to take off.
+
+        The value is the one on the chip, formatted the same way, read at the
+        moment of the click. Offered only when the chip shows one, on the same
+        rule as the box: no reading is not a reading of zero.
+      */}
+      <ContextMenuContent>
+        <ContextMenuItem onClick={() => void copy(name)}>
+          <ClipboardCopy />
+          Copy name
+        </ContextMenuItem>
+        {prefix && (
+          <ContextMenuItem onClick={() => void copy(bare)}>
+            <ClipboardCopy />
+            Copy name without prefix
+          </ContextMenuItem>
+        )}
+        {value !== undefined && (
+          <>
+            <ContextMenuSeparator />
+            <ContextMenuItem onClick={() => void copy(formatValue(value, ""))}>
+              <ClipboardCopy />
+              Copy value
+            </ContextMenuItem>
+          </>
+        )}
+      </ContextMenuContent>
+    </ContextMenu>
+  )
+
+  if (!doc) return menu
 
   return (
     <Tooltip>
-      <TooltipTrigger render={chip} />
+      {menu}
       <TooltipContent side="top" className="max-w-72">
         {doc}
       </TooltipContent>
