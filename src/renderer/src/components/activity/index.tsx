@@ -388,7 +388,10 @@ export function ActivityPanel() {
                     render={<button type="button" />}
                     onClick={() => setPinned(row.anchor.t)}
                     className={cn(
-                      "flex w-full flex-col items-start px-3 py-1.5 text-left hover:bg-accent/50",
+                      // Two 16px lines in 12px of padding: 44px exactly. At
+                      // the text's own line heights a row was 43.5px, and
+                      // every row under the first started on a half pixel.
+                      "flex w-full flex-col items-start px-3 py-1.5 text-left leading-4 hover:bg-accent/50",
                       // Room for the ⋯ button, so the name truncates and the
                       // ×N count stops before it rather than under it.
                       row.anchor.kind === "input" && "pr-9",

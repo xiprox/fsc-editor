@@ -63,6 +63,12 @@ export function SearchInput({
     <div className="relative">
       <Search className="pointer-events-none absolute top-1/2 left-2 size-3.5 -translate-y-1/2 text-muted-foreground" />
 
+      {/*
+        The pill centres on the field, like the magnifier and the typed text:
+        its label is trimmed to its capitals (see `text-trim`), so centring its
+        box centres the letters. A baseline shared with the placeholder was
+        tried and read low — the pill's capitals are smaller than the text's.
+      */}
       {token && (
         <span
           ref={pill}
@@ -91,7 +97,11 @@ export function SearchInput({
         }}
         spellCheck={false}
         autoComplete="off"
-        className={cn("h-7 rounded-sm pr-7 pl-7", className)}
+        // `block`: an input is inline by default, so it sat on a line box in
+        // the wrapper — half a pixel down and the wrapper 28.5px tall — and
+        // the glyph and the pill, centred on the wrapper, were centred on a
+        // box that was not the field.
+        className={cn("block h-7 rounded-sm pr-7 pl-7", className)}
         style={inset !== null ? { paddingLeft: 28 + inset + 4 } : undefined}
         {...props}
       />

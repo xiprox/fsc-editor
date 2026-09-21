@@ -101,7 +101,19 @@ trimmed box cuts the tails off `y`, `g` and `p`. Give the box its height first �
 a trimmed label no longer holds a row open. The utilities, and why, are in
 `index.css`.
 
-Beside an icon or a dot, the capitals are what line up with it.
+None of that survives a half pixel. A box centred in a space of the other parity
+lands on one — a 20px chip in a 32px footer whose 1px border leaves 31 — and the
+rounding then moves its border, its dot and its letters by different amounts.
+A bar with a border takes `box-content`, so the border sits outside the height;
+a row built from text gets line heights that add up to a whole number; an
+`<input>` beside anything positioned against its wrapper is `block`, since an
+inline input sits on a line box and pushes the wrapper half a pixel taller. The
+title bar is the known exception: its 43px is Windows' caption strip.
+
+Beside an icon or a dot, the capitals are what line up with it. An input's text
+cannot be trimmed, so `Input` moves its padding a pixel up instead: Chromium
+draws input text about a pixel below centre, and a placeholder read low against
+the magnifier beside it.
 
 ### Panel actions are icon buttons
 
@@ -258,9 +270,9 @@ needs a decision rather than a sweep:
 - **`text-sm` survives in `Dialog` and `Empty`** — stock shadcn's 0.875rem,
   where the app's body size is `text-xs/relaxed`.
 - **Off the 4px grid**: `py-1.5` and `pl-7.5` through `ContextMenu`, `py-1.5`
-  and `gap-1.5` in `SelectTrigger`, `py-0.5` in `Input`, and `px-2.5` in
-  `control-lg`. Menu row rhythm is the visible one and is worth looking at
-  rather than find-and-replacing.
+  and `gap-1.5` in `SelectTrigger`, `pt-px pb-[3px]` in `Input` (see the
+  note on input text above), and `px-2.5` in `control-lg`. Menu row rhythm is
+  the visible one and is worth looking at rather than find-and-replacing.
 - **`shadow-md` / `shadow-lg` on the four floating surfaces.** They already
   carry `ring-1 ring-foreground/10`; whether they should also cast a shadow is a
   question about the app's depth model, and it should be answered once for all
