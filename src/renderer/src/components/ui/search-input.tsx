@@ -25,35 +25,83 @@ import { cn } from "@/lib/utils"
  * trailing edge, so the text does not reflow the moment a first character is
  * typed. There is no fade: this app does not animate, and a control you can see
  * arriving is one you can hit sooner.
+ *
+ * **A token, when the caller has one.** `token` is drawn as a pill between the
+ * glyph and the text — the Variables panel's namespace, so far. It is not part
+ * of `value`: the caller owns both, and decides when text becomes a token.
+ * Backspace with the caret at the start removes it, the way a pill in any
+ * token field goes, and the clear empties both.
  */
 export function SearchInput({
   value,
   onValueChange,
+  token,
+  onTokenRemove,
+  onClear,
+  inputRef,
   className,
   ...props
 }: Omit<React.ComponentProps<typeof Input>, "value" | "onChange"> & {
   value: string
   onValueChange: (value: string) => void
+  token?: React.ReactNode
+  onTokenRemove?: () => void
+  /** What the clear does, when it should empty more than `value`. */
+  onClear?: () => void
+  inputRef?: React.Ref<HTMLInputElement>
 }) {
+  const pill = React.useRef<HTMLSpanElement>(null)
+  // The text starts after the pill, whatever its width. Measured rather than
+  // assumed, so a wider token cannot slide under the caret.
+  const [inset, setInset] = React.useState<number | null>(null)
+
+  React.useLayoutEffect(() => {
+    setInset(token && pill.current ? pill.current.offsetWidth : null)
+  }, [token])
+
   return (
     <div className="relative">
       <Search className="pointer-events-none absolute top-1/2 left-2 size-3.5 -translate-y-1/2 text-muted-foreground" />
 
+      {token && (
+        <span
+          ref={pill}
+          className="pointer-events-none absolute top-1/2 left-7 flex -translate-y-1/2"
+        >
+          {token}
+        </span>
+      )}
+
       <Input
+        ref={inputRef}
         value={value}
         onChange={(event) => onValueChange(event.target.value)}
+        onKeyDown={(event) => {
+          const input = event.currentTarget
+          if (
+            token &&
+            onTokenRemove &&
+            event.key === "Backspace" &&
+            input.selectionStart === 0 &&
+            input.selectionEnd === 0
+          ) {
+            event.preventDefault()
+            onTokenRemove()
+          }
+        }}
         spellCheck={false}
         autoComplete="off"
         className={cn("h-7 rounded-sm pr-7 pl-7", className)}
+        style={inset !== null ? { paddingLeft: 28 + inset + 4 } : undefined}
         {...props}
       />
 
-      {value !== "" && (
+      {(value !== "" || token) && (
         <Button
           variant="ghost"
           size="icon-xs"
           aria-label="Clear the filter"
-          onClick={() => onValueChange("")}
+          onClick={() => (onClear ? onClear() : onValueChange(""))}
           className="absolute top-1/2 right-1 -translate-y-1/2 text-muted-foreground"
         >
           <X />

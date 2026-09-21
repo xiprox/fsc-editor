@@ -41,7 +41,7 @@ import {
 } from "@/components/ui/tooltip"
 import { VarChip } from "@/components/var-chip"
 import { useRetainedVars } from "@/lib/use-var-value"
-import { buildSearchIndex, searchVars } from "@/lib/var-search"
+import { buildSearchIndex, searchVars, splitPrefix } from "@/lib/var-search"
 import { cn } from "@/lib/utils"
 import { useStore } from "@/store"
 
@@ -120,13 +120,11 @@ export function VariablesPanel() {
 
   // In the store rather than in state, so closing the panel does not clear the
   // search it was showing. See `variablesView`.
-  const { query, namespace, thisAircraft } = useStore(
-    (state) => state.variablesView
-  )
+  const { query, thisAircraft } = useStore((state) => state.variablesView)
   const setView = useStore((state) => state.setVariablesView)
   const setQuery = (next: string) => setView({ query: next })
-  const setNamespace = (next: string | null) => setView({ namespace: next })
   const setThisAircraft = (next: boolean) => setView({ thisAircraft: next })
+  const field = useRef<HTMLInputElement>(null)
 
   /*
    * The aircraft the filter is about: the one the index was built against, and
@@ -148,6 +146,16 @@ export function VariablesPanel() {
     [vars?.entries]
   )
 
+  /*
+   * The namespace is read out of the query, never held beside it. Typing `L:`
+   * and pressing the L chip are then one state: the chip lights, and the prefix
+   * leaves the text for a pill, whichever way it arrived. That is the lesson
+   * the chips are for — they write the same thing you could have typed.
+   */
+  const { namespace, rest } = splitPrefix(query, index.namespaces)
+  const withNamespace = (next: string | null) =>
+    setQuery(next ? `${next.toUpperCase()}:${rest}` : rest)
+
   // Typing stays ahead of the list: the input updates immediately and the
   // results catch up, rather than every keystroke waiting on a full re-rank.
   const deferred = useDeferredValue(query)
@@ -164,26 +172,21 @@ export function VariablesPanel() {
    * the quieter start and the honest one — and a filter counts as asking, so
    * the aircraft chip alone is enough to fill the list.
    */
-  const searching = Boolean(deferred.trim() || namespace || filtering)
+  const searching = Boolean(deferred.trim() || filtering)
 
   const results = useMemo(() => {
     if (!searching) return []
-
-    const text =
-      namespace && !deferred.includes(":")
-        ? `${namespace}:${deferred}`
-        : deferred
 
     // "This aircraft" is the union of both halves of the evidence: it moves
     // here, or this aircraft's own profile names it. Either is a statement
     // about the aeroplane in front of you; neither alone is the whole answer.
     return searchVars(
       index,
-      text,
+      deferred,
       LIMIT,
       filtering ? isThisAircraft : undefined
     )
-  }, [index, deferred, namespace, searching, filtering])
+  }, [index, deferred, searching, filtering])
 
   const total = vars?.entries.length ?? 0
 
@@ -222,8 +225,23 @@ export function VariablesPanel() {
 
       <div className="px-2 pb-2">
         <SearchInput
-          value={query}
-          onValueChange={setQuery}
+          inputRef={field}
+          value={rest}
+          // Typed text arrives without the pill, so the prefix is put back in
+          // front — and text that itself starts with `X:` simply becomes the
+          // new prefix on the next read, which is the conversion.
+          onValueChange={(next) =>
+            setQuery(namespace ? `${namespace.toUpperCase()}:${next}` : next)
+          }
+          token={
+            namespace && (
+              <span className="rounded-sm bg-muted px-1 font-mono text-[11px] leading-4 font-bold text-[var(--syntax-prefix)] uppercase">
+                {namespace}:
+              </span>
+            )
+          }
+          onTokenRemove={() => withNamespace(null)}
+          onClear={() => setQuery("")}
           placeholder='e.g. batt "STBY" 2'
           aria-label="Search variables"
         />
@@ -261,7 +279,12 @@ export function VariablesPanel() {
                 size="xs"
                 className="font-mono uppercase"
                 pressed={namespace === option}
-                onPressedChange={(next) => setNamespace(next ? option : null)}
+                onPressedChange={(next) => {
+                  withNamespace(next ? option : null)
+                  // Back to the field, where the prefix just appeared, so the
+                  // next thing typed carries on from it.
+                  field.current?.focus()
+                }}
               >
                 {option}:
               </Toggle>

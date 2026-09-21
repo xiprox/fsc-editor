@@ -157,15 +157,34 @@ export interface ParsedQuery {
  */
 const QUOTED = /"([^"]*)"?/g
 
-export function parseQuery(raw: string): ParsedQuery {
-  let text = raw.trim()
-  let namespace: string | null = null
+/**
+ * A query's namespace prefix and the rest of it: `L:batt` -> `l`, `batt`.
+ *
+ * The one reading of a prefix, shared by the search and by the Variables
+ * panel, which shows the prefix as a pill and lights the matching chip. Only an
+ * unquoted letter and colon at the very start: `"L:NAV"` is a literal.
+ *
+ * Only the namespaces in `known` — the index's, which are the panel's chips.
+ * A typed prefix and a chip are then the same set, one for one: `W:` is a real
+ * namespace in the dialect, but with nothing in the index under it there is no
+ * chip, so it is text like any other rather than a filter that finds nothing.
+ */
+export function splitPrefix(
+  raw: string,
+  known: readonly string[]
+): { namespace: string | null; rest: string } {
+  const namespaced = /^([A-Za-z]):(.*)$/s.exec(raw.trimStart())
+  const namespace = namespaced?.[1].toLowerCase()
 
-  const namespaced = /^([A-Za-z]):(.*)$/.exec(text)
-  if (namespaced) {
-    namespace = namespaced[1].toLowerCase()
-    text = namespaced[2]
-  }
+  return namespace && known.includes(namespace)
+    ? { namespace, rest: namespaced![2] }
+    : { namespace: null, rest: raw }
+}
+
+export function parseQuery(raw: string, known: readonly string[]): ParsedQuery {
+  const split = splitPrefix(raw.trim(), known)
+  const namespace = split.namespace
+  const text = split.rest
 
   const literals = [...text.matchAll(QUOTED)]
     .map((match) => match[1].toLowerCase())
@@ -274,7 +293,7 @@ export function searchVars(
    */
   keep?: (entry: VarEntry) => boolean
 ): VarSearchResult[] {
-  const parsed = parseQuery(query)
+  const parsed = parseQuery(query, index.namespaces)
   const matches: VarSearchResult[] = []
 
   for (const item of index.items) {

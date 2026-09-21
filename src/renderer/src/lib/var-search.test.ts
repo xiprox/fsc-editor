@@ -2,7 +2,12 @@ import { describe, expect, it } from "vitest"
 
 import type { VarEntry } from "@shared/types"
 
-import { buildSearchIndex, parseQuery, searchVars } from "./var-search"
+import {
+  buildSearchIndex,
+  parseQuery,
+  searchVars,
+  splitPrefix,
+} from "./var-search"
 
 function entry(name: string, fileCount = 1): VarEntry {
   return {
@@ -34,14 +39,14 @@ function search(names: (string | VarEntry)[], query: string): string[] {
 
 describe("parseQuery", () => {
   it("reads a namespace prefix as a filter", () => {
-    expect(parseQuery("L:batt")).toMatchObject({
+    expect(parseQuery("L:batt", ["l"])).toMatchObject({
       namespace: "l",
       terms: ["batt"],
     })
   })
 
   it("splits on separators and camelCase alike", () => {
-    expect(parseQuery("battery_stby-switch State").terms).toEqual([
+    expect(parseQuery("battery_stby-switch State", ["l"]).terms).toEqual([
       "battery",
       "stby",
       "switch",
@@ -240,7 +245,7 @@ describe("quoted terms", () => {
   })
 
   it("counts an unclosed quote as quoted to the end", () => {
-    expect(parseQuery('"nav_li')).toMatchObject({
+    expect(parseQuery('"nav_li', ["l"])).toMatchObject({
       literals: ["nav_li"],
       terms: [],
     })
@@ -253,5 +258,42 @@ describe("quoted terms", () => {
 
   it("ranks the name the quote spells whole above ones it only sits in", () => {
     expect(search(names, '"nav light"')[0]).toBe("L:NAV LIGHT")
+  })
+})
+
+/**
+ * The panel shows the prefix as a pill and lights the chip from this, so it
+ * has to agree with what the search itself does with the same text.
+ */
+describe("splitPrefix", () => {
+  const KNOWN = ["l", "a", "z"]
+
+  it("is only a prefix for a namespace the index has", () => {
+    expect(splitPrefix("W:foo", KNOWN)).toEqual({
+      namespace: null,
+      rest: "W:foo",
+    })
+  })
+
+  it("takes a letter and a colon off the front", () => {
+    expect(splitPrefix("L:battery", KNOWN)).toEqual({
+      namespace: "l",
+      rest: "battery",
+    })
+  })
+
+  it("keeps an empty rest, so a prefix alone is still a prefix", () => {
+    expect(splitPrefix("Z:", KNOWN)).toEqual({ namespace: "z", rest: "" })
+  })
+
+  it("does not read a quoted prefix as one", () => {
+    expect(splitPrefix('"L:NAV"', KNOWN).namespace).toBeNull()
+  })
+
+  it("leaves text with no prefix alone", () => {
+    expect(splitPrefix("battery switch", KNOWN)).toEqual({
+      namespace: null,
+      rest: "battery switch",
+    })
   })
 })
