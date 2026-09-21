@@ -37,6 +37,7 @@ import {
   EmptyTitle,
 } from "@/components/ui/empty"
 import { Input } from "@/components/ui/input"
+import { copy } from "@/lib/clipboard"
 import { cn } from "@/lib/utils"
 import { revealLine } from "@/lib/editor-bridge"
 import { setFileDrag } from "@/lib/editor-dnd"
@@ -181,16 +182,6 @@ function reveal(relPath: string): void {
       error instanceof Error ? error.message : String(error)
     )
   })
-}
-
-/**
- * Silent on success, and silent on failure too. There is nowhere on a context
- * menu for a confirmation to live once the menu has gone, and a status bar
- * saying "copied" would be reporting a thing the user is about to find out by
- * pasting.
- */
-async function copy(text: string): Promise<void> {
-  await navigator.clipboard.writeText(text).catch(() => undefined)
 }
 
 /**
@@ -836,8 +827,8 @@ function NoProfiles() {
         </EmptyMedia>
         <EmptyTitle className="text-[13px]">No profiles yet</EmptyTitle>
         <EmptyDescription className="text-[11.5px]/relaxed">
-          FS Copilot needs a profile to have the same name as the aircraft&rsquo;s folder
-          in the sim.
+          FS Copilot needs a profile to have the same name as the
+          aircraft&rsquo;s folder in the sim.
         </EmptyDescription>
       </EmptyHeader>
 
