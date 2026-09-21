@@ -107,6 +107,16 @@ export function EditorTabs({ group }: { group: string }) {
         if (carriesEditorDrag(event.dataTransfer)) event.preventDefault()
       }}
       onDrop={(event) => onDropInStrip(event)}
+      /*
+        The wheel scrolls the strip sideways. It has no scrollbar to drag, and
+        a mouse wheel only turns vertically, so with more tabs than width the
+        ones past the edge could be reached only by opening them. A trackpad's
+        own sideways movement still arrives as `deltaX` and is left alone.
+      */
+      onWheel={(event) => {
+        if (event.deltaX === 0 && event.deltaY !== 0)
+          event.currentTarget.scrollLeft += event.deltaY
+      }}
       className={cn(
         "flex h-9 shrink-0 scrollbar-none items-end overflow-x-auto border-b bg-sidebar",
         // Which pane the next file opens into, said quietly. The active tab is
