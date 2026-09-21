@@ -398,8 +398,13 @@ function Workbench() {
         No trailing padding: Log sits at the end and is a rail button, which
         fills the strip it is in edge to edge. Everything before it is spaced
         by the gap.
+
+        `box-content`, so the border sits outside the 32px rather than taking
+        one of them. Inside 31px every 20px chip and 24px button centred to a
+        half pixel, and the rounding moved each one's border, dot and letters
+        by different amounts.
       */}
-      <footer className="flex h-8 shrink-0 items-center gap-2 border-t border-border ps-1 text-xs text-muted-foreground">
+      <footer className="box-content flex h-8 shrink-0 items-center gap-2 border-t border-border ps-1 text-xs text-muted-foreground">
         {/*
           Settings belongs to the app rather than to anything on screen, so it
           sits at the leading edge rather than among the session controls

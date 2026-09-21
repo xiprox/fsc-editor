@@ -235,8 +235,8 @@ export function VariablesPanel() {
           }
           token={
             namespace && (
-              <span className="rounded-sm bg-muted px-1 font-mono text-[11px] leading-4 font-bold text-[var(--syntax-prefix)] uppercase">
-                {namespace}:
+              <span className="flex h-4 items-center rounded-sm bg-muted px-1 font-mono text-[11px] font-bold text-[var(--syntax-prefix)] uppercase">
+                <span className="text-trim">{namespace}:</span>
               </span>
             )
           }
