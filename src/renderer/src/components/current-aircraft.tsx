@@ -36,7 +36,7 @@ export function CurrentAircraft() {
   const label = relPath ? "Open profile" : "Create profile"
 
   return (
-    <div className="flex shrink-0 items-center gap-1.5 border-t border-sim-border/80 bg-sim/5 py-1.5 pr-1 pl-2 text-sim-foreground">
+    <div className="flex shrink-0 items-center gap-1.5 border-t border-sim-border/80 bg-sim/5 py-1.5 pr-1 pl-3 text-sim-foreground">
       <Plane className="size-3.5 shrink-0" />
       <span className="truncate text-[13px] font-medium" title={aircraft}>
         {aircraft}
