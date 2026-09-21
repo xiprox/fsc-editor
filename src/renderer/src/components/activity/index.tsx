@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from "react"
 
-import { Circle, Crosshair, Eraser } from "lucide-react"
+import { Circle, ClipboardCopy, Crosshair, Eraser } from "lucide-react"
 
 import { MARK_BEFORE_MS, type Finding } from "@shared/activity"
 import type { Hotkeys } from "@shared/types"
@@ -8,12 +8,19 @@ import type { Hotkeys } from "@shared/types"
 import { ToggleRailButton } from "@/components/rail"
 import { Splitter } from "@/components/splitter"
 import { Button } from "@/components/ui/button"
+import {
+  ContextMenu,
+  ContextMenuContent,
+  ContextMenuItem,
+  ContextMenuTrigger,
+} from "@/components/ui/context-menu"
 import { Toggle } from "@/components/ui/toggle"
 import {
   Tooltip,
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip"
+import { copy } from "@/lib/clipboard"
 import { usePanelWidth } from "@/lib/panel-width"
 import { cn } from "@/lib/utils"
 import { useStore } from "@/store"
@@ -284,28 +291,50 @@ export function ActivityPanel() {
           <ul className="scrollbar-overlay min-h-11 flex-1 overflow-y-auto text-[11px]">
             {rows.map((row) => (
               <li key={row.anchor.t}>
-                <button
-                  onClick={() => setPinned(row.anchor.t)}
-                  className={cn(
-                    "flex w-full flex-col items-start px-3 py-1.5 text-left hover:bg-accent/50",
-                    finding?.anchor.t === row.anchor.t && "bg-accent"
-                  )}
-                >
-                  {/*
-                    The name first and the time under it, both because that is
-                    the order they are wanted in — you look for *what* and only
-                    then for *when* — and because a timestamp is fourteen
-                    monospaced characters of pure precision, which at the front
-                    of a row reads as the most important thing on it.
-                  */}
-                  <Label anchor={row.anchor} />
-                  <span className="flex w-full items-baseline gap-1.5 font-mono text-[10px] text-muted-foreground/70">
-                    {stamp(row.anchor.t)}
-                    {row.anchor.repeats > 1 && (
-                      <span className="ml-auto">×{row.anchor.repeats}</span>
+                <ContextMenu disabled={row.anchor.kind !== "input"}>
+                  <ContextMenuTrigger
+                    render={<button type="button" />}
+                    onClick={() => setPinned(row.anchor.t)}
+                    className={cn(
+                      "flex w-full flex-col items-start px-3 py-1.5 text-left hover:bg-accent/50",
+                      finding?.anchor.t === row.anchor.t && "bg-accent"
                     )}
-                  </span>
-                </button>
+                  >
+                    {/*
+                      The name first and the time under it, both because that is
+                      the order they are wanted in — you look for *what* and only
+                      then for *when* — and because a timestamp is fourteen
+                      monospaced characters of pure precision, which at the front
+                      of a row reads as the most important thing on it.
+                    */}
+                    <Label anchor={row.anchor} />
+                    <span className="flex w-full items-baseline gap-1.5 font-mono text-[10px] text-muted-foreground/70">
+                      {stamp(row.anchor.t)}
+                      {row.anchor.repeats > 1 && (
+                        <span className="ml-auto">×{row.anchor.repeats}</span>
+                      )}
+                    </span>
+                  </ContextMenuTrigger>
+
+                  {/*
+                    The same two copies as a variable chip, and the same order:
+                    the `B:` name the row shows, then the bare id the sim
+                    reported. A mark has no name to copy — "Manual Capture" is
+                    ours — so it has no menu.
+                  */}
+                  <ContextMenuContent>
+                    <ContextMenuItem
+                      onClick={() => void copy(`B:${row.anchor.name}`)}
+                    >
+                      <ClipboardCopy />
+                      Copy name
+                    </ContextMenuItem>
+                    <ContextMenuItem onClick={() => void copy(row.anchor.name)}>
+                      <ClipboardCopy />
+                      Copy name without prefix
+                    </ContextMenuItem>
+                  </ContextMenuContent>
+                </ContextMenu>
               </li>
             ))}
           </ul>
@@ -447,9 +476,10 @@ function flatten(candidates: Finding["candidates"]) {
  *
  * An input event is drawn as the `B:` name a profile writes, in the editor's
  * colours — the sim reports the bare id, and a row showing that would be the
- * one place in the app a `B:` event is spelled without its namespace. Not a
- * `VarChip`: the row is already the button, and a chip inside it would be a
- * second target with its own menu.
+ * one place in the app a `B:` event is spelled without its namespace. It is
+ * also what the row's *Copy name* puts on the clipboard, so what is shown and
+ * what is copied are the same string. Not a `VarChip`: the row is already the
+ * button, and a chip inside it would be a second target with its own menu.
  */
 function Label({ anchor }: { anchor: Finding["anchor"] }) {
   if (anchor.kind === "mark") {
