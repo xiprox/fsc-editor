@@ -204,3 +204,54 @@ describe("evidence ranking", () => {
     expect(results.map((r) => r.entry.name)).toEqual(["L:BATTERY_MINE"])
   })
 })
+
+/**
+ * Quotes switch the loose rules off for what is inside them: the characters as
+ * typed, anywhere in the name, separators included, case ignored.
+ */
+describe("quoted terms", () => {
+  const names = [
+    "L:XMLVAR_NAV_LIGHT_SWITCH",
+    "L:NAV_LIGHTS_X",
+    "L:NavLightSwitch",
+    "A:LIGHT NAV",
+    "L:NAV LIGHT",
+  ]
+
+  it("matches the characters literally, separators included", () => {
+    expect(search(names, '"NAV_LIGHT"').sort()).toEqual([
+      "L:NAV_LIGHTS_X",
+      "L:XMLVAR_NAV_LIGHT_SWITCH",
+    ])
+  })
+
+  it("is not the loose match the same words get unquoted", () => {
+    expect(search(names, "nav light")).toHaveLength(5)
+  })
+
+  it("ignores case", () => {
+    expect(search(names, '"navlight"')).toEqual(["L:NavLightSwitch"])
+  })
+
+  it("combines with loose words, all of which must match", () => {
+    expect(search(names, 'switch "NAV_LIGHT"')).toEqual([
+      "L:XMLVAR_NAV_LIGHT_SWITCH",
+    ])
+  })
+
+  it("counts an unclosed quote as quoted to the end", () => {
+    expect(parseQuery('"nav_li')).toMatchObject({
+      literals: ["nav_li"],
+      terms: [],
+    })
+  })
+
+  it("keeps the namespace prefix, and can quote one too", () => {
+    expect(search(names, 'A:"light"')).toEqual(["A:LIGHT NAV"])
+    expect(search(names, '"a:light"')).toEqual(["A:LIGHT NAV"])
+  })
+
+  it("ranks the name the quote spells whole above ones it only sits in", () => {
+    expect(search(names, '"nav light"')[0]).toBe("L:NAV LIGHT")
+  })
+})

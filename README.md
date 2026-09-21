@@ -9,7 +9,7 @@ An editor for [FS Copilot](https://github.com/yury-sch/FsCopilot) aircraft profi
 
 ### Variables & discovery
 
-- An index of every variable found in your other profiles, the MSFS SDK docs and the sim, easily searchable (e.g. `battery switch` finds `XMLVAR_BATTERYSTBY_SWITCHSTATE`).
+- An index of every variable found in your other profiles, the MSFS SDK docs and the sim, easily searchable (e.g. `battery switch` finds `XMLVAR_BATTERYSTBY_SWITCHSTATE`, and a quoted `"STBY"` matches those letters exactly).
 - Radar feature records sim activity and ranks which variables moved after an interaction (not super reliable across different aircraft).
 - A picker for `ignore:` and `pointer:` entries that lists the cockpit's panels live and outlines the chosen one in the sim.
 
