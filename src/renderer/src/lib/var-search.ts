@@ -19,6 +19,12 @@ import { parseVar } from "@shared/vars"
  * What separates a good match from a merely possible one is left to the score,
  * not to the filter: it is better to show `L:BATTERY_MASTER` first than to
  * decide `BATTERYSTBY` was not what anyone meant.
+ *
+ * **Quotes turn all of that off, for the part inside them.** `"NAV_LIGHT"` is
+ * those characters, in that order, anywhere in the name — separators included,
+ * case ignored. The loose rules are for a name half remembered; a quote is for
+ * the one somebody already knows, where `NAV LIGHT` and `NavLight` matching is
+ * noise. See `parseQuery`.
  */
 
 /** How well an entry matched, lower being better. Used only for ordering. */
@@ -37,6 +43,10 @@ interface IndexedVar {
   evidence: number
   /** Lowercased, separators removed. `L:AdfOnOff` -> `ladfonoff`. */
   compact: string
+  /** The whole name lowercased, separators kept — what a quote matches. */
+  lower: string
+  /** `lower` without its `x:` prefix. `L:Foo_Bar` -> `foo_bar`. */
+  bare: string
   /** Lowercased words, split on separators and camelCase boundaries. */
   words: string[]
   /** The `A` of `A:CIRCUIT CONNECTION ON:3`, lowercased. Empty when absent. */
@@ -116,6 +126,8 @@ export function buildSearchIndex(entries: VarEntry[]): VarSearchIndex {
       // thousands of matches and this walks three optional facets.
       evidence: evidenceRank(entry),
       compact: compactOf(entry.name),
+      lower: entry.name.toLowerCase(),
+      bare: entry.name.toLowerCase().replace(/^[a-z]:/, ""),
       words: splitWords(entry.name),
       namespace,
     }
@@ -131,9 +143,19 @@ export function buildSearchIndex(entries: VarEntry[]): VarSearchIndex {
 export interface ParsedQuery {
   /** A namespace typed as a prefix — `L:batt` filters rather than searching. */
   namespace: string | null
+  /** The loose words, from everything outside quotes. */
   terms: string[]
   compact: string
+  /** The quoted parts, lowercased, each matched literally. */
+  literals: string[]
 }
+
+/**
+ * A quoted run, or an unclosed one to the end of the text: `"ligh` is already
+ * a literal while it is being typed, rather than loose until the closing quote
+ * arrives and then suddenly strict.
+ */
+const QUOTED = /"([^"]*)"?/g
 
 export function parseQuery(raw: string): ParsedQuery {
   let text = raw.trim()
@@ -145,10 +167,16 @@ export function parseQuery(raw: string): ParsedQuery {
     text = namespaced[2]
   }
 
+  const literals = [...text.matchAll(QUOTED)]
+    .map((match) => match[1].toLowerCase())
+    .filter(Boolean)
+  const loose = text.replace(QUOTED, " ")
+
   return {
     namespace,
-    terms: splitWords(text),
-    compact: compactOf(text),
+    terms: splitWords(loose),
+    compact: compactOf(loose),
+    literals,
   }
 }
 
@@ -187,6 +215,21 @@ function scoreTerm(term: string, item: IndexedVar): number | null {
 function scoreItem(item: IndexedVar, query: ParsedQuery): number {
   if (query.namespace !== null && item.namespace !== query.namespace)
     return TIER.none
+
+  // Quoted parts are a condition, not a score: each one is in the name or the
+  // entry is out. The whole name, prefix included, so `"L:NAV"` works too.
+  for (const literal of query.literals) {
+    if (!item.lower.includes(literal)) return TIER.none
+  }
+
+  // Only quotes: rank by how much of the name the quote accounts for.
+  if (!query.terms.length && query.literals.length) {
+    const [first] = query.literals
+    if (item.bare === first || item.lower === first) return TIER.exact
+    if (item.bare.startsWith(first) || item.lower.startsWith(first))
+      return TIER.prefix
+    return TIER.wordPart
+  }
 
   // A namespace on its own — `L:` — is a filter with nothing left to match.
   if (!query.terms.length) return TIER.exact

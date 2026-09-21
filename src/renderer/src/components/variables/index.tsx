@@ -224,7 +224,7 @@ export function VariablesPanel() {
         <SearchInput
           value={query}
           onValueChange={setQuery}
-          placeholder="e.g. battery switch"
+          placeholder='e.g. batt "STBY" 2'
           aria-label="Search variables"
         />
 
