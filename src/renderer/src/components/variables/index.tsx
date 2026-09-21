@@ -213,6 +213,7 @@ export function VariablesPanel() {
           size="icon-sm"
           aria-label="Rescan profiles"
           disabled={busy}
+          className="-me-1.5"
           onClick={() => void refresh()}
         >
           <RefreshCw className={cn(busy && "animate-spin")} />
