@@ -539,7 +539,15 @@ function Row({
       >
         <ContextMenuTrigger
           render={<button type="button" />}
-          onClick={() => void openLocal(node.path)}
+          /*
+            A second press on the file already open folds its outline in or
+            out. The chevron does the same, but it is 14px at the edge of a
+            full-width row, and the row is what the hand goes back to.
+          */
+          onClick={() => {
+            if (isActive && blocks.length) state.onToggle(node.path)
+            else void openLocal(node.path)
+          }}
           /*
             Dragged into the editor to open it there — on the pane's edge for a
             new split, on a pane or its tab strip to open in that one.
