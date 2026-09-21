@@ -24,10 +24,12 @@ import {
   captureMode,
   captures,
   clearCaptures,
+  ignoredControls,
   noteInteraction,
   noteMark,
   resetActivityHistory,
   setCaptureMode,
+  setIgnored,
   watchAircraft,
 } from "./activity-history"
 import { closeDatabase, initDatabase, type Database } from "./db"
@@ -464,5 +466,81 @@ describe("the capture mode", () => {
 
     vi.advanceTimersByTime(MARK_AFTER_MS + 1_000)
     expect(captures().map((one) => one.anchor.name)).toEqual(["SWITCH_BEACON"])
+  })
+})
+
+/**
+ * A control the aircraft fires by itself. The A220's AIRLINER_ALT_FLAP_TOGGLE
+ * reports at 4 Hz with nobody touching it, which is the case these are for.
+ */
+describe("ignoring a control", () => {
+  const closeWindow = () => vi.advanceTimersByTime(1_000)
+
+  function flip(at: number, control: string, variable: string, value = 1) {
+    observeActivity(input(at, control))
+    observeActivity(change(at + 40, variable, value))
+    noteInteraction(control, at)
+  }
+
+  beforeEach(() => {
+    watchAircraft("a220")
+    for (let t = 0; t < 40_000; t += 500) observeActivity(change(t, "L:Idle", t))
+  })
+
+  it("never captures it, and leaves a waiting once for the next real one", () => {
+    setIgnored("AIRLINER_ALT_FLAP_TOGGLE", true)
+
+    flip(40_000, "AIRLINER_ALT_FLAP_TOGGLE", "L:FlapTick")
+    closeWindow()
+    expect(captures()).toHaveLength(0)
+    expect(captureMode()).toBe("once")
+
+    flip(42_000, "SWITCH_BEACON", "L:BeaconLightSwitch")
+    closeWindow()
+    expect(captures().map((one) => one.anchor.name)).toEqual(["SWITCH_BEACON"])
+  })
+
+  it("takes its rows off the list", () => {
+    setCaptureMode("always")
+    flip(40_000, "AIRLINER_ALT_FLAP_TOGGLE", "L:FlapTick")
+    closeWindow()
+    flip(42_000, "SWITCH_BEACON", "L:BeaconLightSwitch")
+    closeWindow()
+
+    setIgnored("AIRLINER_ALT_FLAP_TOGGLE", true)
+
+    expect(captures().map((one) => one.anchor.name)).toEqual(["SWITCH_BEACON"])
+  })
+
+  /**
+   * A mark next to an input anchors to that input's finding, so with a ticker
+   * running every Capture press found the ticker instead of the lever.
+   */
+  it("keeps a mark from landing on it", () => {
+    setIgnored("AIRLINER_ALT_FLAP_TOGGLE", true)
+
+    observeActivity(input(40_000, "AIRLINER_ALT_FLAP_TOGGLE"))
+    observeActivity(change(39_000, "L:CabinVentLever", 42))
+    markAt(40_100)
+    noteMark(40_100)
+    vi.advanceTimersByTime(MARK_AFTER_MS + 1_000)
+
+    expect(captures().map((one) => one.anchor.kind)).toEqual(["mark"])
+  })
+
+  it("is remembered per aircraft, and can be undone", () => {
+    setIgnored("AIRLINER_ALT_FLAP_TOGGLE", true)
+    expect(ignoredControls()).toEqual(["AIRLINER_ALT_FLAP_TOGGLE"])
+
+    watchAircraft("pa24-250")
+    expect(ignoredControls()).toEqual([])
+
+    watchAircraft("a220")
+    expect(ignoredControls()).toEqual(["AIRLINER_ALT_FLAP_TOGGLE"])
+
+    setIgnored("AIRLINER_ALT_FLAP_TOGGLE", false)
+    flip(40_000, "AIRLINER_ALT_FLAP_TOGGLE", "L:FlapTick")
+    closeWindow()
+    expect(captures()).toHaveLength(1)
   })
 })

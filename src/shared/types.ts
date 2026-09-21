@@ -689,6 +689,12 @@ export interface Api {
   captureMode(): Promise<CaptureMode>
   setCaptureMode(mode: CaptureMode): Promise<void>
   /**
+   * Input events Radar ignores for the aircraft in the sim: never captured,
+   * never ranked. For controls an aircraft fires with nobody touching them.
+   */
+  ignoredControls(): Promise<string[]>
+  setIgnored(control: string, on: boolean): Promise<void>
+  /**
    * Empties the list: anchors and marks, not the values behind them.
    *
    * The values stay because baselines are measured from them — see
