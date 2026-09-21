@@ -581,34 +581,33 @@ function Row({
           <FileCode2 className="size-3.5 shrink-0 text-muted-foreground" />
           <span className="truncate-trim">{node.name}</span>
           {/*
-            The unsaved dot, then the chevron's slot, kept on every file row
-            whether it has an outline or not so the dots stand in one column.
+            The unsaved dot follows the name, as the tab's does, so it reads as
+            a fact about this file rather than a mark at the edge of the row.
+            A long name truncates before it, which puts it at the edge anyway.
+            Their standing in one column was given up for that: there are
+            rarely more than one or two, and they are found by reading.
           */}
-          <span className="ml-auto flex shrink-0 items-center gap-1">
-            {dirty && (
-              <span
-                className={cn(
-                  "size-1.5 shrink-0 rounded-full",
-                  stale ? "bg-amber-600 dark:bg-amber-400" : "bg-foreground/60"
-                )}
-              />
-            )}
-            {blocks.length ? (
-              <span
-                role="button"
-                aria-label={isExpanded ? "Collapse outline" : "Expand outline"}
-                className="flex"
-                onClick={(event) => {
-                  event.stopPropagation()
-                  state.onToggle(node.path)
-                }}
-              >
-                <Disclosure open={isExpanded} />
-              </span>
-            ) : (
-              <span className="size-3.5 shrink-0" />
-            )}
-          </span>
+          {dirty && (
+            <span
+              className={cn(
+                "ml-1 size-1.5 shrink-0 rounded-full",
+                stale ? "bg-amber-600 dark:bg-amber-400" : "bg-foreground/60"
+              )}
+            />
+          )}
+          {blocks.length > 0 && (
+            <span
+              role="button"
+              aria-label={isExpanded ? "Collapse outline" : "Expand outline"}
+              className="ml-auto flex shrink-0 ps-1"
+              onClick={(event) => {
+                event.stopPropagation()
+                state.onToggle(node.path)
+              }}
+            >
+              <Disclosure open={isExpanded} />
+            </span>
+          )}
         </ContextMenuTrigger>
 
         {/*
