@@ -111,9 +111,12 @@ const RADAR_KEY = "radar-open"
 
 /** The Variables panel's search, as it was left. See `variablesView`. */
 export interface VariablesView {
+  /**
+   * The whole search, namespace prefix included: `L:battery`. The chips and
+   * the pill are both read from it, so a prefix typed and a chip pressed are
+   * the same state rather than two that can disagree.
+   */
   query: string
-  /** The namespace chip, as `L`, `A` and so on, or null for all. */
-  namespace: string | null
   thisAircraft: boolean
 }
 const PROFILES_KEY = "profiles-open"
@@ -1149,7 +1152,7 @@ export const useStore = create<State>((set, get) => ({
   panel: readPanel(),
   radar: readRadar(),
   profiles: readProfiles(),
-  variablesView: { query: "", namespace: null, thisAircraft: false },
+  variablesView: { query: "", thisAircraft: false },
   variablesScroll: 0,
   radarPinned: null,
   presence: null,
