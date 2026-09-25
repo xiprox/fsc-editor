@@ -1,7 +1,11 @@
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs"
+import path from "node:path"
+
 import { app } from "electron"
 import electronUpdater from "electron-updater"
 
-import type { About, ManualCheck, UpdateState } from "@shared/types"
+import { compareVersions } from "@shared/changelog"
+import type { About, AppUpdated, ManualCheck, UpdateState } from "@shared/types"
 
 import { log } from "./log"
 
@@ -221,5 +225,99 @@ export function installUpdate(): void {
   if (state.kind !== "ready") return
 
   log("app", "info", "update-install", `Restarting into version ${state.version}.`)
+  // Before quitting, and synchronously, because nothing after
+  // `quitAndInstall` is guaranteed to run. This is how the next launch knows
+  // the restart was asked for.
+  writeRecord({ ...readRecord(), restarting: state.version })
   autoUpdater.quitAndInstall()
+}
+
+/**
+ * Which version ran last, so a launch can tell it is the first on a new one.
+ *
+ * Its own file rather than a key in `settings.json`, which `workspace.ts` owns
+ * and writes whole. `seen` moves only once somebody has looked at what
+ * changed, so an update nobody opened keeps being offered, and one that
+ * arrives on top of it is offered together with it.
+ */
+interface VersionRecord {
+  seen?: string
+  /** Set by `installUpdate` on the way out: the version it restarted into. */
+  restarting?: string
+}
+
+const RECORD_FILE = () => path.join(app.getPath("userData"), "version.json")
+
+function readRecord(): VersionRecord | null {
+  try {
+    return JSON.parse(readFileSync(RECORD_FILE(), "utf8")) as VersionRecord
+  } catch {
+    return null
+  }
+}
+
+function writeRecord(record: VersionRecord): void {
+  try {
+    mkdirSync(path.dirname(RECORD_FILE()), { recursive: true })
+    writeFileSync(RECORD_FILE(), JSON.stringify(record, null, 2), "utf8")
+  } catch (error) {
+    log("app", "warn", "version-record", "Could not record the version.", {
+      message: error instanceof Error ? error.message : String(error),
+    })
+  }
+}
+
+/**
+ * Worked out once per launch: the record is rewritten the first time it is
+ * read on a fresh install, and a renderer that reloads must get the same
+ * answer as the one that started.
+ */
+let launch: AppUpdated | null | undefined
+
+/**
+ * Whether this launch brought a new version nobody has looked at yet.
+ *
+ * A portable build counts — somebody who downloads a newer one still wants to
+ * know what changed. A development run does not, since its version is
+ * whatever `package.json` says today; `FSCE_UPDATED_FROM` pretends one did,
+ * and `FSCE_UPDATED_RESTARTED=1` pretends it was restarted into from the menu.
+ */
+export function appUpdated(): AppUpdated | null {
+  if (launch !== undefined) return launch
+
+  const to = app.getVersion()
+
+  if (!app.isPackaged) {
+    const from = process.env.FSCE_UPDATED_FROM
+    launch = from
+      ? { from, to, restarted: process.env.FSCE_UPDATED_RESTARTED === "1" }
+      : null
+    return launch
+  }
+
+  const record = readRecord()
+
+  if (!record?.seen) {
+    // Nothing recorded. Either this is the first launch ever, which has
+    // nothing to announce, or the app ran before the record existed — which
+    // leaves a settings file behind once a folder has been chosen.
+    const ranBefore = existsSync(path.join(app.getPath("userData"), "settings.json"))
+    if (!ranBefore) writeRecord({ seen: to })
+
+    launch = ranBefore ? { from: null, to, restarted: false } : null
+    return launch
+  }
+
+  launch =
+    compareVersions(to, record.seen) > 0
+      ? { from: record.seen, to, restarted: record.restarting === to }
+      : null
+  return launch
+}
+
+/** Stops offering what changed in this version. */
+export function markUpdateSeen(): void {
+  launch = null
+  if (!app.isPackaged) return
+  writeRecord({ seen: app.getVersion() })
 }

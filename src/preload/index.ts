@@ -220,6 +220,8 @@ const api: Api = {
   installUpdate: () => ipcRenderer.invoke("update:install"),
   checkForUpdates: () => ipcRenderer.invoke("update:check"),
   about: () => ipcRenderer.invoke("app:about"),
+  appUpdated: () => ipcRenderer.invoke("app:updated"),
+  markUpdateSeen: () => ipcRenderer.invoke("app:updated-seen"),
 }
 
 contextBridge.exposeInMainWorld("api", api)

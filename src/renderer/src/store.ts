@@ -22,6 +22,7 @@ import { setWatchResolution } from "@/lib/watch-resolution"
 import type { SimState } from "@shared/sim"
 import type {
   About,
+  AppUpdated,
   FileContent,
   FscState,
   ProfileFile,
@@ -272,6 +273,14 @@ interface State {
   update: UpdateState
   /** The version, and whether this build can update itself. Null until main answers. */
   about: About | null
+  /**
+   * Set when this launch is the first on a newer version. Kept for the whole
+   * session, so What's new can still mark which releases arrived with it after
+   * it has been read.
+   */
+  appUpdated: AppUpdated | null
+  /** Whether that update's changes are still unread: the app menu's check. */
+  whatsNewPending: boolean
   /** The app-level dialog that is open, if any. One at a time. */
   dialog: AppDialog | null
   /**
@@ -530,6 +539,8 @@ interface State {
   setRadar: (radar: boolean) => void
   setProfiles: (profiles: boolean) => void
   setDialog: (dialog: AppDialog | null) => void
+  /** Opens What's new, and counts an unread update as read. */
+  openWhatsNew: () => void
   setVariablesView: (patch: Partial<VariablesView>) => void
   setRadarPinned: (pinned: number | null) => void
   /** Empties both the mirror and main's ring. */
@@ -1147,6 +1158,8 @@ export const useStore = create<State>((set, get) => ({
   remote: { phase: "idle" },
   update: { kind: "idle" },
   about: null,
+  appUpdated: null,
+  whatsNewPending: false,
   dialog: null,
   hostDraft: null,
   comparing: {},
@@ -1205,6 +1218,16 @@ export const useStore = create<State>((set, get) => ({
       void window.api.updateState().then((update) => set({ update }))
 
       void window.api.about().then((about) => set({ about }))
+
+      // Restarted into from the menu, the answer to that click is what
+      // changed, so it opens. Installed on the way out instead, somebody is
+      // here to work — the app menu's mark waits for them.
+      void window.api.appUpdated().then((appUpdated) => {
+        if (!appUpdated) return
+
+        set({ appUpdated, whatsNewPending: true })
+        if (appUpdated.restarted) get().openWhatsNew()
+      })
 
       window.api.onSimValues(setSimValues)
 
@@ -1998,6 +2021,11 @@ export const useStore = create<State>((set, get) => ({
 
   setDialog(dialog) {
     set({ dialog })
+  },
+
+  openWhatsNew() {
+    if (get().whatsNewPending) void window.api.markUpdateSeen()
+    set({ dialog: "whats-new", whatsNewPending: false })
   },
 
   setVariablesView(patch) {

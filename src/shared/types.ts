@@ -174,6 +174,25 @@ export interface About {
 }
 
 /**
+ * This launch is the first on a newer version than the one before it, and
+ * nobody has looked at what changed yet.
+ */
+export interface AppUpdated {
+  /**
+   * The version that ran before, or null when the app ran before without
+   * recording one — every copy older than the record itself.
+   */
+  from: string | null
+  to: string
+  /**
+   * Whether it was restarted into from the app menu, rather than installed
+   * when the app last closed. Somebody who asked for the update is waiting to
+   * see it; somebody who only closed the app is here to work.
+   */
+  restarted: boolean
+}
+
+/**
  * The outcome of asking for a folder.
  *
  * A rejected folder comes back as a value rather than as a native error box, so
@@ -794,4 +813,8 @@ export interface Api {
   checkForUpdates(): Promise<ManualCheck>
   /** The version, and whether this build can replace itself at all. */
   about(): Promise<About>
+  /** Whether this launch brought a new version nobody has looked at yet. */
+  appUpdated(): Promise<AppUpdated | null>
+  /** Records that what changed has been seen, so it is not offered again. */
+  markUpdateSeen(): Promise<void>
 }
