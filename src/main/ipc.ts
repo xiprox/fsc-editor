@@ -3,6 +3,7 @@ import { app, dialog, ipcMain, shell, type BrowserWindow } from "electron"
 import {
   TITLE_BAR_HEIGHT,
   type About,
+  type AppUpdated,
   type DebugReport,
   type DiscardChoice,
   type FileContent,
@@ -76,8 +77,10 @@ import * as files from "./files"
 import { fscState, launchFsc, onFscChange, stopFsc, watchFsc } from "./fsc"
 import {
   about,
+  appUpdated,
   checkForUpdatesNow,
   installUpdate,
+  markUpdateSeen,
   onUpdateState,
   updateState,
   watchUpdates,
@@ -207,6 +210,8 @@ export function registerIpc(getWindow: () => BrowserWindow): void {
   ipcMain.handle("update:install", (): void => installUpdate())
   ipcMain.handle("update:check", (): Promise<ManualCheck> => checkForUpdatesNow())
   ipcMain.handle("app:about", (): About => about())
+  ipcMain.handle("app:updated", (): AppUpdated | null => appUpdated())
+  ipcMain.handle("app:updated-seen", (): void => markUpdateSeen())
 
   onUpdateState((state) => {
     const window = getWindow()

@@ -7,6 +7,7 @@ import {
 } from "@/components/ui/dialog"
 import { useStore } from "@/store"
 import {
+  isNewSince,
   parseChangelog,
   type ChangelogEntry,
   type Release,
@@ -81,12 +82,29 @@ function byScope(entries: ChangelogEntry[]) {
 /**
  * What changed, release by release.
  *
- * Opened from the app menu.
+ * Opened from the app menu, and on its own after a restart the menu asked
+ * for. After an update, the releases that came with it are listed first and
+ * the rest follow under *Earlier* — so skipping a release, which brings two at
+ * once, reads as exactly that.
  */
 export function WhatsNewDialog() {
   const open = useStore((state) => state.dialog === "whats-new")
   const setDialog = useStore((state) => state.setDialog)
+  const appUpdated = useStore((state) => state.appUpdated)
   const about = useStore((state) => state.about)
+
+  const fresh = appUpdated
+    ? RELEASES.filter((release) =>
+        isNewSince(release.version, appUpdated.from, appUpdated.to)
+      )
+    : []
+  const earlier = RELEASES.filter((release) => !fresh.includes(release))
+
+  const description = appUpdated
+    ? appUpdated.from
+      ? `Updated from ${appUpdated.from} to ${appUpdated.to}`
+      : `Updated to ${appUpdated.to}`
+    : about && `Version ${about.version}`
 
   return (
     <Dialog
@@ -96,14 +114,23 @@ export function WhatsNewDialog() {
       <DialogContent>
         <DialogHeader>
           <DialogTitle>What's new</DialogTitle>
-          {about && (
-            <DialogDescription>Version {about.version}</DialogDescription>
-          )}
+          {description && <DialogDescription>{description}</DialogDescription>}
         </DialogHeader>
 
         {/* The body scrolls and the title stays put, as in Settings. */}
         <div className="scrollbar-overlay -mx-5 -mb-5 max-h-[min(38rem,70vh)] overflow-y-auto px-5 pb-5">
-          <Releases releases={RELEASES} />
+          <div className="flex flex-col gap-6">
+            {fresh.length > 0 && <Releases releases={fresh} />}
+
+            {fresh.length > 0 && earlier.length > 0 && (
+              <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                Earlier
+                <span className="h-px flex-1 bg-border" />
+              </div>
+            )}
+
+            {earlier.length > 0 && <Releases releases={earlier} />}
+          </div>
         </div>
       </DialogContent>
     </Dialog>

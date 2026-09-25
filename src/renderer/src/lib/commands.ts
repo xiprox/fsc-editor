@@ -39,7 +39,7 @@ export const commands = {
   },
   whatsNew: {
     title: "What's new",
-    run: () => useStore.getState().setDialog("whats-new"),
+    run: () => useStore.getState().openWhatsNew(),
   },
   toggleProfiles: {
     title: "Profiles",

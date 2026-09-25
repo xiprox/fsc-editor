@@ -1,6 +1,7 @@
 import { useState, type ReactNode } from "react"
 
 import {
+  Check,
   Download,
   Loader2,
   RefreshCw,
@@ -40,10 +41,15 @@ export function MenuBar() {
 }
 
 /**
- * The mark beside the app's name, and the row it points at wears the same one:
- * an update is downloaded, and restarting into it would take two seconds.
+ * The mark beside the app's name, and the row it points at wears the same one.
+ *
+ * - **Ready** — an update is downloaded, and restarting into it would take two
+ *   seconds. Wins over the other: it is the one that asks for something.
+ * - **Updated** — one arrived when the app last closed, and What's new has not
+ *   been opened since.
  */
 const READY_ICON = Download
+const UPDATED_ICON = Check
 
 /**
  * The app itself: which version this is, what changed, whether there is a
@@ -59,11 +65,13 @@ const READY_ICON = Download
 function AppMenu() {
   const ready = useStore((state) => state.update.kind === "ready")
   const sharing = useStore((state) => state.remote.phase !== "idle")
+  const whatsNewPending = useStore((state) => state.whatsNewPending)
   const about = useStore((state) => state.about)
 
   // Not while a Remote Connect session is live: the row cannot be used then,
   // and a mark pointing at a disabled row is a signal with nothing to act on.
-  const Mark = ready && !sharing ? READY_ICON : null
+  const Mark =
+    ready && !sharing ? READY_ICON : whatsNewPending ? UPDATED_ICON : null
 
   return (
     <MenubarMenu>
@@ -78,7 +86,9 @@ function AppMenu() {
         {Mark && (
           <>
             <Mark aria-hidden data-icon="inline-end" className="text-update" />
-            <span className="sr-only">, update ready</span>
+            <span className="sr-only">
+              {Mark === READY_ICON ? ", update ready" : ", updated"}
+            </span>
           </>
         )}
       </MenubarTrigger>
@@ -100,10 +110,17 @@ function AppMenu() {
 
         <MenubarSeparator />
 
-        <MenubarItem onClick={commands.whatsNew.run}>
-          <ScrollText />
-          {commands.whatsNew.title}
-        </MenubarItem>
+        {whatsNewPending ? (
+          <MenubarItem tone="update" onClick={commands.whatsNew.run}>
+            <UPDATED_ICON />
+            Updated — see what's new
+          </MenubarItem>
+        ) : (
+          <MenubarItem onClick={commands.whatsNew.run}>
+            <ScrollText />
+            {commands.whatsNew.title}
+          </MenubarItem>
+        )}
 
         {about && <UpdateRow about={about} />}
 

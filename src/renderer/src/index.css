@@ -441,7 +441,8 @@
   --warning-border: oklch(0.851 0.066 70);
 
   /*
-   * A new version is downloaded and waiting for a restart.
+   * A new version is downloaded and waiting for a restart, or has arrived and
+   * not been read.
    *
    * Not a feature either, and the third of the palettes that are not: it sits
    * with `--warning` and `--destructive` as a colour that describes a moment
@@ -716,7 +717,7 @@
  * controls ever sit.
  */
 /*
- * The app menu's update row, and the mark beside the name that points at it.
+ * The app menu's update row, and What's new while it is unread.
  *
  * Grouped with the two above rather than with the features, for the reason
  * `--update` gives: it dresses a moment, not a part of the app.
