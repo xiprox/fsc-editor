@@ -132,7 +132,12 @@ function apply(model: monaco.editor.ITextModel): void {
         // ours is always empty, so it is always true.
         showIfCollapsed: true,
         after: {
-          content: `▸ ${text}`,
+          // The value and nothing else. It had a `▸` in front, the same shape
+          // and blue as the run button in the margin — which, for an entry
+          // with no `set:`, is on this same line. Two triangles at either end
+          // of one line, and only one of them does anything. The chip's tint
+          // is what says it is not part of the file.
+          content: text,
           inlineClassName: CLASS,
           // The class adds padding and a margin, which move the glyphs after
           // it. Saying so is what keeps the cursor landing where it looks.
