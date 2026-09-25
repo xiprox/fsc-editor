@@ -149,10 +149,11 @@ Claude commits only when asked, and never picks the wording on its own.
 
 1. **List every proposed commit in the reply**, in order, each as a code block
    holding the exact title and description. The split is part of the proposal.
-2. **Ask about one commit at a time**, in order, with one AskUserQuestion call
-   per commit holding exactly two questions. The commit text goes in each
-   option's label, where it is read at a glance; the small print under it says
-   which option it is.
+2. **Ask about every commit before making any**, in order. Each commit is
+   exactly two questions, and an AskUserQuestion call holds two commits, since
+   the tool takes four questions. The commit text goes in each option's label,
+   where it is read at a glance; the small print under it says which option it
+   is.
    - **`Commit 2 of 5: which title?`**, header `Title`. The suggested title,
      described as `Suggested`, then an alternative only when there is a real
      one, described by what it changes (`Narrower scope`).
@@ -162,11 +163,13 @@ Claude commits only when asked, and never picks the wording on its own.
      description, `None` comes first and one short description second.
 
    Other is how a different wording arrives, and is used exactly as typed. A
-   different split is also given through Other, on the title question.
+   different split is also given through Other, on the title question. It
+   changes the commits after it, so those are listed again and asked afresh.
 
-3. **Commit as soon as the answers arrive**, then show `git log --oneline -1`
-   and ask about the next one. The co-author trailer is added to every
-   description, including a chosen None, and is not shown in the options.
+3. **Make every commit once the last answer is in**, in order, then show
+   `git log --oneline -N` for the N commits made. If one fails, stop there and
+   say so. The co-author trailer is added to every description, including a
+   chosen None, and is not shown in the options.
 
 ## Working in this repo
 
