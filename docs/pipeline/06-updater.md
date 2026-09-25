@@ -1,10 +1,10 @@
 # Updater — how an installed editor updates itself
 
-    Purpose:    The update mechanism, the one control the user sees, and what
+    Purpose:    The update mechanism, where the user meets it, and what
                 happens when any of it fails.
     Depends on: 05-release
-    Decides:    electron-updater, silent staging, the header slot, the two
-                gates, the failure responses
+    Decides:    electron-updater, silent staging, the app menu's update row
+                and mark, What's new, the gates, the failure responses
 
 ## The mechanism
 
@@ -25,15 +25,15 @@
 
 Two defaults are kept deliberately:
 
-- **`autoDownload` on**, because the design below shows a control only once
+- **`autoDownload` on**, because the design below offers a restart only once
   restarting is genuinely instant.
-- **`autoInstallOnAppQuit` on**, so somebody who never presses the button still
-  gets the update the next time they close the app normally. The button is the
-  *now* path, not the only path.
+- **`autoInstallOnAppQuit` on**, so somebody who never restarts from the menu
+  still gets the update the next time they close the app normally. The menu is
+  the *now* path, not the only path.
 
 **Cadence:** a check ten seconds after launch, then every four hours, plus a
-manual one in Settings. Checking is cheap and harmless; only the restart is
-disruptive.
+manual one from the app menu. Checking is cheap and harmless; only the restart
+is disruptive.
 
 **Portable builds are excluded entirely.** `electron-updater` cannot update
 them, and `process.env.PORTABLE_EXECUTABLE_DIR` is set when the app is running
@@ -66,98 +66,139 @@ no new plumbing.
 
 ## What the user sees
 
-One slot in the title bar, immediately after the app name, in the header strip
-in [App.tsx](../../src/renderer/src/App.tsx). It has exactly two appearances and
-they occupy the same box.
+The app menu — the **FSC Editor** trigger at the leading edge of the title bar,
+the first menu in the menu bar
+([menu-bar.tsx](../../src/renderer/src/components/menu-bar.tsx)). Updating has
+no control of its own in the title bar. It had one until 0.2.0, and it had
+nowhere to go once the menu bar arrived: whatever sat after the app name would
+sit between the app menu and File.
 
-### Downloading — a progress ring
+### The mark
 
-A determinate circular indicator in a bare `size-7` box, drawn in a 24×24
-viewBox at stroke width 2 so it matches Lucide's glyph weight by construction
-rather than by eye. Arc `--tone`, track `--tone-border`.
+An icon in `text-update` beside the name, in the trigger's own row:
 
-**It is not a `<button>`.** No hover, no focus ring, not focusable. That is not
-only cosmetic: it makes a click during the download structurally impossible
-rather than something that has to be guarded.
+- **Download** — an update is ready: downloaded, and restarting into it would
+  take two seconds.
+- **Check** — an update arrived when the app last closed and What's new
+  has not been opened since.
 
-**It appears only after 400ms.** A blockmap diff can be three megabytes, which
-on a decent connection is under a second — a ring that appears and vanishes
-reads as a glitch. The threshold only ever *suppresses*; it never holds the ring
-on screen after the work is done. A fast update simply produces the button.
+When both are true, Download wins: it is the one that asks for something. The
+row it points at wears the same icon in the same teal, so the eye can follow it
+from the title bar into the menu. Nothing is shown while a download runs: the
+user hears about an update when there is something to do about it.
 
-The timer lives in **main**, not in the component. What
-[main/updates.ts](../../src/main/updates.ts) publishes is already "what there is
-to say", and a second opinion about that in the renderer would be two places to
-look when the answer is wrong. A download that finishes inside 400ms therefore
-never produces a `downloading` state at all.
+The trigger grows by the icon while it is there. Once File and View sit after
+the app menu, they move by as much when it comes and goes — accepted, in
+exchange for the mark reading as part of the name rather than as a badge.
 
-**Fallback:** if `download-progress` does not fire on the differential path, or
-the total is unknown, use `LoaderCircle` with `animate-spin` at `size-3.5` in the
-same box — already the app's idiom in eight places. Whether the event fires
-reliably there is a thing to verify, not assume.
+### The menu
 
-### Ready — the button
+*Version X.Y.Z* at the top, as an inert label, then What's new and the update
+row, then Settings. After an update nobody has read, What's new becomes
+*Updated — see what's new*, teal, with the check icon. The version is not
+repeated there; it is the row above.
 
-A `size-7` icon button. First click reveals a label to its right; second click
-quits and relaunches. No dialog.
+### The update row
 
-> **Click again to update and restart**
+One row that always says where updating stands. The menu is `w-72` rather than
+sized to its content, because this row's words change while the menu is open
+and a menu that resized under the pointer would move the row being read.
 
-**This narrates the UI on purpose**, against the rule in
-[docs/copy.md](../copy.md). The rule is about prose describing controls the
-reader can already see; this is a confirm affordance, where the instruction *is*
-the semantics — a button that does not fire on first click has to say so or it
-reads as broken. Registered as a deliberate exception in
-[docs/help/copy-review.md](../help/copy-review.md).
+| State | Row |
+| --- | --- |
+| Nothing going on | *Check for updates* |
+| Checked from the row | *Checking for updates…*, then the answer in place |
+| Downloading | *Downloading update…*, with `ProgressRing` as its icon |
+| Ready | **Restart to update to X.Y.Z**, in `tone="update"` |
+| Ready, Remote Connect live | *Restart to update after Remote Connect*, disabled |
+| Portable or development | *Updates are off in a … build*, disabled |
 
-Nothing about the reveal animates its width, and the button never takes focus
-when it appears. The launch island beside it is absolutely centred, so nothing
-else in the header moves. The button keeps `size="icon"`'s 28px height and only
-its width is overridden — a `sm` control would be 24px and the whole strip would
-jump by four.
+**Two clicks, and no confirmation.** Opening the menu is the first and the row
+is the second, and the row's own words say what it will do. The old button's
+armed state — and the bug where it survived being hidden and came back one
+click from a restart — went with it.
 
-**The confirmation lives in its own component, keyed on the version.** That is
-not tidiness: returning `null` from a component does not unmount it, so a
-half-made confirmation held in `UpdateButton` itself **survived the control
-being hidden**. Arm it, start a Remote Connect session, end the session, and the
-button came back already armed — one click from a restart nobody asked for. Seen
-in the app on 2026-09-20; see the log.
+**A check answers in the row.** The row sets `closeOnClick={false}`, so the
+menu stays open and the row's label becomes the answer. That is the rule the
+manual check is built on — a check somebody asked for is a question, and the
+answer goes to the caller rather than into the ambient state — with the row as
+the caller. The answer is component state, and the popup unmounts on close, so
+reopening the menu starts from the standing state with nothing reset by hand.
 
-`ReadyButton` is mounted only while there is something to confirm, so React owns
-every way of disarming it. Leaving `ready` unmounts it, a session starting
-unmounts it, and a different version replaces it through the key. There is no
-reset to write and none to forget.
+**Checking lasts at least a second.** The feed often answers in a few hundred
+milliseconds, and a label that flashes and reverts reads as a click that did
+nothing. The floor only holds the checking state: a download that starts
+meanwhile shows at once, since the row reads the ambient state before its own
+answer.
+
+The 400ms threshold in [main/updates.ts](../../src/main/updates.ts) still
+applies to the downloading row: a download that finishes inside it goes
+straight to the restart row.
+
+### What's new
+
+A dialog built from `CHANGELOG.md`, bundled with `?raw` and read by
+[shared/changelog.ts](../../src/shared/changelog.ts). Bundled rather than
+fetched: the release commit carries the changelog, so a tagged build always
+holds its own entry and What's new works offline. The parser is deliberately
+dumb — every scope is valid and every heading is kept. The dialog only dresses
+them, as a document rather than a table: the version, then *Features* and
+*Fixes*, then each scope as a heading with its entries as a bulleted list under
+it. Scopes are written as names (*Remote Connect*, *SimConnect*), and each
+entry gets back the capital a commit title leaves off. Nothing indents the list
+but its bullets, so every line starts at the same edge.
+
+**After an update, it is offered once.** Main keeps `version.json` in
+`userData` — the version last *seen*, which moves only when What's new is
+opened. On launch, a version newer than that one is an update:
+
+- **Restarted into from the menu** — `installUpdate` writes the version it is
+  restarting into on the way out, and the next launch opens What's new by
+  itself. The user just asked for the update; what changed is the answer.
+- **Installed when the app closed** — no dialog. The check icon, and the teal
+  row, until it is opened. The user is here to work.
+
+The releases that arrived with the update are listed first and the rest follow
+under *Earlier*, so an update that skipped a release — and brought two — reads
+as exactly that. An update nobody opened keeps being offered, and one that
+arrives on top of it is offered together with it. A copy that ran before
+`version.json` existed counts only the release it updated into, since that is
+the one thing known to be new.
+
+A development run never records anything. `FSCE_UPDATED_FROM=<version>`
+pretends one was just updated from that version, and
+`FSCE_UPDATED_RESTARTED=1` pretends it was restarted into from the menu.
 
 ### The colour
 
-A new `tone-update` in [index.css](../../src/renderer/src/index.css), beside
+`tone-update` in [index.css](../../src/renderer/src/index.css), beside
 `tone-warning` and `tone-destructive` — the file already calls those "not a
-feature either", and this belongs in the same category. There is no Update panel
-and there never will be; this dresses one control that is on screen for as long
-as it takes somebody to press it twice.
+feature either", and this belongs in the same category. There is no Update
+panel and there never will be; this dresses the mark beside the app's name and
+the rows it points at.
 
 **Teal at hue 195.** Radar is at 163 and `--sim` at 242, so it is 32 degrees off
 one and 47 off the other — wider than the 18 between `--radar` and
 `--remote-added`, which that block already argues reads as chosen rather than as
 a near-miss. Radar's proportions exactly, since the two sit at the same chroma
-and anything else would make one of them look like a mistake. They never share a
-surface regardless: Radar is a rail button, this is the header strip.
+and anything else would make one of them look like a mistake.
 
-`update` was added to `Button`'s `tone` variant, which is how the control gets
-it without any colour being written at the call site.
+A menu row takes it through `DropdownMenuItem`'s `tone` prop, so no colour is
+written at the call site. Its label is the saturated `--tone` rather than
+`--tone-foreground`: it has to match the mark that points at it, and the paler
+value read dimmer than the white rows around it.
 
 ### The gates
 
-The slot is hidden entirely when:
+The restart row is disabled, and the download mark hidden, when:
 
 - **a Remote Connect session is live.** `session.resume` never leaves the
   process ([session.ts](../../src/main/remote-connect/session.ts)), so a restart
   ends the session for the other pilot permanently. Worse, updating mid-session
   can leave the two sides on different builds, and the other pilot cannot see
-  that a download is what happened. Hiding the whole slot — not just the button —
-  matters: a ring that runs to completion and then produces nothing is worse
-  than never having appeared.
-- **the build is portable.**
+  that a download is what happened. Disabled rather than hidden, so the menu's
+  rows stay where they were.
+- **the build is portable**, where the row says so instead.
 
 Unsaved work is **not** a gate. [src/main/drafts.ts](../../src/main/drafts.ts)
 restores drafts against the file they were taken from, so a restart loses
@@ -166,35 +207,9 @@ nothing and must not prompt.
 ### One rule this amends
 
 [docs/ui.md](../ui.md) forbids `transition-*` outright, with `animate-spin` on a
-genuine spinner as the single exception. The progress ring's fill may transition.
-The amendment is narrow and belongs beside that exception:
-
-> A value that moves continuously — a progress indicator's own fill — may
-> transition. The rule is about state changes, where a transition puts time
-> between the act and the answer; a download's progress is neither a state
-> change nor something the user just did.
-
-The swap from ring to button at completion is still instant. Whether the motion
-rules are too strict more generally is a separate question, parked in
-[09-open-questions](09-open-questions.md).
-
-## Settings — the About section
-
-The title bar handles the case that matters. Settings' last section
-([groups/about.tsx](../../src/renderer/src/components/settings/groups/about.tsx))
-covers the two it does not: somebody who wants to know **now** rather than
-within four hours, and somebody on a build that **cannot update at all**, who
-would otherwise wait forever for an offer that is never coming.
-
-Two rows — the version, and one line saying whether updates are possible and
-why — plus a *Check now* button, which is absent where a check has no answer to
-give.
-
-**A manual check answers its caller.** `checkForUpdates()` returns a
-`ManualCheck` rather than publishing anything, so asking here changes nothing
-about what the title bar shows. That is the whole reason the ambient state can
-stay as quiet as it is: a scheduled check has nobody waiting on it, and one
-somebody pressed a button for is a question.
+genuine spinner as the single exception. The progress ring's fill may
+transition — the amendment sits beside that exception in `ui.md`. The swap from
+the download row to the restart row is still instant.
 
 ## Failure handling
 

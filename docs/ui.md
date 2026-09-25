@@ -46,8 +46,8 @@ transition, for the same reason. The rule is about *state changes*, where a
 transition puts time between the act and the answer; a download's progress is
 neither a state change nor something the user just did, and stepping it would
 make the indicator lag its own numbers in a way that reads as jitter. What
-happens *around* it still does not animate: `ProgressRing` swaps to the update
-button on the frame the download finishes.
+happens *around* it still does not animate: the app menu's download row swaps
+to its restart row on the frame the download finishes.
 
 ### Measurements
 
