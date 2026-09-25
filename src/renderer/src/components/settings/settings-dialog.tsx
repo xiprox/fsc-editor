@@ -4,7 +4,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
-import { AboutGroup } from "@/components/settings/groups/about"
 import { AppearanceGroup } from "@/components/settings/groups/appearance"
 import { EditorGroup } from "@/components/settings/groups/editor"
 import { HotkeysSettings } from "@/components/settings/groups/hotkeys"
@@ -20,7 +19,7 @@ import { SettingsSection } from "@/components/settings/rows"
  * is also what lets the sim and hotkey groups appear here *and* in their own
  * focused dialogs without the two containers disagreeing about chrome.
  *
- * No section nav and no search, on purpose, at this size — six sections fit
+ * No section nav and no search, on purpose, at this size — five sections fit
  * one scroll. The group-per-file structure is what makes either a retrofit
  * rather than a rewrite when the list earns them.
  */
@@ -64,15 +63,6 @@ export function SettingsDialog({
 
             <SettingsSection title="Radar hotkeys">
               <HotkeysSettings />
-            </SettingsSection>
-
-            {/*
-              Last, because it is the section nobody opens Settings for. The
-              app updates itself; this is for wanting to know now, and for the
-              builds that cannot.
-            */}
-            <SettingsSection title="About">
-              <AboutGroup />
             </SettingsSection>
           </div>
         </div>

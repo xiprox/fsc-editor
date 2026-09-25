@@ -14,16 +14,17 @@ import { log } from "./log"
  *
  * - **Downloading is silent.** `autoDownload` is left on, and nothing is
  *   published while a check is in flight or an update is merely *available*.
- *   The user hears about an update when restarting into it would take two
- *   seconds, not when a hundred megabytes might be about to arrive.
+ *   The user hears about an update — an icon beside the app menu's name —
+ *   when restarting into it would take two seconds, not when a hundred
+ *   megabytes might be about to arrive.
  * - **A failed check is not news.** Every failure below is a log line and a
  *   retry on the next cycle. Nothing that goes wrong here is worth a dialog,
  *   because nothing the user could do about it is a thing they would want to
  *   be interrupted for.
  *
  * `autoInstallOnAppQuit` is also left on, which means somebody who never
- * presses the button still gets the update the next time they close the app
- * normally. The button is the *now* path, not the only one.
+ * restarts from the app menu still gets the update the next time they close the
+ * app normally. The menu is the *now* path, not the only one.
  */
 
 // electron-updater is CommonJS, and `autoUpdater` is a property of the default
@@ -42,7 +43,7 @@ const EVERY_MS = 4 * 60 * 60 * 1000
  * under a second — and a progress ring that appears and vanishes reads as a
  * glitch rather than as information. This only ever *suppresses*: it never
  * holds the ring on screen after the work is done, so a fast update simply
- * produces the button with nothing before it.
+ * goes straight to the restart row with nothing before it.
  *
  * It lives here rather than in the renderer because the state this module
  * publishes is already "what there is to say", and a second opinion about that
@@ -173,7 +174,7 @@ function check(): void {
 }
 
 /**
- * The manual check, for Settings.
+ * The manual check, from the app menu.
  *
  * Unlike the scheduled one this **answers its caller**. A check somebody asked
  * for is a question, and the honest response to "is there a new version" is not
@@ -213,8 +214,8 @@ export function about(): About {
  * Unsaved work is deliberately not a consideration: drafts are restored
  * against the file they were taken from (`main/drafts.ts`), so a restart loses
  * nothing and must not prompt. What *is* a consideration — a live Remote
- * Connect session — is handled by the control never being offered while one is
- * open, because hiding the whole thing is clearer than explaining it.
+ * Connect session — is handled by the menu row being disabled while one is
+ * open.
  */
 export function installUpdate(): void {
   if (state.kind !== "ready") return
