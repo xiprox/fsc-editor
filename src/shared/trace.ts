@@ -242,8 +242,8 @@ export const OUTCOME_ID = "result"
  * `A:KOHLSMAN SETTING MB:1` is an altimeter, and nothing here knows that.
  *
  * `failed` is reserved for an outcome that is *not what the entry says it
- * does* — a fallback that swallowed a named event, or nothing happening at
- * all. A plain write to a variable is an ordinary success even though it is
+ * does* — a fallback that swallowed a named event or was reached with an
+ * empty expression, or nothing happening at all. A plain write to a variable is an ordinary success even though it is
  * reached through the same branch.
  */
 const outcome = (detail: string | Part[], state: StepState = "ok"): TraceStep =>
@@ -1023,17 +1023,31 @@ function parsedRoute(
   const write = parseWrite(code)
 
   if (!parsed.matched) {
-    const units = entry.units ? `, ${entry.units}` : ""
     // The same test `dead-set` uses, so the fix it offers and the line the
     // trace ends on are answering one question rather than two.
     const swallowed = bareEventName(code)
+    // A setter that threw, or a branch that built `''` on purpose.
+    const empty = !code.trim()
+
+    /*
+     * The fallback's write is routed like any other. `ApplyTo` hands
+     * `ParseSet`'s `Get, Units, [value]` to the same `sim.Set(set, units,
+     * values)` a matched write goes to, so a `K:` name fires twice, an `L:`
+     * write has its twin and a name with no prefix matches no branch. Ending
+     * on `1 is written to K:FOO` instead said one thing where the same write,
+     * reached the other way, says another.
+     */
+    const routed = routeSteps(parsed, parsed.values.join(" "))
+    const ending = routed.outcome
 
     return {
       steps: [
         step(
           "match-write",
           "match",
-          ["no ", op("(>…)"), " at the end — this text is never used"],
+          empty
+            ? ["no ", op("(>…)"), " — the expression is empty"]
+            : ["no ", op("(>…)"), " at the end — this text is never used"],
           "failed"
         ),
         /*
@@ -1041,23 +1055,23 @@ function parsedRoute(
          * already says `1 is written to FOO, Number` — and the outcome says
          * it better, because it also names the event the fallback swallowed.
          */
+        ...routed.steps,
       ],
       /*
-       * The fallback is a success for the 60% of the corpus that has no
-       * `set:` at all — writing the value to the `get:` name is the whole
-       * design there. It is a failure only when the text it swallowed named
-       * an event, because then the entry does something other than what it
-       * says, which is the finding `dead-set` exists to make.
+       * Failed when the fallback is not what the entry says it does. When
+       * the text it swallowed named an event, which is the finding
+       * `dead-set` exists to make. And when there was no text at all: in a
+       * `master:` entry an empty expression is not a guard, so the value is
+       * written anyway, which neither a setter that threw nor a branch that
+       * returned `''` asked for. Otherwise the state is the route's.
        */
-      outcome: outcome(
-        [
-          num(bindings.value),
-          " is written to ",
-          ref(`${entry.name}${units}`),
-          ...(swallowed ? [", and ", ref(swallowed), " never fires"] : []),
-        ],
-        swallowed ? "failed" : "ok"
-      ),
+      outcome: {
+        ...ending,
+        detail: swallowed
+          ? [...ending.detail, ", and ", ref(swallowed), " never fires"]
+          : ending.detail,
+        state: swallowed || empty ? "failed" : ending.state,
+      },
     }
   }
 
@@ -1158,7 +1172,8 @@ function applySteps(
    * `string.Empty`, so `ApplyTo` carries on with an empty expression: the
    * guard cannot match it, the echo is still registered, and `Execute`
    * returns early. Stopping here would hide the echo, which is the one thing
-   * that still happens.
+   * that still happens. In a `master:` entry the empty expression goes to
+   * `ParseSet` instead, fails the regex, and the fallback writes the value.
    */
   const code = built.ok ? built.code : ""
   steps.push(

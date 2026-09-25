@@ -91,6 +91,11 @@ master:
   - get: A:GENERAL ENG THROTTLE LEVER POSITION:1, Percent
     set: K:THROTTLE1_SET
 
+  # a javascript setter that throws, in master: the empty string reaches the
+  # same fallback, and the value is written to the get: name anyway.
+  - get: L:MasterThrows, Number
+    set: "`${missingBinding.x}`"
+
   # an `A:` write with units, and the CLR type tooltip.
   - get: A:GENERAL ENG THROTTLE LEVER POSITION:2, Percent
     set: (>A:GENERAL ENG THROTTLE LEVER POSITION:2, Percent)
