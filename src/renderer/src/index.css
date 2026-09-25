@@ -446,15 +446,15 @@
    * Not a feature either, and the third of the palettes that are not: it sits
    * with `--warning` and `--destructive` as a colour that describes a moment
    * rather than a part of the app. There is no Update panel and there never
-   * will be — this dresses one control in the title bar, which is on screen
-   * for as long as it takes somebody to press it twice.
+   * will be — this dresses the mark beside the app menu's name and the rows
+   * it points at.
    *
    * Teal at 195, and the hue was the whole decision. `--radar` is at 163 and
    * `--sim` at 242, so this is 32 degrees off one and 47 off the other — wider
    * than the 18 between `--radar` and `--remote-added`, which that block
    * already argues reads as chosen rather than as a near-miss. The two lowest
    * chroma colours in the palette are now this and Radar, and they never share
-   * a surface: Radar is a rail button, this is the header strip.
+   * a surface: Radar is a rail button, this is the app menu.
    *
    * Radar's proportions exactly, because the two sit at the same chroma and
    * anything else would make one of them look like a mistake.
@@ -590,7 +590,9 @@
  * The five roles, and what each is for:
  *
  * - `--tone`         the saturated value. Fills a control that is *on* in the
- *                    loud sense — the mirror switch — and nothing else.
+ *                    loud sense — the mirror switch — and nothing else, bar
+ *                    one: a toned menu row's label, which has to match the
+ *                    mark that points at it (see `dropdown-menu.tsx`).
  * - `--tone-on`      what text is when it sits on `--tone`. Every feature
  *                    palette guarantees `--background` works here; see the
  *                    note above `--remote`, which is where that contract was
@@ -714,7 +716,7 @@
  * controls ever sit.
  */
 /*
- * The update control in the title bar, and nothing else.
+ * The app menu's update row, and the mark beside the name that points at it.
  *
  * Grouped with the two above rather than with the features, for the reason
  * `--update` gives: it dresses a moment, not a part of the app.

@@ -21,6 +21,7 @@ import { messageOf } from "@/lib/errors"
 import { setWatchResolution } from "@/lib/watch-resolution"
 import type { SimState } from "@shared/sim"
 import type {
+  About,
   FileContent,
   FscState,
   ProfileFile,
@@ -269,6 +270,8 @@ interface State {
    * kept.
    */
   update: UpdateState
+  /** The version, and whether this build can update itself. Null until main answers. */
+  about: About | null
   /** The app-level dialog that is open, if any. One at a time. */
   dialog: AppDialog | null
   /**
@@ -1143,6 +1146,7 @@ export const useStore = create<State>((set, get) => ({
   busy: false,
   remote: { phase: "idle" },
   update: { kind: "idle" },
+  about: null,
   dialog: null,
   hostDraft: null,
   comparing: {},
@@ -1199,6 +1203,8 @@ export const useStore = create<State>((set, get) => ({
       // would otherwise never learn about an update already staged.
       window.api.onUpdateState((update) => set({ update }))
       void window.api.updateState().then((update) => set({ update }))
+
+      void window.api.about().then((about) => set({ about }))
 
       window.api.onSimValues(setSimValues)
 

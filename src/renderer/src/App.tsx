@@ -25,11 +25,11 @@ import {
   VariablesPanel,
   VariablesRailButton,
 } from "@/components/variables"
+import { MenuBar } from "@/components/menu-bar"
 import { SettingsDialog } from "@/components/settings/settings-dialog"
 import { Setup } from "@/components/setup"
 import { SimChip } from "@/components/sim"
 import { Splitter } from "@/components/splitter"
-import { UpdateButton } from "@/components/update-button"
 import { Button } from "@/components/ui/button"
 import { commands, keysLabel, watchCommands } from "@/lib/commands"
 import { usePanelWidth } from "@/lib/panel-width"
@@ -178,18 +178,21 @@ function Workbench() {
   return (
     <div className="flex h-svh flex-col overflow-hidden bg-background text-foreground">
       {/*
-        The title bar: the app name, and the FS Copilot launch controls
+        The title bar: the menu bar, and the FS Copilot launch controls
         centered on the window. The window's minimize/maximize/close are drawn
         into its trailing end by Windows, and the room they need is reserved
         rather than assumed — see CAPTION_INSET. `relative` anchors the
         centered controls, which opt out of the drag region themselves.
+
+        `ps-1` rather than the `ps-3` the name used to sit at: the first menu
+        trigger brings its own 8px of padding, which puts the name's letters
+        back where they were.
       */}
       <header
-        className="drag-region relative flex h-11 shrink-0 items-center gap-3 border-b border-border ps-3"
+        className="drag-region relative flex h-11 shrink-0 items-center gap-3 border-b border-border ps-1"
         style={{ paddingInlineEnd: CAPTION_INSET }}
       >
-        <span className="text-[13px] font-medium">FSC Editor</span>
-        <UpdateButton />
+        <MenuBar />
         <FscLaunch />
       </header>
 
