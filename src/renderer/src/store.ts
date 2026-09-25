@@ -88,6 +88,9 @@ export type Panel = "remote" | "variables"
  */
 export type BottomPanel = "log" | "issues" | "trace"
 
+/** The dialogs the app itself opens, from its menu or a shortcut. */
+export type AppDialog = "settings" | "whats-new"
+
 const PANELS: Panel[] = ["remote", "variables"]
 
 /**
@@ -266,6 +269,8 @@ interface State {
    * kept.
    */
   update: UpdateState
+  /** The app-level dialog that is open, if any. One at a time. */
+  dialog: AppDialog | null
   /**
    * What the picker has ticked, or null when it is not open.
    *
@@ -521,6 +526,7 @@ interface State {
   setBottom: (bottom: BottomPanel | null) => void
   setRadar: (radar: boolean) => void
   setProfiles: (profiles: boolean) => void
+  setDialog: (dialog: AppDialog | null) => void
   setVariablesView: (patch: Partial<VariablesView>) => void
   setRadarPinned: (pinned: number | null) => void
   /** Empties both the mirror and main's ring. */
@@ -1137,6 +1143,7 @@ export const useStore = create<State>((set, get) => ({
   busy: false,
   remote: { phase: "idle" },
   update: { kind: "idle" },
+  dialog: null,
   hostDraft: null,
   comparing: {},
   hostOpening: false,
@@ -1981,6 +1988,10 @@ export const useStore = create<State>((set, get) => ({
   setProfiles(profiles) {
     localStorage.setItem(PROFILES_KEY, String(profiles))
     set({ profiles })
+  },
+
+  setDialog(dialog) {
+    set({ dialog })
   },
 
   setVariablesView(patch) {

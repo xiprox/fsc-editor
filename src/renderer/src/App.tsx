@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react"
+import { useEffect } from "react"
 
 import { FilePlus2, Settings } from "lucide-react"
 
@@ -31,6 +31,7 @@ import { SimChip } from "@/components/sim"
 import { Splitter } from "@/components/splitter"
 import { UpdateButton } from "@/components/update-button"
 import { Button } from "@/components/ui/button"
+import { commands, keysLabel, watchCommands } from "@/lib/commands"
 import { usePanelWidth } from "@/lib/panel-width"
 import { CAPTION_INSET, watchTitleBar } from "@/lib/title-bar"
 import { cn } from "@/lib/utils"
@@ -167,29 +168,12 @@ function Workbench() {
   /** Two panels stacked in the side column — see `workbenchAreas`. */
   const fullHeightSide = panel !== null && radar
 
-  const [settingsOpen, setSettingsOpen] = useState(false)
+  const dialog = useStore((state) => state.dialog)
+  const setDialog = useStore((state) => state.setDialog)
 
   // Ctrl+, and Ctrl+B — the shortcuts every editor has taught, for settings
-  // and for the leading panel. On the window rather than as Monaco commands,
-  // so they work from any panel, not only with the editor focused; Monaco
-  // binds nothing to either, so nothing is being taken away.
-  useEffect(() => {
-    const onKey = (event: KeyboardEvent) => {
-      if (!event.ctrlKey || event.altKey || event.shiftKey) return
-
-      if (event.key === ",") {
-        event.preventDefault()
-        setSettingsOpen(true)
-      } else if (event.key.toLowerCase() === "b") {
-        event.preventDefault()
-        const { profiles, setProfiles } = useStore.getState()
-        setProfiles(!profiles)
-      }
-    }
-
-    window.addEventListener("keydown", onKey)
-    return () => window.removeEventListener("keydown", onKey)
-  }, [])
+  // and for the leading panel — and every other key a command carries.
+  useEffect(() => watchCommands(), [])
 
   return (
     <div className="flex h-svh flex-col overflow-hidden bg-background text-foreground">
@@ -414,8 +398,8 @@ function Workbench() {
           variant="ghost"
           size="icon-sm"
           aria-label="Settings"
-          title="Settings (Ctrl+,)"
-          onClick={() => setSettingsOpen(true)}
+          title={`Settings (${keysLabel(commands.settings.keys)})`}
+          onClick={commands.settings.run}
         >
           <Settings />
         </Button>
@@ -442,7 +426,10 @@ function Workbench() {
         <LogFooterButton />
       </footer>
 
-      <SettingsDialog open={settingsOpen} onOpenChange={setSettingsOpen} />
+      <SettingsDialog
+        open={dialog === "settings"}
+        onOpenChange={(open) => setDialog(open ? "settings" : null)}
+      />
     </div>
   )
 }
