@@ -46,7 +46,7 @@ import { RunSetterPanel } from "./panel"
 import "./run-setter.css"
 
 /** Styled in `run-setter.css`, and the thing a click is tested against. */
-const CLASS = "fsc-run-setter"
+export const CLASS = "fsc-run-setter"
 
 /** On the editor while a popover is open. Dims the margin buttons. */
 const DIM = "fsc-run-dim"

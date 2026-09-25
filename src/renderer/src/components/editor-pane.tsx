@@ -681,6 +681,8 @@ export function EditorPane({ group }: { group: string }) {
 
         {/*
           Following the same pane, because live values are drawn in all three.
+          The run button is only in ours, and a hint for it simply never fires
+          elsewhere.
         */}
         <EditorHints editor={visibleEditor} />
 

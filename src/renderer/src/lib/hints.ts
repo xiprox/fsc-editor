@@ -1,8 +1,8 @@
 /**
  * Tooltips that explain something the first few times, then stop for good.
  *
- * For things the editor draws many times over, like the live value at the end of
- * every `get:` line. A tooltip on a toolbar
+ * For things the editor draws many times over — the live value at the end of
+ * every `get:` line, the run button beside every setter. A tooltip on a toolbar
  * button can answer forever, because the pointer only crosses it on the way to
  * it. One on an element a screen shows twenty times answers every time the
  * pointer crosses the code, and it has stopped explaining anything long before
@@ -15,7 +15,7 @@
  * tooltips each.
  */
 
-export type HintId = "live-value"
+export type HintId = "live-value" | "run-setter"
 
 /** How many times a hint shows before it stops. */
 export const HINT_SHOWS = 3

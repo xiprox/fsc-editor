@@ -1,13 +1,15 @@
 /**
  * The first few explanations of what the editor draws that is not the file:
- * the live value at the end of a `get:` line. See `hints.ts` for why they stop.
+ * the live value at the end of a `get:` line, and the run button in the margin
+ * beside a setter. See `hints.ts` for why they stop.
  *
  * ## Hit-testing, and why the anchor is a rectangle
  *
- * The value is Monaco's DOM, not ours, so there is no React trigger to hang a
- * tooltip from. The editor's own mouse events say what is under the pointer —
- * `target.element` carries the feature's class, the same test the run button's
- * click uses — and the tooltip is anchored to a rectangle taken from it.
+ * Both elements are Monaco's DOM, not ours, so there is no React trigger to
+ * hang a tooltip from. The editor's own mouse events say what is under the
+ * pointer — `target.element` carries the feature's class, the same test the run
+ * button's click uses — and the tooltip is anchored to a rectangle taken from
+ * it.
  *
  * A rectangle rather than the element, because a live value is redrawn every
  * time it changes and the span the pointer entered can leave the document while
@@ -35,6 +37,7 @@
 
 import { useEffect, useState } from "react"
 
+import { CLASS as RUN_BUTTON } from "@/components/run-setter/widget"
 import { Tooltip, TooltipContent } from "@/components/ui/tooltip"
 import { hintLeft, noteHintShown, type HintId } from "@/lib/hints"
 import { CLASS as LIVE_VALUE } from "@/lib/live-decorations"
@@ -48,6 +51,13 @@ interface Hint {
 
 const HINTS: Hint[] = [
   { id: "live-value", className: LIVE_VALUE, text: "Live value from the sim" },
+  // Says where the setter runs, not just that it does: a run writes into the
+  // aircraft in the sim, never into the file.
+  {
+    id: "run-setter",
+    className: RUN_BUTTON,
+    text: "Run this setter on the aircraft in the sim",
+  },
 ]
 
 const DELAY_MS = 600
@@ -131,6 +141,7 @@ export function EditorHints({
         reset()
         setQuiet(false)
       }),
+      // A click on the run button opens its popover, which is the answer.
       editor.onMouseDown(reset),
       editor.onKeyDown(reset),
       // Only a real scroll. A value growing a digit can widen the line and
