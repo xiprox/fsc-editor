@@ -2,7 +2,8 @@
  * `ns-access` — a namespace used in a direction it does not have.
  *
  * The descriptor table knows which namespaces are fired rather than read
- * and which are read-only; this rule is those facts applied to reference
+ * and which are read-only — its `readable` and `writable` columns, which
+ * completion reads too — and this rule is those facts applied to reference
  * position. Conservative by construction: only the combinations with no
  * benign reading fire, and `F:` reads are excluded outright — a function
  * call is spelled as a read.
@@ -10,12 +11,6 @@
 
 import { NAMESPACES } from "../../vars/namespaces.ts"
 import { diagnose, type Rule, type Diagnostic } from "../rules.ts"
-
-/** Fired or one-way: reading one asks a question the sim cannot answer. */
-const NEVER_READ = new Set(["K", "H", "W"])
-
-/** Nothing outside the sim's own machinery may write these. */
-const NEVER_WRITTEN = new Set(["M", "G", "C", "R", "X", "F"])
 
 /** "A key event", "An HTML event" — by sound, so `HTML` takes "An". */
 function article(label: string): string {
@@ -43,7 +38,8 @@ export const nsAccess: Rule = {
         end: node.token.end,
       } as const
 
-      if (node.access === "read" && NEVER_READ.has(ns)) {
+      // Fired or one-way: reading one asks a question the sim cannot answer.
+      if (node.access === "read" && !NAMESPACES[ns].readable) {
         out.push(
           diagnose({
             ...found,
@@ -56,7 +52,8 @@ export const nsAccess: Rule = {
       }
 
       if (node.access === "write") {
-        if (NEVER_WRITTEN.has(ns)) {
+        // Nothing outside the sim's own machinery may write these.
+        if (!NAMESPACES[ns].writable) {
           out.push(
             diagnose({
               ...found,

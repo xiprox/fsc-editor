@@ -18,7 +18,14 @@ import { setWatchResolution } from "./watch-resolution"
 const index = (
   aircraft: string | null,
   inputEvents: string[] | null
-): VarIndex => ({ entries: [], scannedFiles: 0, elapsedMs: 0, aircraft, inputEvents })
+): VarIndex => ({
+  entries: [],
+  scannedFiles: 0,
+  elapsedMs: 0,
+  aircraft,
+  inputEvents,
+  profiles: [],
+})
 
 afterEach(() => {
   setVarIndexStore(null)

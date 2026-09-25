@@ -49,17 +49,12 @@ export type SlotKind =
   | "skipTarget"
   /** Anywhere inside a `#` comment. */
   | "comment"
-  /** Inside a block scalar body, where the language is JavaScript. */
-  | "expression"
   /**
-   * Inside an unclosed `(>` … write target, wherever it appears — a plain
-   * `set:` value, a JavaScript expression, or a string inside one.
-   *
-   * This is where the simulator's names go, and it is invisible to the
-   * JavaScript service: inside an expression the target is string contents,
-   * so nothing but the profile corpus can say what belongs there.
+   * Inside a block scalar body. Whether the caret is in a reference there —
+   * where a variable name goes — is the highlighter's walk to say, not this
+   * grammar's: see `completionSlot` in src/shared/completion/slot.ts.
    */
-  | "writeTarget"
+  | "expression"
 
 export interface Slot {
   kind: SlotKind
@@ -84,24 +79,6 @@ const BARE_WORD = /^(\w*)$/
 const TRAILING_WORD = /([\w$]*)$/
 
 /**
- * A `(>` whose `)` has not been typed yet. Anchored to the end, so the match
- * backtracks past any target that is already closed and finds the open one.
- */
-const OPEN_WRITE_TARGET = /\(\s*>([^)]*)$/
-
-/** A write target under the caret, or null. Namespaces count as typed text. */
-function writeTarget(line: string): Slot | null {
-  const match = OPEN_WRITE_TARGET.exec(line)
-  if (!match) return null
-
-  return {
-    kind: "writeTarget",
-    prefix: line.slice(0, match.index + match[0].length - match[1].length),
-    typed: match[1],
-  }
-}
-
-/**
  * Analyses a line up to the caret. `line` must already be truncated there.
  */
 export function slotAt(line: string, context: ScanState): Slot | null {
@@ -112,11 +89,6 @@ export function slotAt(line: string, context: ScanState): Slot | null {
     context.scalarKeyColumn !== null &&
     indentOf(line) > context.scalarKeyColumn
   ) {
-    // A target inside the expression wins: it is the one part of a `set:`
-    // block the JavaScript service cannot say anything useful about.
-    const target = writeTarget(line)
-    if (target) return target
-
     const word = TRAILING_WORD.exec(line)?.[1] ?? ""
     return {
       kind: "expression",
@@ -141,11 +113,6 @@ export function slotAt(line: string, context: ScanState): Slot | null {
 
   const continuation = CONTINUATION_PREFIX.exec(line)
   if (continuation) {
-    if (continuation[1] !== "skp") {
-      const target = writeTarget(line)
-      if (target) return target
-    }
-
     return {
       kind: continuation[1] === "skp" ? "skipTarget" : "setValue",
       prefix: continuation[0],

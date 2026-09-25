@@ -22,6 +22,7 @@
     "check:setters": "node --experimental-strip-types scripts/check-setters.ts",
     "check:cascade": "node --experimental-strip-types scripts/check-cascade.ts",
     "check:highlight": "node --experimental-strip-types scripts/check-highlight.ts",
+    "check:completion": "node --experimental-strip-types scripts/check-completion.ts",
     "check:claims": "node --experimental-strip-types scripts/check-claims.ts",
     "corpus:sync": "node --experimental-strip-types scripts/corpus-sync.ts",
     "corpus:golden": "node --experimental-strip-types scripts/corpus-golden.ts",

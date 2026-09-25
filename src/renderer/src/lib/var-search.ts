@@ -1,3 +1,4 @@
+import { corpusEntries, corpusFiles, evidenceRank } from "@shared/evidence"
 import type { VarEntry } from "@shared/types"
 import { parseVar } from "@shared/vars"
 
@@ -39,7 +40,7 @@ const TIER = {
 
 interface IndexedVar {
   entry: VarEntry
-  /** How strong the evidence for this variable is. See `evidenceRank`. */
+  /** How strong the evidence for this variable is. See `evidenceRank` in @shared/evidence. */
   evidence: number
   /** Lowercased, separators removed. `L:AdfOnOff` -> `ladfonoff`. */
   compact: string
@@ -64,34 +65,6 @@ export interface VarSearchResult {
   tier: number
   /** Which evidence band it fell in — see `evidenceRank`. */
   evidence: number
-}
-
-/**
- * How much is known about a variable, lowest being most.
- *
- * The list is no longer a corpus: it carries every name the simulator has
- * enumerated and every name the SDK documents, so most of it is variables
- * nobody in this workspace has ever written. Without a band to sort them into,
- * a search for `battery` buries the four bindings somebody already made under a
- * hundred names that merely contain the word.
- *
- * The order is a claim about usefulness, in the aircraft in front of you:
- *
- *   0. it moves in this aircraft — the only direct evidence there is, since the
- *      sim will not say which variables belong to an aeroplane
- *   1. this aircraft's own profile names it
- *   2. some profile names it
- *   3. it exists, and that is all anybody knows
- *
- * **Applied after match quality, never before it.** A poor name match must not
- * float to the top because it happens to be moving; the query is what the user
- * said, and this only breaks ties among things that answered it equally well.
- */
-export function evidenceRank(entry: VarEntry): number {
-  if (entry.aircraft?.changes) return 0
-  if (entry.aircraft?.inProfile) return 1
-  if (entry.corpus) return 2
-  return 3
 }
 
 /** Inserts a break where a lowercase run meets an uppercase one. */
@@ -308,8 +281,8 @@ export function searchVars(
     (a, b) =>
       a.tier - b.tier ||
       a.evidence - b.evidence ||
-      (b.entry.corpus?.fileCount ?? 0) - (a.entry.corpus?.fileCount ?? 0) ||
-      (b.entry.corpus?.count ?? 0) - (a.entry.corpus?.count ?? 0) ||
+      corpusFiles(b.entry.corpus).length - corpusFiles(a.entry.corpus).length ||
+      corpusEntries(b.entry.corpus) - corpusEntries(a.entry.corpus) ||
       (b.entry.sdk?.uses ?? 0) - (a.entry.sdk?.uses ?? 0) ||
       a.entry.name.localeCompare(b.entry.name)
   )

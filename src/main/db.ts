@@ -313,6 +313,59 @@ const MIGRATIONS: Migration[] = [
       `)
     },
   },
+  {
+    version: 9,
+    up(db) {
+      db.exec(`
+        -- One row per variable reference inside an entry's set: expression,
+        -- found by the walk the highlighter makes (src/shared/highlight/refs.ts).
+        --
+        -- Until this, what setters write was reconstructed in the renderer
+        -- from the five samples kept per variable for display, so the sixth
+        -- setter onwards was never counted: 75 of the corpus's 1,880 written
+        -- names were missing from completion and 650 were undercounted. And
+        -- nothing could pair an entry's get: with what its setter writes,
+        -- which is the strongest evidence completion has — 73% of written
+        -- targets are written for the same get: in another profile.
+        --
+        -- (rel_path, ordinal) is the entry's own key in corpus_entry.
+        -- variable_id is the written form, as everywhere: identity is derived
+        -- from the variable row's namespace and name.
+        CREATE TABLE corpus_ref (
+          workspace_id INTEGER NOT NULL REFERENCES workspace(id) ON DELETE CASCADE,
+          rel_path     TEXT    NOT NULL,
+          ordinal      INTEGER NOT NULL,
+          variable_id  INTEGER NOT NULL REFERENCES variable(id),
+          access       TEXT    NOT NULL,
+          units        TEXT
+        );
+
+        CREATE INDEX corpus_ref_file ON corpus_ref (workspace_id, rel_path);
+
+        -- The fold joins every reference to its entry by position. Without
+        -- this that join scans the whole file per reference: 840ms of an
+        -- 1,110ms fold over the committed corpus.
+        CREATE INDEX corpus_entry_position
+          ON corpus_entry (workspace_id, rel_path, ordinal);
+
+        -- One row per include: item, as written. Resolving a target against
+        -- the files on disk happens when the index is read, since the files
+        -- move independently of the profile that names them.
+        CREATE TABLE profile_include (
+          workspace_id INTEGER NOT NULL REFERENCES workspace(id) ON DELETE CASCADE,
+          rel_path     TEXT    NOT NULL,
+          target       TEXT    NOT NULL
+        );
+
+        CREATE INDEX profile_include_file ON profile_include (workspace_id, rel_path);
+
+        -- Force a full rescan, as migration 2 did: existing files predate both
+        -- tables, and the scan only reads a file whose size or mtime moved.
+        DELETE FROM profile_file;
+        DELETE FROM corpus_entry;
+      `)
+    },
+  },
 ]
 
 const SCHEMA_VERSION_KEY = "schema_version"

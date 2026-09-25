@@ -56,6 +56,43 @@ export function profileIsFor(
 }
 
 /**
+ * Whether a file's entries run in this aircraft's cockpit: the aircraft's own
+ * profile, or a file that profile includes, however deep.
+ *
+ * FS Copilot loads the profile and every file its includes reach, so a
+ * module's entries run there exactly as the profile's own do. `profileIsFor`
+ * alone answers no for every module, which is the right answer to "is this
+ * the profile" and the wrong one to "is this about that aeroplane".
+ *
+ * `includesOf` gives a file's `include:` targets, already resolved to
+ * workspace paths; a caller with an open buffer answers for that file from
+ * the buffer. Paths compare case-insensitively, as the filesystem does.
+ */
+export function fileIsFor(
+  relPath: string | null,
+  aircraft: string | null,
+  profiles: readonly string[],
+  includesOf: (relPath: string) => readonly string[]
+): boolean {
+  if (!relPath || !aircraft) return false
+
+  const wanted = relPath.toLowerCase()
+  const queue = profiles.filter((file) => profileIsFor(file, aircraft))
+  const seen = new Set<string>()
+
+  while (queue.length) {
+    const file = queue.shift()!
+    const key = file.toLowerCase()
+    if (key === wanted) return true
+    if (seen.has(key)) continue
+    seen.add(key)
+    queue.push(...includesOf(file))
+  }
+
+  return false
+}
+
+/**
  * Today, as a profile header writes it.
  *
  * Local rather than `toISOString`, which is UTC: someone east of Greenwich

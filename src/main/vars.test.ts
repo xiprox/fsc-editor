@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it } from "vitest"
 
+import { sharedGetsOf } from "@shared/evidence"
 import type { RawEntry } from "@shared/profile"
 import type { ProfileFile } from "@shared/types"
 
@@ -9,6 +10,7 @@ import {
   ensureWorkspace,
   forgetFile,
   parseVarName,
+  profileSummaries,
   invalidateVarIndex,
   projectIndex,
   resetVariableCache,
@@ -124,10 +126,7 @@ describe("the stored corpus", () => {
     expect(index).toHaveLength(1)
 
     expect(index[0]!.corpus).toMatchObject({
-      count: 3,
-      sharedCount: 2,
-      masterCount: 1,
-      fileCount: 1,
+      get: { entries: 3, shared: 2, master: 1, files: ["a.yaml"] },
       doc: "the foo",
       // Commonest first: two of the three read it as Number.
       units: ["Number", "Bool"],
@@ -196,10 +195,146 @@ describe("the stored corpus", () => {
     ])
     applyFileEntries(db, workspace, file("b.yaml"), [entry({ name: "L:FOO" })])
 
-    expect(projected()[0]!.corpus).toMatchObject({
-      count: 3,
-      fileCount: 2,
+    expect(projected()[0]!.corpus?.get).toMatchObject({
+      entries: 3,
+      files: ["a.yaml", "b.yaml"],
     })
+  })
+
+  it("counts what setters write from every setter, not from the samples", () => {
+    // Seven distinct setters for one variable. The renderer used to rebuild
+    // write targets from the five samples kept for display, so the sixth and
+    // seventh never counted — 75 of the corpus's written names went missing
+    // from completion that way.
+    applyFileEntries(
+      db,
+      workspace,
+      file("a.yaml"),
+      Array.from({ length: 7 }, (_, at) =>
+        entry({ name: "L:FOO", set: `${at} (>K:TARGET_${at < 5 ? "A" : "B"})` })
+      )
+    )
+
+    const byName = new Map(projected().map((e) => [e.name, e]))
+    expect(byName.get("L:FOO")?.corpus?.samples).toHaveLength(5)
+    expect(byName.get("K:TARGET_A")?.corpus?.write?.entries).toBe(5)
+    expect(byName.get("K:TARGET_B")?.corpus?.write?.entries).toBe(2)
+  })
+
+  it("gives a name that is only ever written its own corpus evidence", () => {
+    applyFileEntries(db, workspace, file("a.yaml"), [
+      entry({ name: "A:LIGHT BEACON", set: "(>K:TOGGLE_BEACON_LIGHTS)" }),
+    ])
+    applyFileEntries(db, workspace, file("b.yaml"), [
+      entry({ name: "L:BEACON", set: "(>K:TOGGLE_BEACON_LIGHTS)" }),
+    ])
+
+    const event = projected().find((e) => e.name === "K:TOGGLE_BEACON_LIGHTS")
+    expect(event?.corpus?.get).toBeUndefined()
+    expect(event?.corpus?.write).toEqual({
+      entries: 2,
+      files: ["a.yaml", "b.yaml"],
+    })
+  })
+
+  it("pairs a get: variable with what its setters write", () => {
+    // What makes a write target predictable: 73% of the corpus's written
+    // references are written for the same get: in another profile.
+    for (const name of ["a.yaml", "b.yaml", "c.yaml"])
+      applyFileEntries(db, workspace, file(name), [
+        entry({ name: "A:LIGHT LANDING", set: "(>K:LANDING_LIGHTS_TOGGLE)" }),
+      ])
+    applyFileEntries(db, workspace, file("d.yaml"), [
+      entry({ name: "A:LIGHT LANDING", set: "(>K:LANDING_LIGHTS_SET)" }),
+    ])
+
+    const light = projected().find((e) => e.name === "A:LIGHT LANDING")
+    expect(light?.corpus?.setsWrite).toEqual([
+      {
+        form: "K:LANDING_LIGHTS_TOGGLE",
+        entries: 3,
+        files: ["a.yaml", "b.yaml", "c.yaml"],
+      },
+      { form: "K:LANDING_LIGHTS_SET", entries: 1, files: ["d.yaml"] },
+    ])
+  })
+
+  it("finds references the way the highlighter does, not every parenthesis", () => {
+    // A JavaScript setter's own parentheses are not references. The language
+    // core's collectRefs read 1,346 of them as namespace-less reads.
+    applyFileEntries(db, workspace, file("a.yaml"), [
+      entry({
+        name: "L:SWITCH",
+        set: "(value == 100) ? '(>K:AP_VS_ON)' : `${value} (>K:AP_VS_OFF)`",
+      }),
+    ])
+
+    const names = projected()
+      .filter((e) => e.corpus?.write || e.corpus?.read)
+      .map((e) => e.name)
+      .sort()
+    expect(names).toEqual(["K:AP_VS_OFF", "K:AP_VS_ON"])
+  })
+
+  it("counts a setter once however often it names a variable", () => {
+    applyFileEntries(db, workspace, file("a.yaml"), [
+      entry({
+        name: "L:X",
+        set: "value ? '1 (>L:Y)' : '0 (>L:Y)'",
+      }),
+    ])
+
+    const y = projected().find((e) => e.name === "L:Y")
+    expect(y?.corpus?.write?.entries).toBe(1)
+  })
+
+  it("keeps every spelling of one variable, commonest first", () => {
+    applyFileEntries(db, workspace, file("a.yaml"), [
+      entry({ name: "L:A", set: "1 16272 (>K:2:KOHLSMAN_SET)" }),
+      entry({ name: "L:B", set: "1 16272 (>K:2:KOHLSMAN_SET)" }),
+      entry({ name: "L:C", set: "16272 (>K:KOHLSMAN_SET)" }),
+    ])
+
+    const event = projected().find((e) => e.name === "K:KOHLSMAN_SET")
+    expect(event?.corpus?.written).toEqual([
+      { form: "K:2:KOHLSMAN_SET", at: "write", entries: 2 },
+      { form: "K:KOHLSMAN_SET", at: "write", entries: 1 },
+    ])
+  })
+
+  it("leaves out references run together by a missing parenthesis", () => {
+    applyFileEntries(db, workspace, file("a.yaml"), [
+      entry({ name: "L:A", set: "1 (>K:FIRST 2 (>K:SECOND)" }),
+    ])
+
+    const written = projected().filter((e) => e.corpus?.write)
+    expect(written).toEqual([])
+  })
+
+  it("records the variable a skp: names, and only real names", () => {
+    applyFileEntries(db, workspace, file("a.yaml"), [
+      entry({ name: "L:A", skp: "L:B" }),
+      entry({ name: "L:C", skp: "true" }),
+      entry({ name: "L:D", skp: "L:E, Bool" }),
+    ])
+
+    const byName = new Map(projected().map((e) => [e.name, e]))
+    expect(byName.get("L:B")?.corpus?.skp).toEqual({
+      entries: 1,
+      files: ["a.yaml"],
+    })
+    expect(byName.has("true")).toBe(false)
+    expect(byName.get("L:E")).toBeUndefined()
+  })
+
+  it("forgets a file's references with the file", () => {
+    applyFileEntries(db, workspace, file("a.yaml"), [
+      entry({ name: "L:A", set: "(>K:GONE)" }),
+    ])
+    forgetFile(db, workspace, "a.yaml")
+    invalidateVarIndex()
+
+    expect(projected().find((e) => e.name === "K:GONE")).toBeUndefined()
   })
 
   it("keeps one sample per distinct set expression", () => {
@@ -241,7 +376,7 @@ describe("the stored corpus", () => {
 
     const [entry0] = projected()
     expect(entry0!.corpus?.doc).toBe("from a")
-    expect(entry0!.corpus?.files).toEqual(["a.yaml", "b.yaml"])
+    expect(entry0!.corpus?.get?.files).toEqual(["a.yaml", "b.yaml"])
   })
 
   it("orders profiles case-insensitively, as the sidebar does", () => {
@@ -258,7 +393,7 @@ describe("the stored corpus", () => {
 
     const [entry0] = projected()
     expect(entry0!.corpus?.doc).toBe("from bksq")
-    expect(entry0!.corpus?.files).toEqual([
+    expect(entry0!.corpus?.get?.files).toEqual([
       "bksq-aircraft-baronpro.yaml",
       "PMDG 737-600.yaml",
     ])
@@ -561,5 +696,59 @@ describe("the kept base", () => {
     const names = projectIndex(other, otherWorkspace, null).map((e) => e.name)
     expect(names).toContain("L:ELSEWHERE")
     expect(names).not.toContain("L:MINE")
+  })
+})
+
+describe("profile summaries", () => {
+  let db: Database
+  let workspace: number
+
+  beforeEach(() => {
+    resetVariableCache()
+    db = openDatabase(":memory:")
+    workspace = ensureWorkspace(db, ROOT)
+  })
+
+  it("resolves includes from the workspace root, case-insensitively", () => {
+    applyFileEntries(db, workspace, file("Modules/Fuel.yaml"), [])
+    applyFileEntries(
+      db,
+      workspace,
+      file("pa24-250.yaml"),
+      [],
+      ["modules/fuel.yaml", "modules/missing.yaml"]
+    )
+
+    const summary = profileSummaries(db, workspace).find(
+      (profile) => profile.relPath === "pa24-250.yaml"
+    )
+    // A target nothing matches is kept as written, so the summary still says
+    // what the profile asked for.
+    expect(summary?.includes).toEqual([
+      "Modules/Fuel.yaml",
+      "modules/missing.yaml",
+    ])
+  })
+
+  it("lists every get: in order, marking master:, as a skp: must name them", () => {
+    applyFileEntries(db, workspace, file("a.yaml"), [
+      entry({ name: "L:ONE" }),
+      entry({ name: "A:TWO:1" }),
+      entry({ name: "L:ONE" }),
+      entry({ name: "L:MASTER", block: "master" }),
+    ])
+
+    expect(profileSummaries(db, workspace)).toEqual([
+      {
+        relPath: "a.yaml",
+        includes: [],
+        gets: ["L:ONE", "A:TWO:1", "L:ONE", "L:MASTER"],
+        master: [3],
+      },
+    ])
+    expect(sharedGetsOf(profileSummaries(db, workspace)[0]!)).toEqual([
+      "L:ONE",
+      "A:TWO:1",
+    ])
   })
 })

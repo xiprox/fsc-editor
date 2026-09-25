@@ -1,13 +1,25 @@
 import fs from "node:fs/promises"
 
-import { profileKey, scanEntries, type RawEntry } from "@shared/profile"
+import {
+  corpusRefs,
+  foldCorpus as foldRows,
+  identityOf,
+  type CorpusEntryRow,
+  type CorpusRefRow,
+} from "@shared/corpus"
+import { corpusEntries } from "@shared/evidence"
+import {
+  entriesFromLines,
+  includesFromLines,
+  profileKey,
+  scanLines,
+  type RawEntry,
+} from "@shared/profile"
 import type {
-  Block,
-  CorpusFacet,
   ProfileFile,
+  ProfileSummary,
   VarEntry,
   VarIndex,
-  VarSample,
 } from "@shared/types"
 import type { SdkVarCatalog } from "@shared/sdk-catalog"
 import { varColumns } from "@shared/vars"
@@ -17,9 +29,6 @@ import catalogJson from "./catalog/sdk-var-catalog.json" with { type: "json" }
 import { database, type Database } from "./db"
 import { compareProfiles, listFiles } from "./files"
 import { resolveInside } from "./paths"
-
-const MAX_SAMPLES = 5
-const MAX_FILES = 12
 
 /**
  * Every variable the SDK documents or Asobo's own templates use.
@@ -80,12 +89,12 @@ export async function scanVars(
   try {
     for (const relPath of removed) forgetFile(db, workspaceId, relPath)
 
-    for (const { file, entries, failed } of parsed) {
+    for (const { file, entries, includes, failed } of parsed) {
       // A file that could not be read keeps whatever was last known about it,
       // rather than being emptied on the strength of one bad moment — profiles
       // are edited by other programs while this one is looking at them.
       if (failed) continue
-      applyFileEntries(db, workspaceId, file, entries)
+      applyFileEntries(db, workspaceId, file, entries, includes)
     }
 
     db.exec("COMMIT")
@@ -105,6 +114,7 @@ export async function scanVars(
     elapsedMs: Date.now() - started,
     aircraft,
     inputEvents,
+    profiles: profileSummaries(db, workspaceId),
   }
 }
 
@@ -137,12 +147,15 @@ export function varIndex(
     elapsedMs: Date.now() - started,
     aircraft,
     inputEvents,
+    profiles: profileSummaries(db, workspaceId),
   }
 }
 
 interface ParsedFile {
   file: ProfileFile
   entries: RawEntry[]
+  /** `include:` targets as written. */
+  includes: string[]
   failed: boolean
 }
 
@@ -152,9 +165,15 @@ async function readEntries(
 ): Promise<ParsedFile> {
   try {
     const text = await fs.readFile(resolveInside(root, file.relPath), "utf8")
-    return { file, entries: scanEntries(file.relPath, text), failed: false }
+    const lines = scanLines(text)
+    return {
+      file,
+      entries: entriesFromLines(lines, file.relPath),
+      includes: includesFromLines(lines),
+      failed: false,
+    }
   } catch {
-    return { file, entries: [], failed: true }
+    return { file, entries: [], includes: [], failed: true }
   }
 }
 
@@ -198,13 +217,15 @@ export function forgetFile(
   workspaceId: number,
   relPath: string
 ): void {
-  db.prepare(
-    "DELETE FROM corpus_entry WHERE workspace_id = ? AND rel_path = ?"
-  ).run(workspaceId, relPath)
-
-  db.prepare(
-    "DELETE FROM profile_file WHERE workspace_id = ? AND rel_path = ?"
-  ).run(workspaceId, relPath)
+  for (const table of [
+    "corpus_entry",
+    "corpus_ref",
+    "profile_include",
+    "profile_file",
+  ])
+    db.prepare(
+      `DELETE FROM ${table} WHERE workspace_id = ? AND rel_path = ?`
+    ).run(workspaceId, relPath)
 }
 
 /**
@@ -218,7 +239,8 @@ export function applyFileEntries(
   db: Database,
   workspaceId: number,
   file: ProfileFile,
-  entries: RawEntry[]
+  entries: RawEntry[],
+  includes: string[] = []
 ): void {
   forgetFile(db, workspaceId, file.relPath)
 
@@ -233,6 +255,12 @@ export function applyFileEntries(
        (workspace_id, variable_id, rel_path, ordinal,
         block, units, units_explicit, set_expr, skp, scalar, comment, heading)
      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+  )
+
+  const insertRef = db.prepare(
+    `INSERT INTO corpus_ref
+       (workspace_id, rel_path, ordinal, variable_id, access, units)
+     VALUES (?, ?, ?, ?, ?, ?)`
   )
 
   entries.forEach((entry, ordinal) => {
@@ -250,7 +278,24 @@ export function applyFileEntries(
       entry.comment ?? null,
       entry.heading ?? null
     )
+
+    if (entry.set)
+      for (const found of corpusRefs(entry.set, entry.scalar ?? false))
+        insertRef.run(
+          workspaceId,
+          file.relPath,
+          ordinal,
+          variableId(db, found.name),
+          found.access,
+          found.units
+        )
   })
+
+  const insertInclude = db.prepare(
+    `INSERT INTO profile_include (workspace_id, rel_path, target) VALUES (?, ?, ?)`
+  )
+  for (const target of includes)
+    insertInclude.run(workspaceId, file.relPath, target)
 }
 
 /** Variable ids, cached for the life of the process — names never change. */
@@ -307,48 +352,6 @@ export function parseVarName(fullName: string): {
 /* -------------------------------------------------------------------------- */
 /* Projection                                                                  */
 /* -------------------------------------------------------------------------- */
-
-interface EntryRow {
-  namespace: string
-  /** The bare half — `variable.name`, with the namespace already split off. */
-  var_name: string
-  idx: string | null
-  units: string
-  block: Block
-  rel_path: string
-  dir: string
-  /** The profile file's own name, for `compareProfiles`. */
-  name: string
-  ordinal: number
-  set_expr: string | null
-  skp: string | null
-  scalar: number
-  comment: string | null
-  heading: string | null
-}
-
-interface Bucket {
-  facet: CorpusFacet
-  files: Set<string>
-  sampleKeys: Set<string>
-  /** Unit -> occurrences, so the commonest reading can be listed first. */
-  units: Map<string, number>
-  indices: Set<string>
-}
-
-/**
- * A variable's identity: namespaced, and without any index.
- *
- * `A:ADF ACTIVE FREQUENCY:1` and `:2` are one variable read twice, not two
- * variables. The corpus stores what the profile wrote, index and all — that is
- * evidence and it stays — but the *list* is a list of variables, and keying it
- * on the written form split 824 of them away from their own documentation.
- * `variable` already holds the two halves in separate columns, so this costs a
- * concatenation rather than a parse.
- */
-function identity(namespace: string, name: string): string {
-  return namespace ? `${namespace}:${name}` : name
-}
 
 /**
  * The stored corpus, the simulator's evidence and the shipped catalogue, folded
@@ -482,7 +485,7 @@ function aircraftStrength(entry: VarEntry): number {
 function byCorpusThenName(a: VarEntry, b: VarEntry): number {
   return (
     aircraftStrength(b) - aircraftStrength(a) ||
-    (b.corpus?.count ?? 0) - (a.corpus?.count ?? 0) ||
+    corpusEntries(b.corpus) - corpusEntries(a.corpus) ||
     (b.aircraft?.changes ?? 0) - (a.aircraft?.changes ?? 0) ||
     a.name.localeCompare(b.name)
   )
@@ -573,93 +576,140 @@ function foldCorpus(
 ): void {
   const rows = db
     .prepare(
-      `SELECT v.namespace, v.name AS var_name, v.idx,
-              e.units, e.block, e.rel_path, e.ordinal,
-              e.set_expr, e.skp, e.scalar, e.comment, e.heading,
-              f.dir, f.name
+      `SELECT e.id AS entry_id, v.full_name, v.namespace, v.name AS var_name,
+              v.idx, e.units, e.block, e.rel_path, e.ordinal,
+              e.set_expr, e.skp, e.scalar, e.comment, e.heading
          FROM corpus_entry e
-         JOIN variable v     ON v.id = e.variable_id
-         JOIN profile_file f ON f.workspace_id = e.workspace_id
-                            AND f.rel_path     = e.rel_path
-        WHERE e.workspace_id = ?`
+         JOIN variable v ON v.id = e.variable_id
+        WHERE e.workspace_id = ?
+        ORDER BY e.rel_path, e.ordinal`
     )
-    .all(workspaceId) as unknown as EntryRow[]
+    .all(workspaceId) as unknown as CorpusEntryRow[]
 
-  rows.sort((a, b) => compareProfiles(a, b) || a.ordinal - b.ordinal)
+  const refs = db
+    .prepare(
+      `SELECT e.id AS entry_id, v.full_name, v.namespace, v.name AS var_name,
+              v.idx, r.access, r.units, r.rel_path, r.ordinal,
+              g.namespace AS get_namespace, g.name AS get_name
+         FROM corpus_ref r
+         JOIN variable v     ON v.id = r.variable_id
+         JOIN corpus_entry e ON e.workspace_id = r.workspace_id
+                            AND e.rel_path     = r.rel_path
+                            AND e.ordinal      = r.ordinal
+         JOIN variable g     ON g.id = e.variable_id
+        WHERE r.workspace_id = ?
+        ORDER BY r.rel_path, r.ordinal`
+    )
+    .all(workspaceId) as unknown as CorpusRefRow[]
 
-  const buckets = new Map<string, Bucket>()
+  const facets = foldRows(rows, refs, fileOrder(db, workspaceId))
+  for (const [name, facet] of facets) at(name).corpus = facet
+}
 
-  for (const row of rows) {
-    const name = identity(row.namespace, row.var_name)
-    let bucket = buckets.get(name)
+/**
+ * Each profile's place in the order the corpus is folded in: the sidebar's,
+ * top-level files before module folders, case-insensitive.
+ *
+ * Ranked once per fold. `compareProfiles` is a pair of `localeCompare` calls,
+ * and sorting forty thousand rows with it cost more than the query that
+ * fetched them.
+ */
+function fileOrder(db: Database, workspaceId: number): Map<string, number> {
+  const files = db
+    .prepare(
+      `SELECT rel_path, dir, name FROM profile_file WHERE workspace_id = ?`
+    )
+    .all(workspaceId) as unknown as {
+    rel_path: string
+    dir: string
+    name: string
+  }[]
 
-    if (!bucket) {
-      bucket = {
-        facet: {
-          count: 0,
-          sharedCount: 0,
-          masterCount: 0,
-          fileCount: 0,
-          files: [],
-          samples: [],
-          units: [],
-          indices: [],
-        },
-        files: new Set(),
-        sampleKeys: new Set(),
-        units: new Map(),
-        indices: new Set(),
-      }
-      buckets.set(name, bucket)
-    }
+  files.sort(compareProfiles)
+  return new Map(files.map((file, rank) => [file.rel_path, rank]))
+}
 
-    const facet = bucket.facet
-    facet.count += 1
-    if (row.block === "shared") facet.sharedCount += 1
-    else facet.masterCount += 1
+/**
+ * One summary per profile on disk: its includes, resolved, and its `shared:`
+ * gets.
+ *
+ * Read fresh each time rather than kept with the base. It is tens of rows,
+ * and it answers a different question from the fold — what a file brings to
+ * the files around it, not what is known about a variable.
+ *
+ * An include resolves the way FS Copilot resolves one: from the Definitions
+ * folder, not from the including file, and case-insensitively because the
+ * filesystem underneath is. A target no file matches is kept as written, so a
+ * summary still says what the profile asked for.
+ */
+export function profileSummaries(
+  db: Database,
+  workspaceId: number
+): ProfileSummary[] {
+  const files = db
+    .prepare(
+      `SELECT rel_path, dir, name FROM profile_file WHERE workspace_id = ?`
+    )
+    .all(workspaceId) as unknown as {
+    rel_path: string
+    dir: string
+    name: string
+  }[]
 
-    if (row.units)
-      bucket.units.set(row.units, (bucket.units.get(row.units) ?? 0) + 1)
-    if (row.idx) bucket.indices.add(row.idx)
+  files.sort(compareProfiles)
 
-    bucket.files.add(row.rel_path)
-    if (facet.files.length < MAX_FILES && !facet.files.includes(row.rel_path))
-      facet.files.push(row.rel_path)
+  const onDisk = new Map(
+    files.map((file) => [file.rel_path.toLowerCase(), file.rel_path])
+  )
 
-    if (!facet.doc && row.comment) facet.doc = row.comment
+  const includes = new Map<string, string[]>()
+  const includeRows = db
+    .prepare(
+      `SELECT rel_path, target FROM profile_include
+        WHERE workspace_id = ? ORDER BY rowid`
+    )
+    .all(workspaceId) as unknown as { rel_path: string; target: string }[]
 
-    // One sample per distinct set/skp combination, so the suggestions show
-    // genuinely different ways of writing the variable rather than repeats.
-    const sampleKey = `${row.set_expr ?? ""}|${row.skp ?? ""}`
-    if (
-      bucket.sampleKeys.size < MAX_SAMPLES &&
-      !bucket.sampleKeys.has(sampleKey)
-    ) {
-      bucket.sampleKeys.add(sampleKey)
-
-      const sample: VarSample = { file: row.rel_path, block: row.block }
-      if (row.set_expr) sample.set = row.set_expr
-      if (row.scalar) sample.scalar = true
-      if (row.skp) sample.skp = row.skp
-      if (row.comment) sample.comment = row.comment
-      if (row.heading) sample.heading = row.heading
-
-      facet.samples.push(sample)
-    }
+  for (const row of includeRows) {
+    const wanted = row.target
+      .split("\\")
+      .join("/")
+      .replace(/^\.?\//, "")
+    const list = includes.get(row.rel_path) ?? []
+    list.push(onDisk.get(wanted.toLowerCase()) ?? row.target)
+    includes.set(row.rel_path, list)
   }
 
-  for (const [name, bucket] of buckets) {
-    const facet = bucket.facet
-    facet.fileCount = bucket.files.size
-    facet.units = [...bucket.units]
-      .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
-      .map(([unit]) => unit)
-    facet.indices = [...bucket.indices].sort((a, b) =>
-      a.localeCompare(b, undefined, { numeric: true })
+  const gets = new Map<string, { gets: string[]; master: number[] }>()
+  const getRows = db
+    .prepare(
+      `SELECT e.rel_path, e.block, v.full_name
+         FROM corpus_entry e
+         JOIN variable v ON v.id = e.variable_id
+        WHERE e.workspace_id = ?
+        ORDER BY e.rel_path, e.ordinal`
     )
+    .all(workspaceId) as unknown as {
+    rel_path: string
+    block: string
+    full_name: string
+  }[]
 
-    at(name).corpus = facet
+  for (const row of getRows) {
+    let file = gets.get(row.rel_path)
+    if (!file) {
+      file = { gets: [], master: [] }
+      gets.set(row.rel_path, file)
+    }
+    if (row.block === "master") file.master.push(file.gets.length)
+    file.gets.push(row.full_name)
   }
+
+  return files.map((file) => ({
+    relPath: file.rel_path,
+    includes: includes.get(file.rel_path) ?? [],
+    ...(gets.get(file.rel_path) ?? { gets: [], master: [] }),
+  }))
 }
 
 /** Names the simulator has enumerated or reported a value for, ever. */
@@ -678,7 +728,7 @@ function foldSim(db: Database, at: (name: string) => VarEntry): void {
   }[]
 
   for (const row of rows) {
-    at(identity(row.namespace, row.var_name)).sim = {
+    at(identityOf(row.namespace, row.var_name)).sim = {
       firstSeen: row.first_seen,
       lastSeen: row.last_seen,
     }
@@ -721,7 +771,7 @@ function foldObservations(
       // both counters being zero rather than `changes` alone.
       if (!row.changes && !row.firings) continue
 
-      const entry = at(identity(row.namespace, row.var_name))
+      const entry = at(identityOf(row.namespace, row.var_name))
       entry.aircraft = {
         ...entry.aircraft,
         key: aircraft,
@@ -784,7 +834,7 @@ function foldAircraftProfile(
   }[]
 
   for (const row of rows) {
-    const entry = at(identity(row.namespace, row.var_name))
+    const entry = at(identityOf(row.namespace, row.var_name))
     entry.aircraft = { ...entry.aircraft, key: aircraft, inProfile: true }
   }
 }

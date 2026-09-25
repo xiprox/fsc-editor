@@ -219,21 +219,84 @@ export interface VarSample {
 }
 
 /**
+ * Where in an entry the corpus can name a variable.
+ *
+ * `get` is the entry's own `get:`; `read` and `write` are references inside
+ * its `set:`, found by the same walk the highlighter makes; `skp` is the name
+ * a `skp:` holds. A name twelve profiles read and none write is strong
+ * evidence on a `get:` line and weak after `(>`, which is why nothing about
+ * the corpus is counted without saying where.
+ */
+export type CorpusPosition = "get" | "read" | "write" | "skp"
+
+/** How the corpus uses a variable in one position. */
+export interface PositionEvidence {
+  /**
+   * Entries that use it there: each `get:` line once, and each `set:` or
+   * `skp:` once however many times its text names the variable.
+   */
+  entries: number
+  /**
+   * Every profile that does, in corpus order.
+   *
+   * Uncapped, deliberately: completion leaves the open file out of the
+   * corpus by path, which is only exact over a complete list. A cap belongs
+   * to whatever displays it.
+   */
+  files: string[]
+}
+
+/** One spelling of a variable, as profiles write it in one position. */
+export interface WrittenForm {
+  /** Exactly as written — `K:2:KOHLSMAN_SET`, `A:GENERAL ENG RPM:1`. */
+  form: string
+  at: CorpusPosition
+  entries: number
+}
+
+/** A name the setters of this variable's entries write, and how often. */
+export interface SetterWrite {
+  /** The target as written. */
+  form: string
+  entries: number
+  files: string[]
+}
+
+/**
  * What the profiles in this workspace say about a variable.
  *
  * Absent on a variable no profile has ever named — which, now that the index
  * carries the simulator's enumeration and the SDK catalogue, is most of them.
+ *
+ * Every count is taken from every row. `samples` is the one capped list, and
+ * it is for showing: nothing counts from it.
  */
 export interface CorpusFacet {
-  /** Total number of occurrences across all profiles. */
-  count: number
-  sharedCount: number
-  masterCount: number
-  /** Number of distinct profiles that reference it. */
-  fileCount: number
-  /** Distinct profile files that reference it, truncated for payload size. */
-  files: string[]
-  /** Distinct usages, deduped by set expression. */
+  /** Entries whose `get:` is this variable, split by block. */
+  get?: PositionEvidence & { shared: number; master: number }
+  /** Setters that read it. */
+  read?: PositionEvidence
+  /** Setters that write it — `(>NAME)`. */
+  write?: PositionEvidence
+  /** `skp:` values that name it. */
+  skp?: PositionEvidence
+  /**
+   * Its spellings, commonest first.
+   *
+   * Absent when every use spells it exactly as its name, which is most
+   * variables — so absence means "spelled as `name`", the answer a caller
+   * falls back to anyway. Present, it lists every spelling, the plain one
+   * included, so the commonest can be chosen by count.
+   */
+  written?: WrittenForm[]
+  /**
+   * For a variable that `get:` lines read: what those entries' setters write,
+   * commonest first. The pairing only a stored reference can give — measured,
+   * 73% of the corpus's written targets are written for the same `get:` in
+   * another profile.
+   */
+  setsWrite?: SetterWrite[]
+  /** Distinct usages, deduped by set expression. For showing, never counted. */
   samples: VarSample[]
   /** Best comment found for this variable, used as hover documentation. */
   doc?: string
@@ -287,7 +350,7 @@ export interface AircraftFacet {
    * This aircraft's own profile names it.
    *
    * Profile basename is the SimObject folder name — verified against every
-   * installed aircraft — with a `-default` suffix stripped.
+   * installed aircraft — matched exactly, as `profileKey` explains.
    */
   inProfile?: boolean
   /**
@@ -345,6 +408,36 @@ export interface VarIndex {
    * rebuilt and already re-runs diagnostics when the aeroplane changes.
    */
   inputEvents: string[] | null
+  /**
+   * One summary per profile file on disk, as last scanned: what `skp:`
+   * candidates and aircraft scope need, and what an open buffer overrides
+   * for itself.
+   */
+  profiles: ProfileSummary[]
+}
+
+/** What one profile file contributes to the files around it. */
+export interface ProfileSummary {
+  relPath: string
+  /**
+   * `include:` targets, resolved against the workspace root the way FS
+   * Copilot resolves them — from the Definitions folder, not from the
+   * including file — and matched to a file on disk case-insensitively, as
+   * the filesystem does. A target nothing matches is kept as written.
+   */
+  includes: string[]
+  /**
+   * Every entry's `get:` in file order, exactly as FS Copilot matches a
+   * `skp:` against it: the text before the first comma, trimmed.
+   *
+   * The order is evidence. Another profile for the same aircraft lists much
+   * the same entries in much the same sequence: for 60% of the corpus's
+   * `get:` names, the author wrote the name that follows the previous entry
+   * in the profile most like theirs.
+   */
+  gets: string[]
+  /** Positions in `gets` of the `master:` entries, which a `skp:` never names. */
+  master: number[]
 }
 
 export interface FileContent {

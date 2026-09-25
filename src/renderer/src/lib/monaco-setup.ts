@@ -72,7 +72,7 @@ export function setupMonaco(): void {
 
   configureLanguage()
   registerIndentation()
-  registerCompletions()
+  registerCompletions(relPathOf)
   registerFolding()
   registerFormatter()
   registerExpressionHelp()

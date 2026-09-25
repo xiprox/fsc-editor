@@ -276,7 +276,7 @@ function stopOfTemplate(text: string, from: number): TemplateStop {
 }
 
 /**
- * One step of the JavaScript lexer: paints what starts at `at` and returns
+ * One step of the JavaScript lexer: reports what starts at `at` and returns
  * where to continue. Pushes a frame when a string, template or block
  * comment opens; pops one when a `}` closes the interpolation hole the
  * template above it opened.
@@ -286,7 +286,7 @@ function stepJs(
   at: number,
   base: number,
   stack: Frame[],
-  out: Spans
+  to: CodeListener
 ): number {
   const char = text[at]!
   const top = stack[stack.length - 1] as Extract<Frame, { mode: "js" }>
@@ -294,29 +294,29 @@ function stepJs(
   // Invisible characters get the loudest scope there is — the whole point
   // is that nothing else shows them.
   if (INVISIBLE.test(char)) {
-    out.push(base + at, "invalid.invisible")
+    to.mark(base + at, "invalid.invisible")
     return at + 1
   }
 
   if (text.startsWith("//", at)) {
-    out.push(base + at, "js.comment")
+    to.mark(base + at, "js.comment")
     return text.length
   }
 
   if (text.startsWith("/*", at)) {
-    out.push(base + at, "js.comment")
+    to.mark(base + at, "js.comment")
     stack.push({ mode: "comment" })
     return at + 2
   }
 
   if (char === "'" || char === '"') {
-    out.push(base + at, "js.quote")
+    to.mark(base + at, "js.quote")
     stack.push({ mode: "string", quote: char })
     return at + 1
   }
 
   if (char === "`") {
-    out.push(base + at, "js.quote")
+    to.mark(base + at, "js.quote")
     stack.push({ mode: "template" })
     return at + 1
   }
@@ -330,14 +330,14 @@ function stepJs(
     if (token && token.kind === "ref") {
       const node = parseRef(token)
       if (node.access === "write" || node.ref.ns !== null) {
-        paintRef(token, base + at, out)
+        to.ref(token, base + at)
         return at + token.end
       }
     }
   }
 
   if (char === "{") {
-    out.push(base + at, "js.delimiter")
+    to.mark(base + at, "js.delimiter")
     stack[stack.length - 1] = { mode: "js", depth: top.depth + 1 }
     return at + 1
   }
@@ -345,24 +345,24 @@ function stepJs(
   if (char === "}") {
     const below = stack[stack.length - 2]
     if (top.depth === 0 && below?.mode === "template") {
-      out.push(base + at, "js.hole")
+      to.mark(base + at, "js.hole")
       stack.pop()
       return at + 1
     }
-    out.push(base + at, "js.delimiter")
+    to.mark(base + at, "js.delimiter")
     stack[stack.length - 1] = { mode: "js", depth: Math.max(0, top.depth - 1) }
     return at + 1
   }
 
   const number = matchAt(NUMBER, text, at)
   if (number) {
-    out.push(base + at, "js.number")
+    to.mark(base + at, "js.number")
     return at + number.length
   }
 
   const identifier = matchAt(IDENTIFIER, text, at)
   if (identifier) {
-    out.push(
+    to.mark(
       base + at,
       INJECTED.has(identifier)
         ? "js.injected"
@@ -374,34 +374,54 @@ function stepJs(
   }
 
   if (matchAt(DELIMITER, text, at)) {
-    out.push(base + at, "js.delimiter")
+    to.mark(base + at, "js.delimiter")
     return at + 1
   }
 
   if (matchAt(OPERATOR, text, at)) {
-    out.push(base + at, "js.operator")
+    to.mark(base + at, "js.operator")
     return at + 1
   }
 
-  out.push(base + at, "")
+  to.mark(base + at, "")
   return at + 1
 }
 
-// ------------------------------------------------------------------ entry
+// ------------------------------------------------------------------- walk
 
 /**
- * Paints one line of program text starting in the given frames, and returns
+ * What the walk reports as it goes.
+ *
+ * The walk is the authority on where RPN is inside a setter — which stretches
+ * are the calculator's and which are JavaScript's — and painting is only one
+ * of the things that needs to know. The corpus scan asks which references a
+ * setter names, and completion asks which one the caret is in. Both listen to
+ * this walk rather than keeping a model of their own, so neither can disagree
+ * with what the editor paints. `collectRefs` did keep its own, and read every
+ * JavaScript parenthesis in the corpus as a reference: 1,346 of them.
+ */
+export interface CodeListener {
+  /** A stretch of RPN: a whole literal setter, or a string or template body. */
+  rpn(text: string, base: number): void
+  /** A reference written straight into JavaScript — `(>K:FOO)` outside quotes. */
+  ref(token: Token, base: number): void
+  /** A JavaScript token, a delimiter, or the plain text between them. */
+  mark(start: number, scope: Scope): void
+}
+
+/**
+ * Walks one line of program text starting in the given frames, and returns
  * the frames the next line starts in.
  *
  * The RPN frame is total — a literal or prepended setter is RPN to the end
  * of its line, and there is no next line. Every other frame can end on the
  * line or run off it.
  */
-export function paintCode(
+export function walkCode(
   text: string,
   base: number,
   frames: Frame[],
-  out: Spans
+  to: CodeListener
 ): Frame[] {
   const stack = frames.length ? [...frames] : [JS]
   let at = 0
@@ -411,22 +431,22 @@ export function paintCode(
 
     switch (top.mode) {
       case "rpn":
-        paintRpn(text.slice(at), base + at, out)
+        to.rpn(text.slice(at), base + at)
         at = text.length
         break
 
       case "js":
-        at = stepJs(text, at, base, stack, out)
+        at = stepJs(text, at, base, stack, to)
         break
 
       case "string": {
         const close = closeOfString(text, at, top.quote)
         const end = close === -1 ? text.length : close
-        paintRpn(text.slice(at, end), base + at, out)
+        to.rpn(text.slice(at, end), base + at)
         if (close === -1) {
           at = text.length
         } else {
-          out.push(base + close, "js.quote")
+          to.mark(base + close, "js.quote")
           stack.pop()
           at = close + 1
         }
@@ -435,13 +455,13 @@ export function paintCode(
 
       case "template": {
         const stop = stopOfTemplate(text, at)
-        paintRpn(text.slice(at, stop.at), base + at, out)
+        to.rpn(text.slice(at, stop.at), base + at)
         if (stop.kind === "close") {
-          out.push(base + stop.at, "js.quote")
+          to.mark(base + stop.at, "js.quote")
           stack.pop()
           at = stop.at + 1
         } else if (stop.kind === "hole") {
-          out.push(base + stop.at, "js.hole")
+          to.mark(base + stop.at, "js.hole")
           stack.push({ mode: "js", depth: 0 })
           at = stop.at + 2
         } else {
@@ -452,7 +472,7 @@ export function paintCode(
 
       case "comment": {
         const close = text.indexOf("*/", at)
-        out.push(base + at, "js.comment")
+        to.mark(base + at, "js.comment")
         if (close === -1) {
           at = text.length
         } else {
@@ -465,4 +485,23 @@ export function paintCode(
   }
 
   return stack
+}
+
+// ------------------------------------------------------------------ entry
+
+/**
+ * Paints one line of program text starting in the given frames, and returns
+ * the frames the next line starts in — the walk, with the painter listening.
+ */
+export function paintCode(
+  text: string,
+  base: number,
+  frames: Frame[],
+  out: Spans
+): Frame[] {
+  return walkCode(text, base, frames, {
+    rpn: (stretch, at) => paintRpn(stretch, at, out),
+    ref: (token, at) => paintRef(token, at, out),
+    mark: (start, scope) => out.push(start, scope),
+  })
 }
