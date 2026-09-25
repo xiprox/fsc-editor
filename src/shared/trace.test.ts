@@ -374,8 +374,8 @@ describe("the apply side — Definition.ApplyTo", () => {
     expect(find(trace.apply, "match-write")?.state).toBe("failed")
     expect(find(trace.apply, "instead")).toBeUndefined()
     expect(text(last(trace.apply))).toBe(
-      "50 is written to A:GENERAL ENG THROTTLE LEVER POSITION:1, Percent, " +
-        "and K:THROTTLE1_SET never fires"
+      "50 is written to A:GENERAL ENG THROTTLE LEVER POSITION:1, Percent" +
+        " — twice, with the same value, and K:THROTTLE1_SET never fires"
     )
   })
 
@@ -994,19 +994,68 @@ describe("the outcome — the last step of each half", () => {
     expect(ending(trace.apply).state).toBe("unknown")
   })
 
-  it("treats the fallback as a success when it swallowed no event", () => {
-    // 60% of the corpus has no `set:` at all and this is the whole design
-    // there: ParseSet's fallback writes the incoming value to the get: name.
+  it("routes a fallback write the way SimClient.Set routes any write", () => {
+    // ApplyTo hands ParseSet's fallback — `Get, Units, [value]` — to the same
+    // `sim.Set(set, units, values)` as a matched write. A K: name takes
+    // TransmitKEvent, NormalizeValue and the catch-all, however it got there.
+    const trace = traceEntry(
+      shared({ block: "master", name: "K:FOO", units: "" }),
+      { value: -1, current: 0 },
+      built("1 (L:SOMETHING) +", "literal")
+    )
+
+    expect(find(trace.apply, "execute")?.state).toBe("unknown")
+    expect(text(ending(trace.apply))).toBe("K:FOO fires twice with [0] 4294967295")
+    // It swallowed no event and had text, so the state is the route's.
+    expect(ending(trace.apply).state).toBe("unknown")
+  })
+
+  it("applies nothing when a fallback's get: has no prefix", () => {
+    // The fallback's name is Get, and SimClient.Set's four `if`s test it the
+    // same way: no `X:` at the start, no branch.
+    const trace = traceEntry(
+      shared({ block: "master", name: "NOPREFIX", units: "Number" }),
+      { value: 1, current: 0 },
+      built("K:THROTTLE1_SET", "literal")
+    )
+
+    expect(find(trace.apply, "route")).toBeUndefined()
+    expect(text(ending(trace.apply))).toBe(
+      "nothing is applied — NOPREFIX matches no branch, " +
+        "and K:THROTTLE1_SET never fires"
+    )
+    expect(ending(trace.apply).state).toBe("failed")
+  })
+
+  it("fails a master: fallback reached by a setter that threw", () => {
+    // Set catches, logs and returns string.Empty. In master: that goes to
+    // ParseSet, `SetRegex().Match("")` fails, and the value is written to
+    // the get: name — which the setter never asked for.
     const trace = traceEntry(
       shared({ block: "master" }),
       { value: 1, current: 0 },
-      built("", "implicit")
+      { ok: false, kind: "javascript", reason: "ReferenceError: nope" }
     )
 
-    expect(text(ending(trace.apply))).toBe(
-      "1 is written to A:LIGHT LANDING, Bool"
+    expect(text(find(trace.apply, "match-write"))).toBe(
+      "no (>…) — the expression is empty"
     )
-    expect(ending(trace.apply).state).toBe("ok")
+    expect(text(ending(trace.apply))).toBe(
+      "1 is written to A:LIGHT LANDING, Bool — twice, with the same value"
+    )
+    expect(ending(trace.apply).state).toBe("failed")
+  })
+
+  it("fails a master: fallback reached by a branch that built nothing", () => {
+    // `''` on purpose is a guard in shared:, where Execute returns early. In
+    // master: the same empty string reaches the same fallback as a throw.
+    const trace = traceEntry(
+      shared({ block: "master" }),
+      { value: 1, current: 0 },
+      built("", "javascript")
+    )
+
+    expect(ending(trace.apply).state).toBe("failed")
   })
 
   it("names the event a fallback swallowed, and fails on it", () => {
@@ -1020,7 +1069,8 @@ describe("the outcome — the last step of each half", () => {
     )
 
     expect(text(ending(trace.apply))).toBe(
-      "50 is written to A:THROTTLE, Percent, and K:THROTTLE1_SET never fires"
+      "50 is written to A:THROTTLE, Percent — twice, with the same value, " +
+        "and K:THROTTLE1_SET never fires"
     )
     expect(ending(trace.apply).state).toBe("failed")
   })

@@ -284,7 +284,7 @@ master: L:MasterSkp
 
 ══════════════════════════════════════════════════════════════════════════
 
-WHEN A VALUE ARRIVES — 29 distinct
+WHEN A VALUE ARRIVES — 30 distinct
 
 shared: A:LIGHT LANDING
   with no current
@@ -571,7 +571,25 @@ master: A:GENERAL ENG THROTTLE LEVER POSITION:1
     ok      builds   K:THROTTLE1_SET
     ok      parses   the name and the numbers manually, because the entry is master:
     failed  match    no (>…) at the end — this text is never used
-    failed  result   1 is written to A:GENERAL ENG THROTTLE LEVER POSITION:1, Percent, and K:THROTTLE1_SET never fires
+    ok      writes   A:GENERAL ENG THROTTLE LEVER POSITION:1 = 1 in Percent — as int
+    unknown writes   A:GENERAL ENG THROTTLE LEVER POSITION:1 again, from the calculator — the name matches two write routes and FS Copilot takes both
+    failed  result   1 is written to A:GENERAL ENG THROTTLE LEVER POSITION:1, Percent — twice, with the same value, and K:THROTTLE1_SET never fires
+
+──────────────────────────────────────────────────────────────────────────
+
+master: L:MasterThrows
+  set: `${missingBinding.x}`
+  with no current
+
+    ok      arrives  an update named L:MasterThrows
+    unknown applies  only while you are not the pilot in control
+    ok      kind     javascript — contains one of ' ` ? { }, so it is evaluated first
+    failed  builds   nothing — missingBinding is not defined
+    ok      parses   the name and the numbers manually, because the entry is master:
+    failed  match    no (>…) — the expression is empty
+    ok      writes   L:MasterThrows = 1 — as float, Number is ignored
+    unknown writes   L:MasterThrows again, from the calculator — the name matches two write routes and FS Copilot takes both
+    failed  result   1 is written to L:MasterThrows — twice, with the same value
 
 ──────────────────────────────────────────────────────────────────────────
 
