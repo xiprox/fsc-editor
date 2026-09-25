@@ -152,7 +152,50 @@ function watchCurrent(
     // rather than from `save()`, so an edit made in another editor, or by FS
     // Copilot itself, reaches the guests exactly like one made in this app.
     void remote.filesChanged(found)
+
+    rescanCorpus(getWindow, workspace.root)
   })
+}
+
+/** The rescan in flight, and whether another change arrived during it. */
+let rescanning: Promise<void> | null = null
+let rescanAgain = false
+
+/**
+ * A change on disk reaches the variable index, not only the file list.
+ *
+ * The corpus used to be read when a workspace opened and at no other time, so
+ * a `get:` written and saved this session was unknown to completion until the
+ * app restarted. `scanVars` only reads files whose size or mtime moved, so
+ * this costs one file's parse and one rebuild of the index.
+ *
+ * One scan at a time: a change that lands while one runs asks for exactly one
+ * more, since the next scan reads everything that moved in the meantime. The
+ * renderer is told the way it is told about the simulator, and already
+ * answers by fetching the index.
+ */
+function rescanCorpus(getWindow: () => BrowserWindow, root: string): void {
+  if (rescanning) {
+    rescanAgain = true
+    return
+  }
+
+  rescanning = (async () => {
+    do {
+      rescanAgain = false
+      await scanVars(root, loadedAircraft(), sim.inputEventNames())
+    } while (rescanAgain)
+
+    const window = getWindow()
+    if (!window.isDestroyed()) window.webContents.send("vars:changed")
+  })()
+    .catch((error: unknown) => {
+      const reason = error instanceof Error ? error.message : String(error)
+      log("files", "warn", "rescan", `variable index not rebuilt — ${reason}`)
+    })
+    .finally(() => {
+      rescanning = null
+    })
 }
 
 /**
