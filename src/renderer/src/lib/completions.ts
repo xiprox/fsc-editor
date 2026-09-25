@@ -302,7 +302,8 @@ function nameItems(
           detail: detailLine(offer),
         },
         kind: KINDS[offer.kind],
-        insertText: insertText + close,
+        // A control's name is half done: the reference closes with its suffix.
+        insertText: offer.next ? insertText : insertText + close,
         ...(snippet
           ? {
               insertTextRules:
@@ -312,9 +313,17 @@ function nameItems(
         filterText: `${lead}${offer.text}`,
         sortText: sortText(order),
         range: range(start, end),
+        // Asks again at the caret once inserted — for the suffix.
+        ...(offer.next
+          ? { command: { id: "editor.action.triggerSuggest", title: "" } }
+          : {}),
         __offer: offer,
       }
     }),
+    // With controls in the list, a typed underscore has to reach the
+    // suffixes, so Monaco asks again on each keystroke rather than filtering
+    // what it has. A `B:` list runs to hundreds, so asking is cheap.
+    incomplete: offers.some((offer) => offer.next),
   }
 }
 

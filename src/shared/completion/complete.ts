@@ -29,6 +29,7 @@ import type {
 } from "../types.ts"
 import { UNITS, canonicalUnit } from "../units.ts"
 import { NAMESPACES } from "../vars/namespaces.ts"
+import { inputEventOf } from "../vars/input-events.ts"
 import { parseVar, varColumns } from "../vars/parse.ts"
 import type { DocumentFacts, DocumentUse } from "./document.ts"
 import { belongsAt, shape, type NamePosition, type Shape } from "./shapes.ts"
@@ -41,6 +42,11 @@ export interface CompletionIndex {
   byName: ReadonlyMap<string, VarEntry>
   profiles: readonly ProfileSummary[]
   aircraft: string | null
+  /**
+   * The aircraft in the sim's input event IDs, lowercased to their own
+   * spelling, or null with no aircraft loaded.
+   */
+  inputEvents: ReadonlyMap<string, string> | null
 }
 
 export function completionIndex(index: VarIndex | null): CompletionIndex {
@@ -50,6 +56,9 @@ export function completionIndex(index: VarIndex | null): CompletionIndex {
     byName: new Map(entries.map((entry) => [entry.name, entry])),
     profiles: index?.profiles ?? [],
     aircraft: index?.aircraft ?? null,
+    inputEvents: index?.inputEvents
+      ? new Map(index.inputEvents.map((id) => [id.toLowerCase(), id]))
+      : null,
   }
 }
 
@@ -66,6 +75,8 @@ export type Evidence =
   | { from: "similar"; file: string }
   | { from: "similar-setter"; file: string }
   | { from: "sequence"; file: string }
+  | { from: "operation" }
+  | { from: "bare"; profiles: number }
   | { from: "unit"; uses?: number; canonicalOf?: string }
 
 export interface Offer {
@@ -83,6 +94,11 @@ export interface Offer {
   evidence: Evidence
   /** The variable, for documentation resolved when the item is focused. */
   entry?: VarEntry
+  /**
+   * The text is not a whole name: inserting it opens the list again, for the
+   * rest. An input event's control, whose suffix comes second.
+   */
+  next?: true
 }
 
 export function complete(
@@ -113,6 +129,19 @@ export function completeSegments(
   if (slot.kind === "units") return [unitOffers(slot, index)]
 
   const scope = scopeOf(document, index)
+
+  // A known input event and an underscore: the control is chosen, and what
+  // is left to complete is its suffix.
+  if (
+    (slot.position === "write" || slot.position === "get") &&
+    scope.forAircraft &&
+    index.inputEvents &&
+    /^b:/i.test(slot.typed)
+  ) {
+    const control = inputEventOf(slot.typed.slice(2), index.inputEvents)
+    if (control) return [suffixOffers(slot, document, index, scope, control.id)]
+  }
+
   switch (slot.position) {
     case "write":
       return writeSegments(slot, document, index, scope)
@@ -728,10 +757,17 @@ function writeTail(index: CompletionIndex, scope: Scope): Offer[][] {
     const aircraft = scope.forAircraft ? entry.aircraft : undefined
     const written = profilesAt(entry.corpus, "write", scope.openFile)
 
-    if (aircraft?.changes) {
-      // 4. The aircraft in the sim's own: what moved there.
-      const offer = offerOf(entry, "write", { from: "aircraft", how: "moved" })
-      if (offer) strong.push({ offer, score: [0, -aircraft.changes] })
+    if (aircraft?.changes || aircraft?.inputEvent) {
+      // 4. The aircraft in the sim's own: what moved there, and the controls
+      // it registered — each offered as a control, its suffix to come.
+      const offers = aircraft.inputEvent
+        ? controlOffers(entry, "write", scope)
+        : [offerOf(entry, "write", { from: "aircraft", how: "moved" })]
+      const score = [0, -(aircraft.changes ?? 0), -(aircraft.firings ?? 0)]
+      // A control's bare ID, when there is one, just behind the control.
+      offers.forEach((offer, at) => {
+        if (offer) strong.push({ offer, score: [...score, at] })
+      })
       continue
     }
 
@@ -805,7 +841,11 @@ function readTail(
             : knownOnly(entry)
     if (!evidence) continue
 
-    const offer = offerOf(entry, position, evidence)
+    const offers =
+      scope.forAircraft && entry.aircraft?.inputEvent
+        ? controlOffers(entry, position, scope)
+        : [offerOf(entry, position, evidence)]
+    const offer = offers[0]
     if (!offer) continue
 
     const score = [
@@ -815,10 +855,9 @@ function readTail(
       -corpusEntries(entry.corpus),
       -(entry.sdk?.uses ?? 0),
     ]
-    ;(band < 2 ? aircraft : band === 2 && any > 0 ? profiled : weak).push({
-      offer,
-      score,
-    })
+    const into = band < 2 ? aircraft : band === 2 && any > 0 ? profiled : weak
+    into.push({ offer, score })
+    if (offers[1]) into.push({ offer: offers[1], score: [...score, 1] })
   }
 
   return [inOrder(aircraft), inOrder(profiled), inOrder(weak)]
@@ -838,6 +877,152 @@ function dominantPosition(entry: VarEntry): CorpusPosition {
     }
   }
   return best
+}
+
+/* -------------------------------------------------------------------------- */
+/* Input events                                                                */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * One of the aircraft's input events, offered as a control.
+ *
+ * The enumeration is the aircraft's own account of its controls, and it is
+ * IDs: `AIRLINER_FCU_CHRONO_2`, where a profile writes `…_Push`. Nothing
+ * enumerates the suffixes, so in write and `get:` position the ID is offered
+ * as the first half — labelled `…_…` for it, typing `B:ID_` and opening the
+ * list on the second, the way a key event's calling shape is offered whole.
+ *
+ * Beside it, the bare ID itself where profiles use it bare in this position:
+ * a bare write lands when the vendor's preset is itself the action, and the
+ * corpus writes hundreds that way. It sits here rather than among the
+ * suffixes because it is a whole name, and offered once an underscore is
+ * typed it could only match as an exact match, which Monaco puts first
+ * whatever the order says.
+ *
+ * A read inserts the ID as it is: all 62 of the corpus's `(B:` reads are bare.
+ */
+function controlOffers(
+  entry: VarEntry,
+  position: NamePosition,
+  scope: Scope
+): (Offer | null)[] {
+  const evidence: Evidence = { from: "aircraft", how: "input-event" }
+  if (position === "read") return [offerOf(entry, position, evidence)]
+  if (!belongsAt(entry.name, position, entry)) return []
+
+  const control: Offer = {
+    label: `${entry.name}_…`,
+    text: `${entry.name}_`,
+    kind: "variable",
+    evidence,
+    entry,
+    next: true,
+  }
+
+  const bare = profilesAt(entry.corpus, position, scope.openFile)
+  return bare
+    ? [control, offerOf(entry, position, { from: "bare", profiles: bare })]
+    : [control]
+}
+
+/**
+ * The generated operations, in the casing the corpus writes them — 410 of its
+ * 842 distinct `(>B:` names end `_Set`, 125 `_Toggle`.
+ */
+const OPERATIONS = ["Set", "Toggle", "Inc", "Dec", "On", "Off"]
+
+/**
+ * What can follow a chosen control: this file's spellings of it, what this
+ * variable's setters write for it in other profiles, the corpus's, and the
+ * generated operations it has not shown yet.
+ *
+ * The generated operations come last because a wrong one fails silently: a
+ * suffix the control does not define reads 0 through the calculator with no
+ * error, which looks exactly like a control at rest. On the CJ4, `_Toggle`
+ * read its control's value on 19 of the 38 controls away from zero and 0 on
+ * the rest, and a made-up suffix read 0 on all 38.
+ */
+function suffixOffers(
+  slot: NameSlot,
+  document: DocumentFacts,
+  index: CompletionIndex,
+  scope: Scope,
+  id: string
+): Offer[] {
+  const position = slot.position
+  const control = `B:${id}`
+  const prefix = `${control}_`.toLowerCase()
+  const continues = (name: string) => name.toLowerCase().startsWith(prefix)
+  const ranked = new Ranked()
+
+  // 1. This file's spellings of the control.
+  for (const use of fileUses(document, slot, ["write", "get", "read"]))
+    if (continues(use.form))
+      ranked.add(
+        offerOf(
+          entryFor(index, use.form),
+          position,
+          { from: "file", uses: use.uses },
+          use.form
+        )
+      )
+
+  // 2. What this variable's setters write for it in other profiles.
+  const here = document.entryAt(slot.line)
+  if (position === "write" && here)
+    for (const pair of index.byName.get(identityOfName(here.name))?.corpus
+      ?.setsWrite ?? []) {
+      const profiles = pair.files.filter((f) => f !== scope.openFile).length
+      if (profiles && continues(pair.form))
+        ranked.add(
+          offerOf(
+            entryFor(index, pair.form),
+            position,
+            { from: "sets-write", profiles },
+            pair.form
+          )
+        )
+    }
+
+  // 3. The corpus's spellings of it, by how many profiles use each here.
+  const known = index.entries
+    .filter((entry) => continues(entry.name))
+    .map((entry) => ({
+      entry,
+      profiles:
+        profilesAt(entry.corpus, position, scope.openFile) ||
+        corpusFiles(entry.corpus).filter((f) => f !== scope.openFile).length,
+    }))
+    .filter((known) => known.profiles > 0)
+    .sort((a, b) => b.profiles - a.profiles)
+  for (const { entry, profiles } of known)
+    ranked.add(
+      offerOf(entry, position, { from: "corpus", at: position, profiles })
+    )
+
+  // 4. The generated operations, marked as seen nowhere.
+  const bare = index.byName.get(control) ?? { name: control }
+  for (const operation of OPERATIONS)
+    ranked.add({
+      label: `${control}_${operation}`,
+      text: `${control}_${operation}`,
+      kind: "variable",
+      evidence: { from: "operation" },
+      entry: bare,
+    })
+
+  // 5. Other controls whose names go on past this one's: the A220 has both
+  // `…_SPD_PUSH` and `…_SPD_PUSH_PUSH`.
+  for (const [lower, other] of index.inputEvents ?? [])
+    if (lower.startsWith(prefix.slice(2)) && lower !== id.toLowerCase())
+      for (const offer of controlOffers(
+        index.byName.get(`B:${other}`) ?? { name: `B:${other}` },
+        position,
+        scope
+      ))
+        ranked.add(offer)
+
+  return ranked.list
 }
 
 /* -------------------------------------------------------------------------- */

@@ -59,6 +59,12 @@ export function detailOf(evidence: Evidence): string {
     case "sequence":
       return `next in ${evidence.file}, a profile like this one`
 
+    case "operation":
+      return "seen in no profile"
+
+    case "bare":
+      return `written bare in ${count(evidence.profiles, "profile")}`
+
     case "similar":
       return `used in ${evidence.file}, a profile like this one`
 

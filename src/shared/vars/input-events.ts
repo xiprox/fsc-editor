@@ -45,3 +45,31 @@ export function inputEventIds(name: string, preset: string): string[] {
     (id): id is string => id !== undefined && id.length > 0
   )
 }
+
+/**
+ * The enumerated input event a `B:` name continues, and what follows the
+ * underscore after it: `AIRLINER_FCU_CHRONO_2_Pu` is `AIRLINER_FCU_CHRONO_2`
+ * and `Pu`.
+ *
+ * `ids` maps each enumerated ID, lowercased, to its own spelling — the
+ * calculator does not care about case, and the enumeration's casing is the one
+ * to write back. The longest ID the name extends by an underscore wins, so
+ * `…_SPD_PUSH_` is read as the ID `…_SPD_PUSH` and an empty suffix rather than
+ * `…_SPD` and `PUSH_`: the A220 enumerates both. Null when the name continues
+ * no enumerated ID — including a name that *is* one, which has no underscore
+ * after it yet.
+ */
+export function inputEventOf(
+  name: string,
+  ids: ReadonlyMap<string, string>
+): { id: string; suffix: string } | null {
+  for (
+    let at = name.lastIndexOf("_");
+    at > 0;
+    at = name.lastIndexOf("_", at - 1)
+  ) {
+    const id = ids.get(name.slice(0, at).toLowerCase())
+    if (id) return { id, suffix: name.slice(at + 1) }
+  }
+  return null
+}
