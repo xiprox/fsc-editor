@@ -32,7 +32,7 @@ import {
 } from "@shared/profile"
 import { parseRef, tokenAt, tokenize } from "@shared/lang"
 
-import { linesOf, writeTargetCount } from "./completions"
+import { linesOf } from "./completions"
 import { entryFor } from "./var-index-store"
 import { refCard, wordCard, type RefHoverContext } from "./hover-card"
 import { keyDoc } from "./key-docs"
@@ -158,7 +158,10 @@ export function profileHover(
           const context: Omit<RefHoverContext, "entry"> = {
             where: "expression",
             ...(hit.node.access === "write"
-              ? { writeCount: writeTargetCount(hit.node.ref.full) }
+              ? {
+                  writeCount:
+                    entryFor(hit.node.ref.full)?.corpus?.write?.entries ?? 0,
+                }
               : {}),
           }
           return { contents: refContents(hit.node, context), range }

@@ -18,9 +18,8 @@ An editor for [FS Copilot](https://github.com/yury-sch/FsCopilot) aircraft profi
 - Profiles are treated as their own language, not as simple YAML.
 - Full syntax highlighting covers everything down to RPN and JavaScript inside `set:` entries.
 - Completions, signature help and type hovers for JavaScript inside `set:`, with value typed from the entry's unit.
-- `get:` completions drawn from the variable database and other profiles.
-- `set:` completions surface what other profiles write for that variable and the shapes a `set:` can take.
-- Inside `(>…)`, only writable names are offered, and `K:` events complete with their full calling shape.
+- Variable completions rank names by what your file and the profiles most like it already use, and offer only the ones that fit where you're typing.
+- `K:` events complete with their full calling shape.
 - Hovering a variable says what it is, what the SDK or another profile's comment says about it, and how many profiles use it.
 - Format on save, to one canonical form that looks good.
 - Comment headings (`# ═══ TITLE ═══`) become sections: an outline in the sidebar, and folds in the editor.

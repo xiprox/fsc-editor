@@ -67,6 +67,22 @@ export interface Namespace {
    * an event or lookup and a unit is meaningless on it.
    */
   units: "converted" | "raw" | "none"
+  /**
+   * What a `get:` of it does, going by how FS Copilot routes one: `value`
+   * syncs the variable's value — `L:`, `A:` and everything reached through
+   * calculator code — and `event` syncs the firing, which is what `K:` and
+   * `H:` have their own paths for. Null where nothing outside the gauge
+   * system can reach it, so a `get:` has nothing to read.
+   */
+  get: "value" | "event" | null
+  /** Whether a reference in a setter may read it. `ns-access` and completion both ask. */
+  readable: boolean
+  /**
+   * Whether a reference in a setter may write it. Per-name exceptions — a
+   * documented read-only `A:`, the one writable `E:` — are the shapes', not
+   * the namespace's.
+   */
+  writable: boolean
 }
 
 export const NAMESPACES: Record<NamespaceId, Namespace> = {
@@ -78,6 +94,9 @@ export const NAMESPACES: Record<NamespaceId, Namespace> = {
     scope: "simobject",
     watchUnits: "Number",
     units: "converted",
+    get: "value",
+    readable: true,
+    writable: true,
   },
   L: {
     id: "L",
@@ -87,6 +106,9 @@ export const NAMESPACES: Record<NamespaceId, Namespace> = {
     scope: "session",
     watchUnits: "",
     units: "raw",
+    get: "value",
+    readable: true,
+    writable: true,
   },
   Z: {
     id: "Z",
@@ -96,6 +118,9 @@ export const NAMESPACES: Record<NamespaceId, Namespace> = {
     scope: "simobject",
     watchUnits: "",
     units: "raw",
+    get: "value",
+    readable: true,
+    writable: true,
   },
   K: {
     id: "K",
@@ -106,6 +131,9 @@ export const NAMESPACES: Record<NamespaceId, Namespace> = {
     scope: "global",
     watchUnits: "",
     units: "none",
+    get: "event",
+    readable: false,
+    writable: true,
   },
   B: {
     id: "B",
@@ -126,6 +154,9 @@ export const NAMESPACES: Record<NamespaceId, Namespace> = {
      * had ever acted on it.
      */
     units: "raw",
+    get: "value",
+    readable: true,
+    writable: true,
   },
   H: {
     id: "H",
@@ -136,6 +167,9 @@ export const NAMESPACES: Record<NamespaceId, Namespace> = {
     scope: "simobject",
     watchUnits: "",
     units: "none",
+    get: "event",
+    readable: false,
+    writable: true,
   },
   E: {
     id: "E",
@@ -145,6 +179,9 @@ export const NAMESPACES: Record<NamespaceId, Namespace> = {
     scope: "global",
     watchUnits: "",
     units: "converted",
+    get: "value",
+    readable: true,
+    writable: true,
   },
   P: {
     id: "P",
@@ -155,6 +192,9 @@ export const NAMESPACES: Record<NamespaceId, Namespace> = {
     scope: "global",
     watchUnits: "",
     units: "converted",
+    get: "value",
+    readable: true,
+    writable: true,
   },
   I: {
     id: "I",
@@ -165,6 +205,9 @@ export const NAMESPACES: Record<NamespaceId, Namespace> = {
     scope: "instrument",
     watchUnits: "",
     units: "raw",
+    get: "value",
+    readable: true,
+    writable: true,
   },
   O: {
     id: "O",
@@ -175,6 +218,9 @@ export const NAMESPACES: Record<NamespaceId, Namespace> = {
     scope: "component",
     watchUnits: "",
     units: "raw",
+    get: "value",
+    readable: true,
+    writable: true,
   },
   M: {
     id: "M",
@@ -185,6 +231,9 @@ export const NAMESPACES: Record<NamespaceId, Namespace> = {
     scope: "component",
     watchUnits: "",
     units: "raw",
+    get: null,
+    readable: true,
+    writable: false,
   },
   G: {
     id: "G",
@@ -195,6 +244,9 @@ export const NAMESPACES: Record<NamespaceId, Namespace> = {
     scope: "gauge",
     watchUnits: "",
     units: "none",
+    get: null,
+    readable: true,
+    writable: false,
   },
   C: {
     id: "C",
@@ -205,6 +257,9 @@ export const NAMESPACES: Record<NamespaceId, Namespace> = {
     scope: "gauge",
     watchUnits: "",
     units: "converted",
+    get: null,
+    readable: true,
+    writable: false,
   },
   F: {
     id: "F",
@@ -215,6 +270,9 @@ export const NAMESPACES: Record<NamespaceId, Namespace> = {
     scope: "global",
     watchUnits: "",
     units: "none",
+    get: null,
+    readable: true,
+    writable: false,
   },
   R: {
     id: "R",
@@ -225,6 +283,9 @@ export const NAMESPACES: Record<NamespaceId, Namespace> = {
     scope: "global",
     watchUnits: "",
     units: "none",
+    get: null,
+    readable: true,
+    writable: false,
   },
   W: {
     id: "W",
@@ -235,6 +296,9 @@ export const NAMESPACES: Record<NamespaceId, Namespace> = {
     scope: "global",
     watchUnits: "",
     units: "none",
+    get: null,
+    readable: false,
+    writable: true,
   },
   X: {
     id: "X",
@@ -245,6 +309,9 @@ export const NAMESPACES: Record<NamespaceId, Namespace> = {
     scope: "mission",
     watchUnits: "",
     units: "raw",
+    get: null,
+    readable: true,
+    writable: false,
   },
 }
 

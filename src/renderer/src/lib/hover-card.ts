@@ -18,7 +18,7 @@
  */
 
 import { documentedParams, type IrNode, type TokenHit } from "@shared/lang"
-import { parameterLabel } from "./set-completions"
+import { parameterLabel } from "@shared/completion"
 import { NAMESPACES } from "@shared/vars"
 import type { VarEntry } from "@shared/types"
 
@@ -248,16 +248,17 @@ function footer(node: RefNode, context: RefHoverContext): string | null {
     return `_Written by ${count} ${count === 1 ? "entry" : "entries"}_`
   }
 
-  const corpus = context.entry?.corpus
-  if (corpus) {
-    const profiles = corpus.fileCount === 1 ? "profile" : "profiles"
+  const read = context.entry?.corpus?.get
+  if (read) {
+    const count = read.files.length
+    const profiles = count === 1 ? "profile" : "profiles"
     const blocks = [
-      corpus.sharedCount ? `shared ×${corpus.sharedCount}` : null,
-      corpus.masterCount ? `master ×${corpus.masterCount}` : null,
+      read.shared ? `shared ×${read.shared}` : null,
+      read.master ? `master ×${read.master}` : null,
     ]
       .filter(Boolean)
       .join(" · ")
-    return `_Read by ${corpus.fileCount} ${profiles}${blocks ? ` — ${blocks}` : ""}_`
+    return `_Read by ${count} ${profiles}${blocks ? ` — ${blocks}` : ""}_`
   }
 
   const category = context.entry?.sdk?.doc?.category

@@ -13,7 +13,8 @@ import { useVirtualizer } from "@tanstack/react-virtual"
 
 import { Plane, RefreshCw, Search, SearchX } from "lucide-react"
 
-import type { VarEntry } from "@shared/types"
+import { corpusFiles } from "@shared/evidence"
+import type { PositionEvidence, VarEntry } from "@shared/types"
 import { readOf } from "@shared/vars"
 
 import { PanelHeader } from "@/components/panel-header"
@@ -569,9 +570,17 @@ function VariableRow({ entry }: { entry: VarEntry }) {
  * to have. That is the facet design paying out: a source added later appears
  * here as another block and disturbs none of these.
  */
+/** "written by 12 setters in 9 profiles" — singulars handled. */
+function setterCount(verb: string, evidence: PositionEvidence): string {
+  const setters = evidence.entries === 1 ? "setter" : "setters"
+  const files = evidence.files.length
+  return `${verb} by ${evidence.entries} ${setters} in ${files} ${files === 1 ? "profile" : "profiles"}`
+}
+
 function VariableDetail({ entry }: { entry: VarEntry }) {
   const { corpus, sdk, sim, aircraft } = entry
   const doc = sdk?.doc
+  const files = corpusFiles(corpus)
 
   return (
     <div className="space-y-2 p-3 text-[11px]">
@@ -617,20 +626,36 @@ function VariableDetail({ entry }: { entry: VarEntry }) {
         </p>
       )}
 
-      {corpus && (
+      {corpus?.get && (
         <p className="text-muted-foreground">
-          {corpus.count} {corpus.count === 1 ? "entry" : "entries"} in{" "}
-          {corpus.fileCount} {corpus.fileCount === 1 ? "profile" : "profiles"}
-          {corpus.sharedCount > 0 && corpus.masterCount > 0 && (
+          {corpus.get.entries} {corpus.get.entries === 1 ? "entry" : "entries"}{" "}
+          in {corpus.get.files.length}{" "}
+          {corpus.get.files.length === 1 ? "profile" : "profiles"}
+          {corpus.get.shared > 0 && corpus.get.master > 0 && (
             <>
               {" "}
-              · {corpus.sharedCount} shared, {corpus.masterCount} master
+              · {corpus.get.shared} shared, {corpus.get.master} master
             </>
           )}
           {corpus.units.length > 1 && <> · read as {corpus.units.join(", ")}</>}
           {corpus.indices.length > 0 && (
             <> · indices {corpus.indices.join(", ")}</>
           )}
+        </p>
+      )}
+
+      {/*
+        What setters do with it, which a get: count cannot say: most K: events
+        are written by dozens of profiles and are nobody's get:.
+      */}
+      {(corpus?.write || corpus?.read) && (
+        <p className="text-muted-foreground">
+          {[
+            corpus.write && setterCount("written", corpus.write),
+            corpus.read && setterCount("read", corpus.read),
+          ]
+            .filter(Boolean)
+            .join(" · ")}
         </p>
       )}
 
@@ -659,10 +684,10 @@ function VariableDetail({ entry }: { entry: VarEntry }) {
         </div>
       )}
 
-      {corpus && corpus.files.length > 0 && (
+      {files.length > 0 && (
         <p className="text-[10px] leading-relaxed text-muted-foreground">
-          {corpus.files.slice(0, 6).join(", ")}
-          {corpus.fileCount > 6 && ` and ${corpus.fileCount - 6} more`}
+          {files.slice(0, 6).join(", ")}
+          {files.length > 6 && ` and ${files.length - 6} more`}
         </p>
       )}
     </div>

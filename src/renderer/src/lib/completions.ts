@@ -1,6 +1,18 @@
 import * as monaco from "monaco-editor"
 
 import {
+  complete,
+  completionIndex,
+  completionSlot,
+  detailOf,
+  documentFacts,
+  type CompletionIndex,
+  type CompletionSlot,
+  type DocumentFacts,
+  type Offer,
+} from "@shared/completion"
+import { corpusFiles } from "@shared/evidence"
+import {
   BLOCKS,
   blocksIn,
   expectedIndent,
@@ -11,7 +23,6 @@ import {
   isEntryBlock,
   initialState,
   type Line,
-  plainValue,
   renderHeading,
   splitPrefix,
   scanLines,
@@ -21,62 +32,37 @@ import {
   injectedGlobals,
   offsetIn,
 } from "@shared/profile"
-
-import { javaScriptCompletions, resolveJavaScript } from "./js-bridge"
 import type { ProfileFile, VarEntry, VarIndex } from "@shared/types"
-import { UNITS, canonicalUnit } from "@shared/units"
-import { collectRefs, documentedParams } from "@shared/lang"
-import { parseVar } from "@shared/vars"
-import { kEventSnippet, writeOffer } from "./set-completions"
+
+import {
+  javaScriptCompletions,
+  resolveJavaScript,
+  type Resolvable,
+} from "./js-bridge"
 import { BLOCK_DOCS, ENTRY_KEY_DOCS, type EntryDocKey } from "./key-docs"
 import { setTemplates } from "./set-templates"
-import { setVarIndexStore } from "./var-index-store"
+import { entryFor, setVarIndexStore } from "./var-index-store"
 
 /**
- * Completions sourced from the profiles already installed next to FS Copilot.
- * Every suggestion carries its provenance — which profiles use the variable and
- * how they write it — because knowing that six aircraft drive a variable
- * through the same `set:` expression is the actual answer most of the time.
+ * The Monaco side of completion.
+ *
+ * Every decision about variable names — where the caret is, what the file
+ * says, what to offer and in which order — is made headless in
+ * `@shared/completion` and measured by `npm run check:completion`; see
+ * docs/sim-vars/19-completion.md. What is here maps those offers onto items,
+ * and completes the line structure around them: keys, headings, `include:`
+ * paths, whole-setter templates, and JavaScript through the service.
  */
 
-let index: VarIndex | null = null
+let completion: CompletionIndex = completionIndex(null)
 let profileFiles: ProfileFile[] = []
 
-/**
- * Names written to by `set:` expressions in the corpus, and how often.
- *
- * These are not the same population as the `get:` variables. Plenty of events
- * are only ever written — `K:2:ELECTRICAL_BUS_TO_CIRCUIT_CONNECTION_TOGGLE`
- * appears in a dozen profiles and is nobody's `get:` — so a write target
- * completed only from the variable index would be missing exactly the names
- * that are hardest to remember.
- */
-const writeTargets = new Map<string, number>()
-
-/** How many corpus entries write this exact name. Hover cites it too. */
-export function writeTargetCount(name: string): number {
-  return writeTargets.get(name) ?? 0
-}
+/** Which workspace file a model holds — given by monaco-setup, which owns the URIs. */
+let pathOf: (model: monaco.editor.ITextModel) => string | null = () => null
 
 export function setVarIndex(next: VarIndex | null): void {
-  index = next
+  completion = completionIndex(next)
   setVarIndexStore(next)
-
-  writeTargets.clear()
-  for (const entry of next?.entries ?? [])
-    for (const sample of entry.corpus?.samples ?? []) {
-      if (!sample.set) continue
-
-      // The language core, not a regex: `collectRefs` descends into the
-      // string and hole interiors where JS setters keep their references,
-      // and knows a write from a read — a grouped `(value)` never counted.
-      for (const found of collectRefs(sample.set)) {
-        if (found.access !== "write") continue
-        const target = found.ref.full.trim()
-        if (target)
-          writeTargets.set(target, (writeTargets.get(target) ?? 0) + 1)
-      }
-    }
 }
 
 export function setProfileFiles(next: ProfileFile[]): void {
@@ -106,6 +92,22 @@ export function linesOf(model: monaco.editor.ITextModel): Line[] {
   return lines
 }
 
+const documents = new WeakMap<
+  monaco.editor.ITextModel,
+  { version: number; facts: DocumentFacts }
+>()
+
+/** What the buffer says — entries, and every name it uses where — per version. */
+export function documentOf(model: monaco.editor.ITextModel): DocumentFacts {
+  const version = model.getVersionId()
+  const cached = documents.get(model)
+  if (cached?.version === version) return cached.facts
+
+  const facts = documentFacts(linesOf(model), pathOf(model))
+  documents.set(model, { version, facts })
+  return facts
+}
+
 /** The state before a line: which block it is in, whether it is in a scalar. */
 function contextAt(
   model: monaco.editor.ITextModel,
@@ -127,29 +129,27 @@ function rangeFor(
   }
 }
 
+/* -------------------------------------------------------------------------- */
+/* Names                                                                       */
+/* -------------------------------------------------------------------------- */
+
 /** How the corpus splits this variable across the two blocks. */
 function blockSummary(entry: VarEntry): string {
   const parts: string[] = []
-  if (entry.corpus?.sharedCount)
-    parts.push(`shared ×${entry.corpus.sharedCount}`)
-  if (entry.corpus?.masterCount)
-    parts.push(`master ×${entry.corpus.masterCount}`)
+  if (entry.corpus?.get?.shared)
+    parts.push(`shared ×${entry.corpus.get.shared}`)
+  if (entry.corpus?.get?.master)
+    parts.push(`master ×${entry.corpus.get.master}`)
   return parts.join(" · ")
 }
 
 /**
- * The unit to write when a completion carries one.
+ * Everything known about a variable, for the panel beside the list.
  *
- * The commonest reading in the corpus, falling back to what the SDK documents.
- * Units left a variable's identity when the index stopped being one row per
- * `name|units` pair, so there is a list where there used to be a single value —
- * and for the thousands of names no profile has ever read, the documented unit
- * is the only one there has ever been.
+ * Built when an item is focused, never for the list: Monaco reads it for the
+ * one item on screen, and building it for nineteen thousand per keystroke was
+ * the cost of the list the old provider returned.
  */
-function unitFor(entry: VarEntry): string | undefined {
-  return entry.corpus?.units[0] ?? entry.sdk?.doc?.units
-}
-
 export function documentation(entry: VarEntry): monaco.IMarkdownString {
   const lines: string[] = []
 
@@ -170,10 +170,12 @@ export function documentation(entry: VarEntry): monaco.IMarkdownString {
   if (entry.sdk?.doc?.deprecated) lines.push("**Deprecated.**", "")
 
   const corpus = entry.corpus
+  const used = corpusFiles(corpus)
   if (corpus) {
-    const profiles = corpus.fileCount === 1 ? "profile" : "profiles"
+    const profiles = used.length === 1 ? "profile" : "profiles"
+    const blocks = blockSummary(entry)
     lines.push(
-      `Used in ${corpus.fileCount} ${profiles} — ${blockSummary(entry)}`
+      `Used in ${used.length} ${profiles}${blocks ? ` — ${blocks}` : ""}`
     )
   } else if (entry.sdk?.doc?.category) {
     lines.push(`_${entry.sdk.doc.category}_`)
@@ -191,7 +193,7 @@ export function documentation(entry: VarEntry): monaco.IMarkdownString {
   if (withSet.length) {
     lines.push("", "**Written as**", "```yaml")
     for (const sample of withSet) {
-      const unit = unitFor(entry)
+      const unit = corpus.units[0] ?? entry.sdk?.doc?.units
       lines.push(`- get: ${entry.name}${unit ? `, ${unit}` : ""}`)
 
       if (sample.scalar)
@@ -206,263 +208,143 @@ export function documentation(entry: VarEntry): monaco.IMarkdownString {
     lines.push("```")
   }
 
-  if (corpus.files.length) {
-    lines.push("", `_${corpus.files.slice(0, 6).join(", ")}_`)
+  if (used.length) {
+    lines.push("", `_${used.slice(0, 6).join(", ")}_`)
   }
 
   return { value: lines.join("\n") }
 }
 
-function variableSuggestions(
+/** An item from an offer, resolved to its documentation only when focused. */
+type NameItem = monaco.languages.CompletionItem &
+  Resolvable & { __offer?: Offer }
+
+const KINDS: Record<Offer["kind"], monaco.languages.CompletionItemKind> = {
+  variable: monaco.languages.CompletionItemKind.Variable,
+  event: monaco.languages.CompletionItemKind.Event,
+  unit: monaco.languages.CompletionItemKind.Unit,
+}
+
+/**
+ * The offers at a slot, as items.
+ *
+ * **One range per list.** Monaco scores each item against the text from its
+ * range's start to the caret, so items with different starts are scored
+ * against different words — a `K:` calling shape that reached back over `(>`
+ * outscored everything else whatever order it was given. So a reference's
+ * whole list reaches back over its `(`, and every filter text begins with
+ * what was typed there; the scores are comparable and the order is ours.
+ *
+ * **Plain ranges.** A range with separate insert and replace ends replaces to
+ * the end only on Shift+Enter; a plain range always does. So accepting a
+ * name replaces the old one on Enter.
+ */
+function nameItems(
   model: monaco.editor.ITextModel,
   position: monaco.Position,
-  prefix: string,
-  typed: string,
-  /** `skp:` takes a bare name; `get:` carries the units with it. */
-  withUnits: boolean
+  slot: CompletionSlot
 ): monaco.languages.CompletionList {
-  const entries = index?.entries ?? []
-  const insert = rangeFor(position, prefix.length, typed.length)
+  const offers = complete(slot, documentOf(model), completion)
+  const line = position.lineNumber
+  const range = (start: number, end: number): monaco.IRange => ({
+    startLineNumber: line,
+    endLineNumber: line,
+    startColumn: start + 1,
+    endColumn: end + 1,
+  })
+  const sortText = (order: number) => String(order).padStart(6, "0")
 
-  // A suggestion brings its own units, so accepting one over `A:OLD, Bool`
-  // has to take the existing units with it. Replacing only up to the caret
-  // leaves them behind and scrambles the line into `A:NEW, Number, Bool`.
-  const replace = { ...insert, endColumn: valueEndColumn(model, position) }
+  if (slot.kind === "units")
+    return {
+      suggestions: offers.map((offer, order): NameItem => ({
+        label: { label: offer.label, detail: detailLine(offer) },
+        kind: KINDS.unit,
+        // One space after the comma, as the formatter writes it.
+        insertText: ` ${offer.text}`,
+        filterText: offer.text,
+        sortText: sortText(order),
+        range: range(slot.start, slot.end),
+      })),
+    }
+
+  const cover = slot.cover
+  const lead = cover?.text ?? ""
+  const start = cover ? cover.start : slot.start
+  // An open reference is closed, or the tokenizer reads it to the end of the
+  // line and everything after it is garbled.
+  const close = cover && !slot.closed ? ")" : ""
+
+  // On a `get:` line the value is the name and its unit. A name that brings a
+  // unit replaces both; one that does not leaves the author's unit alone.
+  const text = model.getLineContent(line)
+  const comma = text.indexOf(",", slot.start)
+  const nameEnd = comma !== -1 && comma < slot.end ? comma : slot.end
 
   return {
-    // The list is long and Monaco filters it as you type, so hand it over whole
-    // rather than re-filtering on every keystroke.
-    suggestions: entries.map((entry, order) => {
-      const unit = unitFor(entry)
+    suggestions: offers.map((offer, order): NameItem => {
+      const calling = offer.snippet !== undefined && slot.position === "write"
+      const snippet = calling || offer.template !== undefined
+      const name = offer.template ?? offer.text
+      let insertText = calling ? offer.snippet! : `${lead}${name}`
+      let end = slot.end
+
+      if (slot.position === "get") {
+        if (offer.units) insertText = `${name}, ${offer.units}`
+        else end = nameEnd
+      }
 
       return {
         label: {
-          label: entry.name,
-          description: unit || undefined,
-          // A name with no corpus usage is not a name with zero usage: it is one
-          // the SDK knows and this workspace has never written. Saying "0
-          // profiles" would read as a verdict on it.
-          detail: entry.corpus
-            ? `  ${entry.corpus.fileCount} profiles`
-            : entry.sdk?.doc?.category
-              ? `  ${entry.sdk.doc.category}`
-              : "  in sim",
+          label: offer.label,
+          ...(slot.position === "get" && offer.units
+            ? { description: offer.units }
+            : {}),
+          detail: detailLine(offer),
         },
-        kind: monaco.languages.CompletionItemKind.Variable,
-        insertText: withUnits && unit ? `${entry.name}, ${unit}` : entry.name,
-        filterText: entry.name,
-        // Frequency order, zero-padded so it sorts lexically.
-        sortText: String(order).padStart(6, "0"),
-        documentation: documentation(entry),
-        range: { insert, replace },
+        kind: KINDS[offer.kind],
+        insertText: insertText + close,
+        ...(snippet
+          ? {
+              insertTextRules:
+                monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
+            }
+          : {}),
+        filterText: `${lead}${offer.text}`,
+        sortText: sortText(order),
+        range: range(start, end),
+        __offer: offer,
       }
     }),
   }
 }
 
+/** The evidence, as the dimmed text beside a label. */
+function detailLine(offer: Offer): string | undefined {
+  const detail = detailOf(offer.evidence)
+  return detail ? `  ${detail}` : undefined
+}
+
 /**
- * Names for an open `(>` … target.
+ * Documentation for whichever item is focused, and only that one.
  *
- * Two sources, ranked with the proven write targets first: what the corpus
- * actually writes to, then every `get:` variable, since anything readable can
- * generally be written. The namespace is part of the typed text, so `(>K:` is
- * already filtering to `K:` names by the time Monaco scores the list.
+ * One provider serves items of two origins, so it dispatches on which one
+ * made the item: the JavaScript service's go back to it; ours are built from
+ * the offer's variable.
  */
-function writeTargetSuggestions(
-  position: monaco.Position,
-  prefix: string,
-  typed: string
-): monaco.languages.CompletionList {
-  const range = rangeFor(position, prefix.length, typed.length)
-  const suggestions: monaco.languages.CompletionItem[] = []
-  const seen = new Set<string>()
+async function resolveItem(
+  item: monaco.languages.CompletionItem
+): Promise<monaco.languages.CompletionItem> {
+  const named = item as NameItem
+  if (named.__js) return resolveJavaScript(named)
 
-  /*
-   * A full-shape snippet replaces from the `(` — the operands go *before*
-   * the paren the user already typed, so the range must reach back over it.
-   * `prefix` ends just past `(>`; the paren is its last `(` by construction
-   * of the slot.
-   */
-  const paren = prefix.lastIndexOf("(")
-  const snippetRange: monaco.IRange | null =
-    paren === -1
-      ? null
-      : {
-          startLineNumber: position.lineNumber,
-          endLineNumber: position.lineNumber,
-          startColumn: paren + 1,
-          endColumn: prefix.length + typed.length + 1,
-        }
-
-  /*
-   * The catalogue's parameter docs, keyed by bare event name, so a corpus
-   * item can be *upgraded*: the corpus knows `K:2:KOHLSMAN_SET` is popular,
-   * the catalogue knows what its two operands mean, and the item that ships
-   * is both — evidence-ranked, inserting the whole calling shape. Without
-   * this join the two sources compete and dedupe silently drops whichever
-   * came second, which on the first live test was the snippet.
-   */
-  const kParameters = new Map<string, string>()
-  for (const entry of index?.entries ?? []) {
-    const parameters = entry.sdk?.doc?.parameters
-    if (!parameters || !entry.name.startsWith("K:")) continue
-    if (documentedParams(parameters) < 2) continue
-    kParameters.set(entry.name.slice(2), parameters)
-  }
-
-  const ranked = [...writeTargets].sort((a, b) => b[1] - a[1])
-
-  for (const [name, count] of ranked) {
-    seen.add(name)
-
-    const parsed = parseVar(name)
-    const parameters =
-      parsed.ns === "K" ? kParameters.get(parsed.name) : undefined
-
-    if (parameters && snippetRange) {
-      const insert = `K:${documentedParams(parameters)}:${parsed.name}`
-      if (seen.has(insert)) continue
-      seen.add(insert)
-
-      suggestions.push({
-        label: insert,
-        kind: monaco.languages.CompletionItemKind.Event,
-        insertText: kEventSnippet(parsed.name, parameters),
-        insertTextRules:
-          monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
-        detail: `written by ${count} ${count === 1 ? "entry" : "entries"} — operands: ${parameters.trim()}`,
-        filterText: prefix.slice(paren) + name,
-        sortText: `0${String(suggestions.length).padStart(5, "0")}`,
-        range: snippetRange,
-      })
-      continue
-    }
-
-    suggestions.push({
-      label: name,
-      kind: monaco.languages.CompletionItemKind.Event,
-      insertText: name,
-      detail: `written by ${count} ${count === 1 ? "entry" : "entries"}`,
-      sortText: `0${String(suggestions.length).padStart(5, "0")}`,
-      range,
-    })
-  }
-
-  // What the aircraft has actually enumerated, so an offer can check a name
-  // it is about to invent — the `B:` `_Set` case.
-  const known = new Set((index?.entries ?? []).map((entry) => entry.name))
-
-  for (const entry of index?.entries ?? []) {
-    if (seen.has(entry.name)) continue
-    seen.add(entry.name)
-
-    // The descriptor table and catalogue decide whether this name belongs
-    // in write position at all, and as what text — see set-completions.ts.
-    const offer = writeOffer(entry, (name) => known.has(name))
-    if (offer === null) continue
-    if (seen.has(offer.insert)) continue
-    seen.add(offer.insert)
-
-    const detail =
-      offer.note ??
-      (entry.corpus
-        ? `read by ${entry.corpus.fileCount} profiles`
-        : (entry.sdk?.doc?.description ?? "in sim"))
-
-    if (offer.snippet && snippetRange) {
-      // The whole calling shape: `${1:index} ${2:value} (>K:2:EVENT` — the
-      // editor making sure the `:2` and its operands cannot be missed.
-      suggestions.push({
-        label: offer.insert,
-        kind: monaco.languages.CompletionItemKind.Event,
-        insertText: offer.snippet,
-        insertTextRules:
-          monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
-        detail,
-        documentation: documentation(entry),
-        // Monaco filters on the text the range covers, and this range
-        // reaches back over the `(>` — so the filter text must too.
-        filterText: prefix.slice(paren) + entry.name,
-        sortText: `1${String(suggestions.length).padStart(5, "0")}`,
-        range: snippetRange,
-      })
-      continue
-    }
-
-    suggestions.push({
-      label: offer.insert,
-      kind: monaco.languages.CompletionItemKind.Variable,
-      insertText: offer.insert,
-      detail,
-      documentation: documentation(entry),
-      filterText: entry.name,
-      sortText: `1${String(suggestions.length).padStart(5, "0")}`,
-      range,
-    })
-  }
-
-  return { suggestions }
+  const entry = named.__offer?.entry
+  if (entry && !named.documentation) named.documentation = documentation(entry)
+  return named
 }
 
-/**
- * The column a value ends at — end of line, or where a trailing comment
- * starts, which belongs to the author rather than to the value.
- */
-function valueEndColumn(
-  model: monaco.editor.ITextModel,
-  position: monaco.Position
-): number {
-  const text = model.getLineContent(position.lineNumber)
-  const comment = /\s#/.exec(text)
-  const end = comment
-    ? comment.index + 1
-    : model.getLineMaxColumn(position.lineNumber)
-
-  return Math.max(end, position.column)
-}
-
-/**
- * Units for the part after the comma. SimConnect matches these
- * case-insensitively, so the list exists to keep a profile internally
- * consistent rather than to make it work.
- */
-function unitSuggestions(
-  position: monaco.Position,
-  prefix: string,
-  typed: string
-): monaco.languages.CompletionList {
-  const range = rangeFor(position, prefix.length, typed.length)
-  const suggested = canonicalUnit(typed)
-
-  // How often each unit appears in the corpus, so the common ones sort first.
-  const frequency = new Map<string, number>()
-  for (const entry of index?.entries ?? [])
-    for (const unit of entry.corpus?.units ?? [])
-      frequency.set(
-        unit,
-        (frequency.get(unit) ?? 0) + (entry.corpus?.count ?? 0)
-      )
-
-  const ranked = [...UNITS].sort(
-    (a, b) => (frequency.get(b) ?? 0) - (frequency.get(a) ?? 0)
-  )
-
-  return {
-    suggestions: ranked.map((unit, order) => ({
-      label: unit,
-      kind: monaco.languages.CompletionItemKind.Unit,
-      insertText: unit,
-      detail:
-        suggested === unit && typed.trim() && typed.trim() !== unit
-          ? `canonical spelling of "${typed.trim()}"`
-          : frequency.get(unit)
-            ? `${frequency.get(unit)} uses`
-            : undefined,
-      sortText: `${suggested === unit ? "0" : "1"}${String(order).padStart(3, "0")}`,
-      range,
-    })),
-  }
-}
+/* -------------------------------------------------------------------------- */
+/* Line structure                                                              */
+/* -------------------------------------------------------------------------- */
 
 /**
  * The keys the entry around a line already has.
@@ -495,21 +377,6 @@ function keysInEntry(lines: Line[], lineNumber: number): Set<string> {
   return keys
 }
 
-/** Looks upwards for the `get:` this `set:` belongs to. */
-function variableAbove(lines: Line[], lineNumber: number): string | null {
-  for (let index = lineNumber - 2; index >= 0; index--) {
-    const line = lines[index]
-    if (line.kind === "blockKey") break
-
-    if (line.kind === "entry")
-      return line.key === ENTRY_KEY
-        ? plainValue(line.value).split(",")[0].trim()
-        : null
-  }
-
-  return null
-}
-
 /**
  * The shapes a `set:` value can take, rendered from the headless table in
  * `set-templates.ts` — which is where they are decided and tested. The
@@ -538,47 +405,54 @@ function setTemplateItems(
   }))
 }
 
+/**
+ * Whole setters for a `set:` value: what other profiles write for this entry's
+ * variable, then the templates.
+ *
+ * Looked up by identity, so `get: A:LIGHT BEACON:1` finds what profiles write
+ * for `A:LIGHT BEACON` — the raw `get:` text never matched an indexed name.
+ */
 function setSuggestions(
-  lines: Line[],
+  model: monaco.editor.ITextModel,
   position: monaco.Position,
   prefix: string,
   typed: string
 ): monaco.languages.CompletionList {
-  const name = variableAbove(lines, position.lineNumber)
+  const name = documentOf(model).entryAt(position.lineNumber)?.name ?? null
   const range = rangeFor(position, prefix.length, typed.length)
 
   const seen = new Set<string>()
   const suggestions: monaco.languages.CompletionItem[] = []
 
   // What other profiles actually write for this variable comes first.
-  for (const entry of (index?.entries ?? []).filter((e) => e.name === name))
-    for (const sample of entry.corpus?.samples ?? []) {
-      if (!sample.set || seen.has(sample.set)) continue
-      seen.add(sample.set)
+  const entry = name ? entryFor(name) : undefined
+  for (const sample of entry?.corpus?.samples ?? []) {
+    if (!sample.set || seen.has(sample.set)) continue
+    seen.add(sample.set)
 
-      // Indentation is relative: Monaco prepends the current line's indent to
-      // every line after the first, so the body needs only its offset from the
-      // key it hangs under.
-      const body = sample.set.split("\n")
-      const insertText = sample.scalar
-        ? [">", ...body.map((line) => `  ${line}`)].join("\n")
-        : sample.set
+    // Indentation is relative: Monaco prepends the current line's indent to
+    // every line after the first, so the body needs only its offset from the
+    // key it hangs under.
+    const body = sample.set.split("\n")
+    const insertText = sample.scalar
+      ? [">", ...body.map((line) => `  ${line}`)].join("\n")
+      : sample.set
 
-      suggestions.push({
-        label: sample.scalar ? `> ${body[0]} …` : sample.set,
-        kind: monaco.languages.CompletionItemKind.Value,
-        insertText,
-        insertTextRules: sample.scalar
-          ? monaco.languages.CompletionItemInsertTextRule.KeepWhitespace
-          : undefined,
-        detail: sample.file,
-        documentation: {
-          value: `How \`${name}\` is written in \`${sample.file}\`.`,
-        },
-        sortText: `0${String(suggestions.length).padStart(3, "0")}`,
-        range,
-      })
-    }
+    suggestions.push({
+      label: sample.scalar ? `> ${body[0]} …` : sample.set,
+      kind: monaco.languages.CompletionItemKind.Value,
+      insertText,
+      insertTextRules: sample.scalar
+        ? monaco.languages.CompletionItemInsertTextRule.KeepWhitespace
+        : undefined,
+      detail: sample.file,
+      documentation: {
+        value: `How \`${name}\` is written in \`${sample.file}\`.`,
+      },
+      sortText: `0${String(suggestions.length).padStart(3, "0")}`,
+      range,
+    })
+  }
 
   suggestions.push(...setTemplateItems(position, prefix, typed, name))
   return { suggestions }
@@ -684,11 +558,14 @@ function lineSuggestions(
   entries: Array<{ label: string; render: string; documentation?: string }>
 ): monaco.languages.CompletionList {
   const lineNumber = position.lineNumber
-  const spanToCaret = {
+  // A plain range, so Enter replaces to its end. With separate insert and
+  // replace ends, the rest of the line went only on Shift+Enter, and
+  // accepting over an existing key left its remains after the caret.
+  const wholeLine: monaco.IRange = {
     startLineNumber: lineNumber,
     endLineNumber: lineNumber,
     startColumn: 1,
-    endColumn: position.column,
+    endColumn: model.getLineMaxColumn(lineNumber),
   }
 
   return {
@@ -701,15 +578,7 @@ function lineSuggestions(
       filterText: filterTextFor(render),
       documentation: documentation ? { value: documentation } : undefined,
       sortText: `${order}`,
-      // Insert replaces up to the caret; replace takes the rest of the line
-      // too, so accepting over an existing key does not leave its remains.
-      range: {
-        insert: spanToCaret,
-        replace: {
-          ...spanToCaret,
-          endColumn: model.getLineMaxColumn(lineNumber),
-        },
-      },
+      range: wholeLine,
     })),
   }
 }
@@ -854,20 +723,34 @@ const NOTHING: monaco.languages.CompletionList = { suggestions: [] }
 /**
  * Exported so it can be exercised without driving the editor UI.
  *
- * Every branch here is a rendering decision. Working out *where the caret is*
- * happens once, in `slotAt`, against the same grammar the formatter reads.
+ * A variable name or unit anywhere — a `get:`, a `skp:`, a reference inside a
+ * setter — is the core's: `completionSlot` finds it and `complete` decides it.
+ * Everything else is line structure, found by `slotAt` against the same
+ * grammar the formatter reads.
+ *
+ * The trigger characters are the ones that open something: `(` a read, `>` a
+ * write, `:` a name after its key or namespace, `,` a unit. Letters are not
+ * among them — quick suggest already fires on every word character, so a
+ * letter here never acted as a trigger.
  */
 export const profileCompletions: monaco.languages.CompletionItemProvider = {
-  triggerCharacters: [":", " ", ",", "#", "-", "L", "A", "K", "H", "B"],
+  triggerCharacters: [":", " ", ",", "#", "-", "(", ">"],
 
-  resolveCompletionItem: resolveJavaScript,
+  resolveCompletionItem: resolveItem,
 
   async provideCompletionItems(model, position) {
+    const lines = linesOf(model)
+
+    const named = completionSlot(
+      lines,
+      position.lineNumber,
+      position.column - 1
+    )
+    if (named) return nameItems(model, position, named)
+
     const text = model
       .getLineContent(position.lineNumber)
       .slice(0, position.column - 1)
-
-    const lines = linesOf(model)
     const context = contextAt(model, position.lineNumber)
     const slot = slotAt(text, context)
     if (!slot) return NOTHING
@@ -875,30 +758,23 @@ export const profileCompletions: monaco.languages.CompletionItemProvider = {
     const { prefix, typed } = slot
 
     switch (slot.kind) {
+      // Handled above: every name and unit is the core's.
       case "variable":
-        return variableSuggestions(model, position, prefix, typed, true)
-
-      // `skp:` names the variable whose next change is suppressed, so it takes
-      // a bare name — no units, and none of the write expressions `set:` uses.
       case "skipTarget":
-        return variableSuggestions(model, position, prefix, typed, false)
-
       case "units":
-        return unitSuggestions(position, prefix, typed)
-
-      case "writeTarget":
-        return writeTargetSuggestions(position, prefix, typed)
+        return NOTHING
 
       case "setValue": {
-        const own = setSuggestions(lines, position, prefix, typed)
+        const own = setSuggestions(model, position, prefix, typed)
         return withJavaScript(model, position, lines, own, typed)
       }
 
       case "comment":
         return commentSuggestions(position, prefix, typed, context)
 
-      // Inside a block scalar the language is JavaScript and nothing else, so
-      // the injected names are all this contributes; the rest is the service.
+      // Inside a block scalar, outside every reference, the language is
+      // JavaScript and nothing else, so the injected names are all this
+      // contributes; the rest is the service.
       case "expression":
         return withJavaScript(model, position, lines, NOTHING, typed)
 
@@ -928,7 +804,15 @@ export const profileCompletions: monaco.languages.CompletionItemProvider = {
   },
 }
 
-export function registerCompletions(): monaco.IDisposable {
+/**
+ * Registers the provider. `relPathOf` says which workspace file a model holds,
+ * which decides whose saved copy the corpus leaves out and whether the
+ * aircraft in the sim applies — monaco-setup owns the URIs, so it passes it.
+ */
+export function registerCompletions(
+  relPathOf: (model: monaco.editor.ITextModel) => string | null
+): monaco.IDisposable {
+  pathOf = relPathOf
   return monaco.languages.registerCompletionItemProvider(
     "yaml",
     profileCompletions

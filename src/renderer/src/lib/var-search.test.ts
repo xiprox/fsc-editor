@@ -13,11 +13,13 @@ function entry(name: string, fileCount = 1): VarEntry {
   return {
     name,
     corpus: {
-      count: fileCount,
-      sharedCount: fileCount,
-      masterCount: 0,
-      fileCount,
-      files: [],
+      get: {
+        entries: fileCount,
+        files: Array.from({ length: fileCount }, (_, at) => `p${at}.yaml`),
+        shared: fileCount,
+        master: 0,
+      },
+      written: [],
       samples: [],
       units: ["Number"],
       indices: [],

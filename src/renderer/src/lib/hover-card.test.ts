@@ -171,13 +171,15 @@ describe("refCard", () => {
         name: "A:LIGHT LANDING",
         corpus: {
           doc: "Landing light, both sides.",
-          fileCount: 3,
-          sharedCount: 3,
-          masterCount: 0,
-          files: [],
+          get: {
+            entries: 3,
+            files: ["a.yaml", "b.yaml", "c.yaml"],
+            shared: 3,
+            master: 0,
+          },
+          written: [],
           samples: [],
           units: [],
-          count: 3,
           indices: [],
         },
         sdk: {

@@ -12,6 +12,7 @@ import {
   type EntryBlock,
   isEntryBlock,
   type Line,
+  plainValue,
   scalarValue,
   scanLines,
 } from "./grammar.ts"
@@ -129,6 +130,29 @@ export function splitUnits(raw: string): {
 
 export function scanEntries(relPath: string, text: string): RawEntry[] {
   return entriesFromLines(scanLines(text), relPath)
+}
+
+/**
+ * A profile's `include:` targets, as FS Copilot reads them.
+ *
+ * `plainValue`, because YAML drops a trailing comment from a plain scalar and
+ * FS Copilot never sees one — two corpus includes carry an `# ADDED BY …`
+ * note that is not part of the path. The targets are left as written:
+ * resolving one is a question about the files on disk, which this does not
+ * have.
+ */
+export function includesFromLines(lines: Line[]): string[] {
+  const out: string[] = []
+
+  for (const line of lines) {
+    if (line.kind !== "sequenceItem" || line.context.block !== "include")
+      continue
+
+    const target = plainValue(line.value).trim()
+    if (target) out.push(target)
+  }
+
+  return out
 }
 
 /**

@@ -1,5 +1,14 @@
 export { SCOPES, isScope, type Scope } from "./scopes.ts"
 export {
+  refsInCode,
+  setterFrames,
+  setterRefs,
+  type CodeRef,
+  type RefNode,
+} from "./refs.ts"
+export {
+  walkCode,
+  type CodeListener,
   paintCode,
   paintName,
   paintRef,
