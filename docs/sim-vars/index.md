@@ -86,6 +86,7 @@ context.
 | [16-phasing](16-phasing.md)               | The feature-phase view. **Superseded for build order** by [build/v1-plan.md](build/v1-plan.md).                                                    |
 | [17-open-questions](17-open-questions.md) | Everything that needs verifying before it is depended on, and the decisions already settled.                                                       |
 | [18-language-core](18-language-core.md)   | The profile dialect's front-end: tokens, IR, stack simulation, rule engine. Foundation for the highlighting/completion/diagnostics pass.          |
+| [19-completion](19-completion.md)         | **Built.** Name completion rebuilt on the document, per-position evidence and a measured ranking. Identity versus written form, two-stage `B:`, the leave-one-file-out sweep. Amended by the build — read its top. |
 
 ## Names
 
