@@ -1,5 +1,26 @@
 # Changelog
 
+## [0.3.0](https://github.com/xiprox/fsc-editor/compare/v0.2.0...v0.3.0) (2026-09-25)
+
+
+### Features
+
+* **editor:** B: input events complete in two steps, the control then its suffix ([4f9134a](https://github.com/xiprox/fsc-editor/commit/4f9134af3d96ce1fc4dc8c34bb662e9d40cc63e9))
+* **editor:** hovering a live value explains it the first three times ([d0398e5](https://github.com/xiprox/fsc-editor/commit/d0398e58f3dc7d1febe8f3913fbd31c173579d56))
+* **editor:** hovering the run button explains it the first three times ([fa1028f](https://github.com/xiprox/fsc-editor/commit/fa1028f571ae4ffef7d8a9a244651ff1f062169e))
+* **editor:** live values no longer start with an arrow ([2b874ed](https://github.com/xiprox/fsc-editor/commit/2b874ede4016b6b7d948a2fac48abfbfa91392cf))
+* **updates:** after an update, the app shows what changed ([a95f280](https://github.com/xiprox/fsc-editor/commit/a95f280d35580ddd8de974bd854e05cb70acffea))
+* **updates:** check for updates from the FSC Editor menu ([25ee540](https://github.com/xiprox/fsc-editor/commit/25ee5404223b9fb42b56b9f56c06f75fe3d73946))
+* **updates:** What's new lists what changed in every release ([ba246c9](https://github.com/xiprox/fsc-editor/commit/ba246c912c069c1b59adc97b23f23ad5de429cc7))
+
+
+### Bug Fixes
+
+* **editor:** a setter offers its entry's own variable first ([cf0216d](https://github.com/xiprox/fsc-editor/commit/cf0216d48cff23bf412813c2bdd07ccbc2580bfb))
+* **editor:** completions offer names from a profile you just saved ([94956c1](https://github.com/xiprox/fsc-editor/commit/94956c14906dc61bc0567d7ae24339a51122b669))
+* **editor:** pressing Enter after a get: entry no longer carries its live value down ([16578f6](https://github.com/xiprox/fsc-editor/commit/16578f6384dc09cd7605b9ec2a1b9063a4f728c8))
+* **trace:** a setter with no write at the end shows what really happens to the value ([388f64b](https://github.com/xiprox/fsc-editor/commit/388f64bfc85cfd986d6125de182f058c9ad4a711))
+
 ## [0.2.0](https://github.com/xiprox/fsc-editor/compare/v0.1.2...v0.2.0) (2026-09-21)
 
 
