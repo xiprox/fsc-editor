@@ -37,6 +37,10 @@ export const commands = {
     keys: { key: ",", ctrl: true },
     run: () => useStore.getState().setDialog("settings"),
   },
+  whatsNew: {
+    title: "What's new",
+    run: () => useStore.getState().setDialog("whats-new"),
+  },
   toggleProfiles: {
     title: "Profiles",
     keys: { key: "b", ctrl: true },

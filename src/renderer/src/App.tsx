@@ -31,6 +31,7 @@ import { Setup } from "@/components/setup"
 import { SimChip } from "@/components/sim"
 import { Splitter } from "@/components/splitter"
 import { Button } from "@/components/ui/button"
+import { WhatsNewDialog } from "@/components/whats-new"
 import { commands, keysLabel, watchCommands } from "@/lib/commands"
 import { usePanelWidth } from "@/lib/panel-width"
 import { CAPTION_INSET, watchTitleBar } from "@/lib/title-bar"
@@ -433,6 +434,7 @@ function Workbench() {
         open={dialog === "settings"}
         onOpenChange={(open) => setDialog(open ? "settings" : null)}
       />
+      <WhatsNewDialog />
     </div>
   )
 }

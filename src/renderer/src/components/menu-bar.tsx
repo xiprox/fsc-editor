@@ -1,6 +1,12 @@
 import { useState, type ReactNode } from "react"
 
-import { Download, Loader2, RefreshCw, Settings } from "lucide-react"
+import {
+  Download,
+  Loader2,
+  RefreshCw,
+  ScrollText,
+  Settings,
+} from "lucide-react"
 
 import {
   Menubar,
@@ -40,8 +46,8 @@ export function MenuBar() {
 const READY_ICON = Download
 
 /**
- * The app itself: which version this is, whether there is a newer one, and
- * Settings.
+ * The app itself: which version this is, what changed, whether there is a
+ * newer one, and Settings.
  *
  * **This is where an update is offered.** It used to be a button of its own in
  * the title bar, which had nowhere to go once a menu bar sat there too. Now an
@@ -93,6 +99,11 @@ function AppMenu() {
         )}
 
         <MenubarSeparator />
+
+        <MenubarItem onClick={commands.whatsNew.run}>
+          <ScrollText />
+          {commands.whatsNew.title}
+        </MenubarItem>
 
         {about && <UpdateRow about={about} />}
 
