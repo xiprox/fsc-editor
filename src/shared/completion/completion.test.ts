@@ -447,6 +447,138 @@ describe("the get: position", () => {
   })
 })
 
+describe("input events", () => {
+  // The CJ4 in the sim, with this file its profile.
+  const aircraft = {
+    aircraft: "asobo_cj4",
+    profiles: [
+      { relPath: "asobo_cj4.yaml", includes: [], gets: [], master: [] },
+    ],
+  }
+  const ids = [
+    "LIGHTING_BEACON_1",
+    "AIRLINER_FCU_SPD_PUSH",
+    "AIRLINER_FCU_SPD_PUSH_PUSH",
+  ]
+
+  function cj4(entries: VarEntry[] = []) {
+    const index: VarIndex = {
+      entries: [
+        ...ids
+          .filter((id) => !entries.some((entry) => entry.name === `B:${id}`))
+          .map((id) => ({
+            name: `B:${id}`,
+            aircraft: { key: "asobo_cj4", inputEvent: true },
+          })),
+        ...entries,
+      ],
+      scannedFiles: 0,
+      elapsedMs: 0,
+      inputEvents: ids,
+      ...aircraft,
+    }
+    return completionIndex(index)
+  }
+
+  it("offers a control as its first half, to finish with a suffix", () => {
+    const { slot, document } = at(
+      "shared:\n  - get: L:X\n    set: (>B:LIGHT|",
+      "asobo_cj4.yaml"
+    )
+    const control = complete(slot!, document, cj4()).find(
+      (o) => o.label === "B:LIGHTING_BEACON_1_…"
+    )
+    expect(control).toMatchObject({ text: "B:LIGHTING_BEACON_1_", next: true })
+    expect(detailOf(control!.evidence)).toBe(
+      "input event on the aircraft in the sim"
+    )
+  })
+
+  it("reads a control bare, as every corpus read does", () => {
+    const { slot, document } = at(
+      "shared:\n  - get: L:X\n    set: (B:LIGHT|",
+      "asobo_cj4.yaml"
+    )
+    const control = complete(slot!, document, cj4()).find(
+      (o) => o.label === "B:LIGHTING_BEACON_1"
+    )
+    expect(control).toMatchObject({ text: "B:LIGHTING_BEACON_1" })
+    expect(control?.next).toBeUndefined()
+  })
+
+  it("completes the suffix once the control is chosen", () => {
+    const index = cj4([
+      {
+        name: "B:LIGHTING_BEACON_1_Toggle",
+        corpus: corpus({ write: written(["a.yaml", "b.yaml"]) }),
+      },
+      {
+        name: "B:LIGHTING_BEACON_1",
+        aircraft: { key: "asobo_cj4", inputEvent: true },
+        corpus: corpus({ write: written(["c.yaml"]) }),
+      },
+    ])
+    const { slot, document } = at(
+      "shared:\n  - get: L:A\n    set: (>B:LIGHTING_BEACON_1_Set)\n  - get: L:X\n    set: (>B:LIGHTING_BEACON_1_|",
+      "asobo_cj4.yaml"
+    )
+    const offers = complete(slot!, document, index)
+    expect(offers.map((o) => [o.label, detailOf(o.evidence)])).toEqual([
+      ["B:LIGHTING_BEACON_1_Set", "used once in this file"],
+      ["B:LIGHTING_BEACON_1_Toggle", "written by 2 profiles"],
+      ["B:LIGHTING_BEACON_1_Inc", "seen in no profile"],
+      ["B:LIGHTING_BEACON_1_Dec", "seen in no profile"],
+      ["B:LIGHTING_BEACON_1_On", "seen in no profile"],
+      ["B:LIGHTING_BEACON_1_Off", "seen in no profile"],
+    ])
+  })
+
+  it("offers the bare ID beside its control where profiles write it bare", () => {
+    const index = cj4([
+      {
+        name: "B:LIGHTING_BEACON_1",
+        aircraft: { key: "asobo_cj4", inputEvent: true },
+        corpus: corpus({ write: written(["c.yaml"]) }),
+      },
+    ])
+    const { slot, document } = at(
+      "shared:\n  - get: L:X\n    set: (>B:LIGHT|",
+      "asobo_cj4.yaml"
+    )
+    const offers = complete(slot!, document, index)
+    const at_ = offers.findIndex((o) => o.label === "B:LIGHTING_BEACON_1_…")
+    expect(offers[at_ + 1]).toMatchObject({
+      label: "B:LIGHTING_BEACON_1",
+      text: "B:LIGHTING_BEACON_1",
+    })
+    expect(detailOf(offers[at_ + 1]!.evidence)).toBe(
+      "written bare in 1 profile"
+    )
+  })
+
+  it("reads the longest control a name continues, and offers the longer one", () => {
+    const { slot, document } = at(
+      "shared:\n  - get: L:X\n    set: (>B:AIRLINER_FCU_SPD_PUSH_|",
+      "asobo_cj4.yaml"
+    )
+    const offers = complete(slot!, document, cj4())
+    expect(offers[0]?.label).toBe("B:AIRLINER_FCU_SPD_PUSH_Set")
+    expect(
+      offers.find((o) => o.label === "B:AIRLINER_FCU_SPD_PUSH_PUSH_…")?.next
+    ).toBe(true)
+  })
+
+  it("says nothing of another aircraft's controls", () => {
+    const { slot, document } = at(
+      "shared:\n  - get: L:X\n    set: (>B:LIGHT|",
+      "pa24-250.yaml"
+    )
+    expect(labels(complete(slot!, document, cj4()))).not.toContain(
+      "B:LIGHTING_BEACON_1_…"
+    )
+  })
+})
+
 describe("skp:", () => {
   it("offers the entry's own variable first, then this file's by distance", () => {
     // 228 of the corpus's 235 skp: values name their own entry's get:.

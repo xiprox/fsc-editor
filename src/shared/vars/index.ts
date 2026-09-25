@@ -6,7 +6,7 @@ export {
   type NamespaceId,
   type VarRef,
 } from "./parse.ts"
-export { inputEventIds } from "./input-events.ts"
+export { inputEventIds, inputEventOf } from "./input-events.ts"
 export {
   NAMESPACES,
   namespaceOf,
