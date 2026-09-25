@@ -42,7 +42,7 @@ import { noteHintsRequested, onDidChangeSimValues, simValue } from "./sim-values
 import { getLinesIn, type WatchLine } from "./watch-set"
 
 /** The class the injected text carries. Styled in `index.css`. */
-const CLASS = "fsc-live-value"
+export const CLASS = "fsc-live-value"
 
 interface ModelState {
   /** The decorations we own on this model. Never touches anyone else's. */

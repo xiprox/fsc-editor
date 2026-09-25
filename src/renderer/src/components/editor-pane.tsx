@@ -33,6 +33,7 @@ import { acceptDrops } from "@/lib/editor-drop"
 import { installTraceHighlight } from "@/lib/trace-highlight"
 import { monacoOptionsFor, usePrefs } from "@/lib/prefs"
 import { EditorEmpty } from "@/components/editor-empty"
+import { EditorHints } from "@/components/editor-hints"
 import { installPanelPicker } from "@/components/panel-picker/widget"
 import { installRunSetter } from "@/components/run-setter/widget"
 import { SaveErrorBar } from "@/components/save-error-bar"
@@ -613,6 +614,13 @@ export function EditorPane({ group }: { group: string }) {
     pruneModels(tabs)
   }, [tabs])
 
+  const visibleEditor =
+    showDiff && diffEditor
+      ? diffEditor.getModifiedEditor()
+      : showCompare && compareEditor
+        ? compareEditor.getModifiedEditor()
+        : editor
+
   return (
     <div className="flex h-full w-full flex-col">
       {activePath && <ConnectionBar relPath={activePath} diff={diff} />}
@@ -667,15 +675,14 @@ export function EditorPane({ group }: { group: string }) {
           exactly where knowing which section you are in matters most.
         */}
         <StickyHeader
-          editor={
-            showDiff && diffEditor
-              ? diffEditor.getModifiedEditor()
-              : showCompare && compareEditor
-                ? compareEditor.getModifiedEditor()
-                : editor
-          }
+          editor={visibleEditor}
           outline={showDiff ? remoteOutline : localOutline}
         />
+
+        {/*
+          Following the same pane, because live values are drawn in all three.
+        */}
+        <EditorHints editor={visibleEditor} />
 
         {/*
           Over the editor rather than instead of it: the instance underneath is
