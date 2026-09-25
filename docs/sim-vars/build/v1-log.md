@@ -48,6 +48,91 @@ pointer line at the top of that doc naming this entry — see the working notes 
 > the client data on the wire — and is left alone.
 
 
+## 2026-09-25 — Completion rebuilt; the file, not the corpus, is the evidence
+
+    Stage:     post-v1 (19-completion, all five build stages)
+    Expected:  The design's ranking: this entry, then what this variable's
+               setters write elsewhere, then this file, then the corpus — and
+               for `get:` and reads, the Variables panel's evidence bands.
+    Found:     `npm run check:completion` — every name in the committed
+               corpus ranked with its own file left out, 160,844 completions,
+               Monaco's own scorer — overturned three parts and confirmed the
+               rest. Right name first, with only the namespace typed and the
+               whole file around it, new against the old order:
+                 write   68% (40%)   top five 88% (47%)   12,668 names
+                 get:    61% (0.2%)  top five 62% (0.9%)  26,763 names
+                 read    92% (none)                         545 names
+                 skp:    97% (none)                         235 names
+               What overturned:
+               - `skp:` names its own entry's `get:` 228 times in 235. The
+                 design left the entry's own name out; the sweep scored 0%.
+               - The evidence bands scored 0.4% for `get:`. The signal is the
+                 file: for 60% of `get:` names the author wrote the name that
+                 follows the previous entry in the profile most like theirs
+                 (91% of the time that entry is in that profile), 66% are in
+                 that profile at all, 90% share a family (`L:A32NX`) with a
+                 name above them. Tiers in that order took it to 61%.
+               - Reads read their own entry's variable 516 times in 545,
+                 spelled as the `get:` spells it.
+               And for writes, a tier the design lacked: what the most similar
+               profile's setter writes for the same `get:` — 69% on its own —
+               ahead of the entry's own variable, from 60% to 68% first.
+    Changed:   Built as designed otherwise, with these found in the building:
+               - `B:` controls are labelled `ID_…`; the bare ID is offered
+                 beside its control in step one, counted in this position,
+                 not after the underscore — there it could only match as an
+                 exact match, which Monaco puts first whatever the order.
+               - A name whose only evidence is the open file's saved copy is
+                 never offered: saving a half-typed `get: L:UNIQ` put it back
+                 in the list, labelled "known to the sim". Units are offered
+                 by canonical name only, for the same reason (`ga`).
+               - Shapes live in `src/shared/completion/shapes.ts`; in
+                 `src/shared/vars/` they would import the language core that
+                 imports `vars`.
+               - Profile summaries carry every `get:` in order, and which are
+                 `master:`, instead of `sharedGets` — the sequence needs order.
+               - The file's context is keyed by its uses without the one
+                 under the caret, so typing inside a name reuses it.
+               - `W:` is offered in write position: the descriptor table,
+                 like `ns-access`, says it is written — that is how a sound
+                 event is fired. The old list withheld it.
+               - The corpus fold moved to `src/shared/corpus.ts` so the sweep
+                 folds the same rows main does; main keeps the SQL.
+               Costs: the index fold is ~250ms on the corpus against ~145ms
+               before (and now runs after a save as well as at launch); the
+               index payload is 5.1MB against 4.4MB. `complete()` is 1–2ms at
+               the median; 30–60ms the first time after a new index.
+    Affects:   19-completion (amended in place before its first commit, with
+               this entry named at its top).
+
+
+## 2026-09-25 — A `B:` read through the calculator is in the control's unit, not the input event's
+
+    Stage:     post-v1 (completion rebuild, 19-completion)
+    Expected:  `(B:ID, Number)` — how FS Copilot reads a `get: B:` — returns
+               the value `getInputEvent` returns for the same ID.
+    Found:     On the CJ4, not for percent controls. `npm run sim:probe-reads
+               -- snapshot` over its 38 input events away from zero: 24 agree
+               exactly; 14 — volumes, trims, flaps, cabin air and heat, FMC
+               brightness — read 1/100 of the input event's value. Asking
+               for `Percent` gives it back: COM1 volume reads 1 as `Number`,
+               100 as `Percent`, 100 from `getInputEvent`. Panel lights, not
+               a percent control, read 50 as `Number` and 5000 as `Percent`.
+               The calculator converts from each control's own unit to the
+               one asked for. Also found: `(B:ID_Set)` reads what `(B:ID)`
+               does on all 38, and a suffix the control does not define reads
+               0 with no error.
+    Changed:   Nothing in the completion design beyond the reason unseen
+               operations rank last (19-completion, stage two). For live
+               values it is a mismatch to settle: the value beside a `B:`
+               line comes from `getInputEvent` (100), while FS Copilot reads
+               and syncs `Number` (1). Also unchecked: whether FS Copilot's
+               unit-less `B:` write — the `master:` fallback — puts that 1
+               back as 100% or 1%.
+    Affects:   none. b-values-plan.md and 09-live-values should cite this
+               entry when the gutter value is next touched.
+
+
 ## 2026-09-19 — Radar left the bottom slot for the side column
 
     Stage:     post-v1 (UI)

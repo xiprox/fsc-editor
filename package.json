@@ -31,6 +31,7 @@
     "sim:sandbox": "node --experimental-strip-types scripts/sim-sandbox.ts",
     "sim:slice": "node --experimental-strip-types scripts/slice-capture.ts",
     "sim:probe": "node --experimental-strip-types scripts/probe-input-events.ts",
+    "sim:probe-reads": "node --experimental-strip-types scripts/probe-b-reads.ts",
     "sim:panels": "node --experimental-strip-types scripts/probe-panels.ts",
     "vars:catalog": "node --experimental-strip-types scripts/build-sdk-var-catalog.ts",
     "lang:sweep": "node --experimental-strip-types scripts/lang-sweep.ts",
