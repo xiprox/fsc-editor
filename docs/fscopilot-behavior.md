@@ -8,8 +8,8 @@ covers execution.
 
 ## Source pin, and how to check this doc is current
 
-Read against the FS Copilot checkout (`~/dev/fscopilot` here) at commit `8a920e0`
-("Initial commit", 2026-04-25), whose `src/` submodule sits at `5d6b313`
+Read against the FS Copilot checkout at commit `8a920e0` ("Initial commit",
+2026-04-25), whose `src/` submodule (`~/dev/fsc/src` here) sits at `5d6b313`
 ("Add var replay to dev mode…", 2026-08-15) **with local modifications**
 (bridge hook.js, a Definitions module, the .sln — none of the files cited
 here).
@@ -17,7 +17,7 @@ here).
 Every claim below cites a file and an *anchor* — a short verbatim snippet.
 Line numbers drift; anchors survive. To re-verify a claim, grep its anchor:
 
-    git -C ~/dev/fscopilot/src log -1 --format=%h   # 5d6b313 → doc is current
+    git -C ~/dev/fsc/src log -1 --format=%h         # 5d6b313 → doc is current
     grep -n "ANCHOR" <cited file>                    # moved? read around it
 
 All paths below are under `src/` in that repo. `Definitions.cs` is
@@ -39,12 +39,22 @@ Set(object value` (~line 239). Branch-for-branch what
 | kind | trigger | produces |
 | --- | --- | --- |
 | implicit | `_set == null` | `{value} (>{Get}, {Units})` — or without units when the entry has none. **The units go into the write.** |
-| javascript | `_set.IndexOfAny(['\'', '`', '?', '{', '}']) >= 0` | Jint evaluates with `value`/`current` in scope; the result string is the expression. An evaluation error logs and yields the empty string — the setter silently does nothing. |
+| javascript | `_set.IndexOfAny(['\'', '`', '?', '{', '}']) >= 0` | Jint evaluates with `value`/`current` in scope; the result string is the expression. An evaluation error logs and yields the empty string, which does nothing only in a `shared:` entry — see below. |
 | prepended | `_set.StartsWith('(')` | `{value} {_set}` |
 | literal | anything else | `_set`, exactly as written — the value is **not** prepended |
 
 Anchor for the trigger set: `IndexOfAny(['\''` (~248). Note `"` is *not* a
 trigger — but our `scanEntries` unquotes YAML before this ever matters.
+
+**A JavaScript setter that throws is inert only in `shared:`.** The catch
+logs and returns `string.Empty` — anchor `Unable to parse event expression`.
+A `shared:` entry hands that to `SimClient.Execute`, which returns early on
+blank input — SimClient.cs anchor
+`if (string.IsNullOrWhiteSpace(expression)) return;` — so nothing changes in
+the sim. A `master:` entry hands it to `ParseSet` instead, where the empty
+string fails `SetRegex().Match(exp)` and takes the no-match fallback — anchor
+`return Get;` — so the value is written to the `get:` variable, as for any
+setter the regex cannot read (see below).
 
 ## The execution split: shared vs master
 
@@ -161,8 +171,10 @@ file declared them. Two entries sharing a name both receive.
 Two of these are worth saying out loud. `feet` and `percent` are in the INT32
 list, so an altitude in feet is an integer on the wire. And `number` is in
 that list **commented out** — anchor `// case "number":` — so the unit the
-`Definition` constructor falls back to for every unlabelled entry resolves to
-a double.
+`Definition` constructor falls back to for an unlabelled entry, Definitions.cs
+anchor `: "Number";`, resolves to a double. `K:` and `H:` entries are the
+exception: they fall back to `string.Empty` instead — anchor
+`(Get[0] == 'K' || Get[0] == 'H')` — which the first row makes a `string`.
 
 An `L:` variable ignores the table: it is FLOAT32 in both directions, because
 `SetLVar` hardcodes the datum type — anchor
